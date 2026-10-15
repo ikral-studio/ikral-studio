@@ -35,6 +35,8 @@ interface UIState {
   scriptDock: boolean
   /** Escena que se va a llenar con «Pegar escena de IA». */
   pasteSceneId: string | null
+  /** Texto de un .json soltado sobre «Importar guion». */
+  importText: string | null
 }
 
 export const useUI = create<UIState>()(() => ({
@@ -49,6 +51,7 @@ export const useUI = create<UIState>()(() => ({
   zoom: 24,
   scriptDock: false,
   pasteSceneId: null,
+  importText: null,
 }))
 
 export function openCameraLibrary(sceneId: string) {

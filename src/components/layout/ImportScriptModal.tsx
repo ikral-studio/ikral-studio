@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, ClipboardPaste, FileUp, Loader2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { requestScroll, toast, useUI } from '../../stores/uiStore'
@@ -18,6 +18,16 @@ export function ImportScriptModal() {
   const [data, setData] = useState<ScriptFile | null>(null)
   const [mode, setMode] = useState<'new' | 'append'>('new')
   const [busy, setBusy] = useState(false)
+  // Si el archivo se soltó sobre el botón, validarlo de una vez.
+  useEffect(() => {
+    const dropped = useUI.getState().importText
+    if (dropped) {
+      useUI.setState({ importText: null })
+      setText(dropped)
+      validate(dropped)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const validate = (raw: string) => {
     const r = parseScriptText(raw)

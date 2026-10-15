@@ -14,6 +14,7 @@ import { ClipboardPaste, Copy, FileInput, GripVertical, ImageIcon, PanelLeftClos
 import { useProject } from '../../stores/projectStore'
 import { openPasteScene, toast, useUI } from '../../stores/uiStore'
 import { buildAIPrompt } from '../../features/script-exchange/schema'
+import { useFileDrop } from '../../hooks/useFileDrop'
 import { copyToClipboard } from '../../utils'
 import { useMediaUrl } from '../../features/media-library/media'
 import { effectiveDuration } from '../../features/script-sync/derive'
@@ -77,6 +78,26 @@ const SceneItem = memo(function SceneItem({ id, n }: { id: string; n: number }) 
   )
 })
 
+/** «Importar guion»: también acepta soltar el archivo .json encima. */
+function ImportScriptButton() {
+  const drop = useFileDrop(async (files) => {
+    const f = files.find((x) => x.name.toLowerCase().endsWith('.json') || x.type === 'application/json')
+    if (!f) return toast('Suelta aquí un archivo .json del guion', 'info')
+    if (f.size > 1_000_000) return toast('El archivo es demasiado grande (máximo 1 MB)', 'error')
+    useUI.setState({ importText: await f.text(), modal: 'importScript' })
+  })
+  return (
+    <button
+      {...drop.props}
+      className={`btn !h-9 ${drop.over ? '!border-sel-2 !bg-sel/20 !text-white' : ''}`}
+      onClick={() => useUI.setState({ modal: 'importScript' })}
+      title="Pega, sube o arrastra aquí el JSON que te dio la IA"
+    >
+      <FileInput size={14} className="shrink-0 text-[#93c5fd]" /> {drop.over ? 'Suelta el guion aquí' : 'Importar guion'}
+    </button>
+  )
+}
+
 export function Sidebar() {
   const sceneIds = useProject((s) => s.project?.sceneIds ?? EMPTY_IDS)
   const selected = useProject((s) => s.selectedSceneId)
@@ -114,13 +135,7 @@ export function Sidebar() {
         >
           <Sparkles size={14} className="shrink-0 text-[#c4b5fd]" /> Copiar formato para IA
         </button>
-        <button
-          className="btn !h-9"
-          onClick={() => useUI.setState({ modal: 'importScript' })}
-          title="Pega o sube el JSON que te dio la IA"
-        >
-          <FileInput size={14} className="shrink-0 text-[#93c5fd]" /> Importar guion
-        </button>
+        <ImportScriptButton />
       </div>
       <div className="flex items-center justify-between px-1 pt-2">
         <span className="eyebrow">Escenas</span>

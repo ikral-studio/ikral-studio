@@ -522,3 +522,18 @@ test('extra · dos ventanas no se pisan y respaldos restaurables', async ({ page
   await page.getByRole('button', { name: 'Restaurar', exact: true }).last().click()
   await expect(card(page, 1).getByLabel('Nombre de la escena')).toHaveValue('Editada en la ventana 2')
 })
+
+test('extra · soltar el .json sobre «Importar guion»', async ({ page }) => {
+  const json = await readFile(fx('guion-ia.json'), 'utf8')
+  await page.goto('./')
+  const btn = page.getByRole('button', { name: 'Importar guion' })
+  const dt = await page.evaluateHandle((text) => {
+    const d = new DataTransfer()
+    d.items.add(new File([text], 'guion.json', { type: 'application/json' }))
+    return d
+  }, json)
+  await btn.dispatchEvent('dragenter', { dataTransfer: dt })
+  await btn.dispatchEvent('drop', { dataTransfer: dt })
+  await expect(page.getByText('El guion es válido')).toBeVisible()
+  await expect(page.getByRole('dialog')).toContainText('Promo importada')
+})
