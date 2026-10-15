@@ -16,7 +16,7 @@ const FIELDS: { key: ScriptField; label: string; hint: string; rows: number }[] 
 
 export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
   const script = useProject((s) => s.scenes[sceneId]?.script)
-  const { updateScript, addPronunciation, updatePronunciation, removePronunciation } = useProject.getState()
+  const { updateScript, addPronunciation, updatePronunciation, removePronunciation, setNumbersToWords } = useProject.getState()
   const [showPrompt, setShowPrompt] = useState(false)
   if (!script) return null
 
@@ -71,6 +71,20 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
             <Plus size={13} /> Agregar palabra
           </button>
         </div>
+        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[12px] text-ink-2">
+          <button
+            role="switch"
+            aria-checked={!!script.numbersToWords}
+            aria-label="Números en letras"
+            onClick={() => setNumbersToWords(sceneId, !script.numbersToWords)}
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${script.numbersToWords ? 'bg-sel' : 'bg-line-2'}`}
+          >
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${script.numbersToWords ? 'left-[18px]' : 'left-0.5'}`} />
+          </button>
+          <span>
+            <b className="font-medium text-ink">Números en letras</b> — en el prompt, 1253 → «mil doscientos cincuenta y tres», $150 → «ciento cincuenta pesos».
+          </span>
+        </label>
         {script.pronunciations.length === 0 ? (
           <p className="mt-1 text-[11.5px] text-ink-3">
             Opcional. Ej.: «TuApp.digital» se escribe así en el guion, pero en el prompt va «Tu Ap Dijital».

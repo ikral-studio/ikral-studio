@@ -40,6 +40,8 @@ export interface SceneScript {
   generationPrompt: string
   pronunciationNotes?: string
   pronunciations: Pronunciation[]
+  /** Al copiar el prompt, cambiar números por palabras (1253 → mil doscientos cincuenta y tres). */
+  numbersToWords?: boolean
 }
 
 export interface VideoVersion {
@@ -100,4 +102,4 @@ export interface Settings {
   fit: 'contain' | 'cover'
 }
 
-export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes'>
+export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes' | 'numbersToWords'>

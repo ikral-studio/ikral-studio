@@ -51,6 +51,7 @@ interface State {
   addPronunciation: (id: string) => void
   updatePronunciation: (id: string, pid: string, patch: { written?: string; spoken?: string }) => void
   removePronunciation: (id: string, pid: string) => void
+  setNumbersToWords: (id: string, on: boolean) => void
 
   undo: () => void
   redo: () => void
@@ -368,6 +369,10 @@ export const useProject = create<State>()((set, get) => {
         ...s,
         script: { ...s.script, pronunciations: s.script.pronunciations.filter((p) => p.id !== pid) },
       }))
+    },
+
+    setNumbersToWords(id, on) {
+      patchScene(id, (s) => ({ ...s, script: { ...s.script, numbersToWords: on } }))
     },
 
     undo() {

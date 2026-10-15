@@ -56,3 +56,31 @@ describe('guion y prompt', () => {
     expect(deriveStatus(s)).toBe('reviewed')
   })
 })
+
+import { integerToWords, numbersToWordsInText } from '../utils/numberWords'
+describe('números en letras', () => {
+  it('enteros', () => {
+    expect(integerToWords(1253)).toBe('mil doscientos cincuenta y tres')
+    expect(integerToWords(100)).toBe('cien')
+    expect(integerToWords(101)).toBe('ciento uno')
+    expect(integerToWords(21)).toBe('veintiuno')
+    expect(integerToWords(21000)).toBe('veintiún mil')
+    expect(integerToWords(31000)).toBe('treinta y un mil')
+    expect(integerToWords(1000000)).toBe('un millón')
+    expect(integerToWords(2500000)).toBe('dos millones quinientos mil')
+    expect(integerToWords(0)).toBe('cero')
+  })
+  it('en texto: precios, porcentajes, miles y decimales', () => {
+    expect(numbersToWordsInText('Cuesta $150 y 50% menos')).toBe('Cuesta ciento cincuenta pesos y cincuenta por ciento menos')
+    expect(numbersToWordsInText('1,253 clientes')).toBe('mil doscientos cincuenta y tres clientes')
+    expect(numbersToWordsInText('2.5 segundos')).toBe('dos punto cinco segundos')
+  })
+  it('solo si el interruptor está prendido, y nunca en el guion maestro', () => {
+    const s = mk(5)
+    s.script.dialogue = 'Joven: —¡Son 3 tacos!'
+    expect(generationPrompt(s)).toContain('3 tacos')
+    s.script.numbersToWords = true
+    expect(generationPrompt(s)).toContain('tres tacos')
+    expect(masterScriptText(createProjectData('P'), [s])).toContain('3 tacos')
+  })
+})

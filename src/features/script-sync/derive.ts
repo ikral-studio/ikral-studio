@@ -2,6 +2,7 @@
 // se calcula desde las escenas. No hay copias del guion.
 import type { Project, Scene, SceneStatus, VideoVersion } from '../../types'
 import { formatDuration, pad2 } from '../../utils'
+import { numbersToWordsInText } from '../../utils/numberWords'
 
 export function orderedScenes(project: Project | null, scenes: Record<string, Scene>): Scene[] {
   if (!project) return []
@@ -148,7 +149,8 @@ export function generationPrompt(scene: Scene): string {
     .filter(Boolean)
   if (s.dialogue.trim()) parts.push(`Diálogo: ${s.dialogue.trim()}`)
   if (s.soundDirection.trim()) parts.push(s.soundDirection.trim())
-  return applyPronunciations(parts.join('\n\n'), scene)
+  const text = applyPronunciations(parts.join('\n\n'), scene)
+  return s.numbersToWords ? numbersToWordsInText(text) : text
 }
 
 export function allPromptsText(project: Project, scenes: Scene[]): string {
