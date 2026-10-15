@@ -16,8 +16,8 @@ export type KeyBindings = Record<ActionId, string[]>
 
 export const ACTIONS: { id: ActionId; label: string }[] = [
   { id: 'playPause', label: 'Reproducir / pausar' },
-  { id: 'playReverse', label: 'Reproducir hacia atrás' },
-  { id: 'playForward', label: 'Reproducir hacia adelante' },
+  { id: 'playReverse', label: 'Hacia atrás (otra vez = más rápido)' },
+  { id: 'playForward', label: 'Hacia adelante (otra vez = más rápido)' },
   { id: 'razor', label: 'Tijera (clic en el timeline corta)' },
   { id: 'select', label: 'Selección (mouse normal)' },
   { id: 'zoomIn', label: 'Acercar timeline (zoom +)' },

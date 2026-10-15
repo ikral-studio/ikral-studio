@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useProject } from '../stores/projectStore'
 import { toast, useUI, zoomBy } from '../stores/uiStore'
-import { playback, usePlayback } from '../features/playback/engine'
+import { nextSpeed, playback, usePlayback } from '../features/playback/engine'
 import { confirmDeleteScene, selectScene } from '../features/scene-management/actions'
 import { actionFor, mergeKeys, normalizeKey, type ActionId, type KeyBindings } from '../features/shortcuts/keys'
 import { isTypingTarget } from '../utils'
@@ -14,10 +14,11 @@ function run(action: ActionId) {
   switch (action) {
     case 'playPause':
       return playback.toggle()
+    // Cada vez que se aprieta otra vez en la misma dirección: 2×, 4×, 8×.
     case 'playReverse':
-      return pb.playing && pb.reverse ? playback.pause() : playback.playReverse()
+      return pb.playing && pb.reverse ? playback.setSpeed(nextSpeed(pb.speed)) : playback.playReverse(1)
     case 'playForward':
-      return pb.playing && !pb.reverse ? playback.pause() : void playback.play()
+      return pb.playing && !pb.reverse ? playback.setSpeed(nextSpeed(pb.speed)) : void playback.play(1)
     case 'razor':
       useUI.setState({ tool: 'razor' })
       return toast('Tijera ✂️: haz clic en el timeline donde quieras cortar (V para volver)', 'info')

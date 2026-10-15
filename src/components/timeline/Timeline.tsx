@@ -191,6 +191,7 @@ export function Timeline() {
   const sceneIds = useMemo(() => segments.map((s) => s.scene.id), [segments])
   const playing = usePlayback((s) => s.playing)
   const reverse = usePlayback((s) => s.reverse)
+  const speed = usePlayback((s) => s.speed)
   const loop = usePlayback((s) => s.loop)
   const time = usePlayback((s) => s.time)
   const total = totalDuration(segments)
@@ -280,7 +281,11 @@ export function Timeline() {
         <span className="text-[13px] tabular-nums text-ink">
           {formatTime(time)} <span className="text-ink-3">/ {formatTime(total)}</span>
         </span>
-        {reverse && playing && <span className="chip bg-warn/15 text-[#fcd34d]">◀◀ Hacia atrás</span>}
+        {playing && (reverse || speed > 1) && (
+          <span className={`chip tabular-nums ${reverse ? 'bg-warn/15 text-[#fcd34d]' : 'bg-sel/20 text-[#bfdbfe]'}`} aria-live="polite">
+            {reverse ? '◀◀ Hacia atrás' : '▶▶ Adelante'} {speed}×
+          </span>
+        )}
         <span className="text-[11.5px] text-ink-3">{segments.length} escenas</span>
         <div className="ml-2 flex items-center gap-0.5 rounded-lg border border-line p-0.5" role="group" aria-label="Herramienta">
           <button

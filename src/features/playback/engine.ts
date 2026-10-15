@@ -17,6 +17,8 @@ interface PlaybackState {
   error: string | null
   /** Reproduciendo hacia atrás. */
   reverse: boolean
+  /** Velocidad: 1, 2, 4 u 8. */
+  speed: number
 }
 
 export const usePlayback = create<PlaybackState>()(() => ({
@@ -29,7 +31,11 @@ export const usePlayback = create<PlaybackState>()(() => ({
   mode: 'empty',
   error: null,
   reverse: false,
+  speed: 1,
 }))
+
+export const SPEEDS = [1, 2, 4, 8]
+export const nextSpeed = (s: number) => SPEEDS[Math.min(SPEEDS.length - 1, SPEEDS.indexOf(s) + 1)] ?? 1
 
 class PlaybackController {
   private video: HTMLVideoElement | null = null
@@ -92,12 +98,13 @@ class PlaybackController {
     return this.segments
   }
 
-  async play() {
+  async play(speed = 1) {
     const total = this.total
     if (!total) return
     let t = usePlayback.getState().time
     if (t >= total - 0.05) t = 0
-    usePlayback.setState({ playing: true, reverse: false })
+    usePlayback.setState({ playing: true, reverse: false, speed })
+    this.applyRate()
     await this.enter(t, true)
     this.last = performance.now()
     cancelAnimationFrame(this.raf)
@@ -105,14 +112,29 @@ class PlaybackController {
   }
 
   /** Reproduce hacia atrás: el video se mueve cuadro por cuadro (sin sonido). */
-  playReverse() {
+  /** Cambia la velocidad sin detener (1×, 2×, 4×, 8×). */
+  setSpeed(speed: number) {
+    usePlayback.setState({ speed })
+    this.applyRate()
+    this.syncAudio(true)
+  }
+
+  private applyRate() {
+    const { speed, reverse } = usePlayback.getState()
+    if (this.video && !reverse) {
+      this.video.defaultPlaybackRate = speed
+      this.video.playbackRate = speed
+    }
+  }
+
+  playReverse(speed = 1) {
     const total = this.total
     if (!total) return
     const st = usePlayback.getState()
     let t = st.time
     if (t <= 0.05) t = total - 0.01
     this.video?.pause()
-    usePlayback.setState({ playing: true, reverse: true, time: t })
+    usePlayback.setState({ playing: true, reverse: true, time: t, speed })
     void this.enter(t, false)
     this.syncAudio()
     this.last = performance.now()
@@ -121,7 +143,8 @@ class PlaybackController {
   }
 
   pause() {
-    usePlayback.setState({ playing: false, reverse: false })
+    usePlayback.setState({ playing: false, reverse: false, speed: 1 })
+    this.applyRate()
     cancelAnimationFrame(this.raf)
     this.video?.pause()
     this.syncAudio()
@@ -206,6 +229,7 @@ class PlaybackController {
         }
         const el = entry.el
         el.volume = track.muted ? 0 : Math.min(1, track.volume * master)
+        if (el.playbackRate !== st.speed) el.playbackRate = st.speed
         const t = st.time
         const active = st.playing && !st.reverse && t >= clip.start && t < clip.start + clip.duration && t < total && !!el.getAttribute('src')
         if (active) {
@@ -283,6 +307,7 @@ class PlaybackController {
       video.currentTime = target
     }
     if (autoplay) {
+      this.applyRate()
       try {
         await video.play()
       } catch (e) {
@@ -313,7 +338,7 @@ class PlaybackController {
 
   private tickReverse(now: number, seg: Segment) {
     const st = usePlayback.getState()
-    const dt = (now - this.last) / 1000
+    const dt = ((now - this.last) / 1000) * st.speed
     this.last = now
     const t = st.time - dt
     if (t <= 0) {
@@ -362,7 +387,7 @@ class PlaybackController {
       if (Math.abs(t - st.time) > 0.01) usePlayback.setState({ time: t })
       if (v.ended || v.currentTime >= range.to - 0.02) this.next()
     } else {
-      const dt = (now - this.last) / 1000
+      const dt = ((now - this.last) / 1000) * st.speed
       const t = st.time + dt
       if (t >= seg.end) this.next()
       else usePlayback.setState({ time: t })
