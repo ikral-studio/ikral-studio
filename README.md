@@ -39,6 +39,16 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Las pruebas automáticas corren en WebKit. Chromium headless no trae el códec H.264.
 - Videos muy grandes (cientos de MB) ocupan memoria al guardarse.
 
-## Publicado
+## Pruébalo
 
-https://ikral.com/studio/ (sin contraseña). Subir: `npm run build` y luego `tar czf - -C dist . | ssh … tar xzf - -C domains/ikral.com/public_html/studio`.
+https://ikral.com/studio/ — funciona en el navegador, sin cuenta. Lo que hagas se queda guardado solo en tu computadora.
+
+## Contribuir
+
+¡Bienvenidas las ideas y mejoras! Abre un *issue* o un *pull request*. Antes de enviar cambios corre `npm test` y `npm run test:e2e`.
+
+## Licencia
+
+[AGPL-3.0-or-later](LICENSE) © 2026 David González.
+
+Puedes usar, copiar, cambiar y compartir IKRAL Studio. Si lo modificas y lo ofreces a otros (también como servicio web), debes compartir tu código con la misma licencia.
