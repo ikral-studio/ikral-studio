@@ -10,6 +10,7 @@ export const isDesktop = () => typeof window !== 'undefined' && '__TAURI_INTERNA
 type Backend = typeof idb & {
   mediaFileUrl?: (id: string, thumb?: boolean) => Promise<string | null>
   watchProject?: (projectId: string, onChange: () => void) => Promise<void>
+  onMerged?: (cb: () => void) => void
   projectFolderPath?: (projectId: string) => Promise<string | null>
   readChat?: (projectId: string) => Promise<{ user: ChatMessage[]; claude: { messages: ChatMessage[]; readUpTo?: string; lastSeen?: string; working?: string } }>
   sendChat?: (projectId: string, msg: ChatMessage) => Promise<void>
@@ -56,4 +57,5 @@ export const watchProject = async (pid: string, cb: () => void) => (await backen
 export const readChat = async (pid: string) => (await backend()).readChat?.(pid) ?? null
 export const sendChat = async (pid: string, msg: ChatMessage) => (await backend()).sendChat?.(pid, msg)
 export const onChatChange = async (cb: () => void) => (await backend()).onChatChange?.(cb) ?? (() => {})
+export const onMerged = async (cb: () => void) => (await backend()).onMerged?.(cb)
 export const projectFolderPath = async (pid: string) => (await backend()).projectFolderPath?.(pid) ?? null

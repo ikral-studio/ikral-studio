@@ -189,6 +189,10 @@ export const useProject = create<State>()((set, get) => {
     void store.watchProject(project.id, () => {
       if (!saveTimer && !saving) void get().reloadCurrent()
     })
+    // Si al guardar se unieron cambios de Claude, mostrar el resultado unido.
+    void store.onMerged(() => {
+      if (!saveTimer) void get().reloadCurrent()
+    })
     store
       .collectGarbage(project.id, Object.values(map), project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)))
       .catch(() => {})

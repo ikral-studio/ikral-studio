@@ -15,6 +15,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { documentDir, join } from '@tauri-apps/api/path'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../types'
 import { SNAPSHOT_KEEP, mediaIdsOf, type Snapshot } from './idb'
+import { mergeProjects } from './merge'
 import { extFromMime, safeFilename } from '../utils'
 
 const BASE = { baseDir: BaseDirectory.Document }
@@ -105,16 +106,48 @@ export async function loadProject(id: string) {
   if (!folders.has(id)) await scan()
   const dir = folders.get(id)
   if (!dir) return null
-  const f = await readJson<ProjectFile>(`${dir}/proyecto.json`)
-  if (!f) return null
+  const path = `${dir}/proyecto.json`
+  const raw = await readTextFile(path, BASE).catch(() => null)
+  if (!raw) return null
+  let f: ProjectFile
+  try {
+    f = JSON.parse(raw) as ProjectFile
+  } catch {
+    return null
+  }
+  lastWritten.set(path, raw) // punto de partida para unir cambios hechos por fuera
   await loadMediaIndex(dir)
   return { project: f.project, scenes: f.scenes }
 }
 
+let mergeListener: (() => void) | null = null
+/** Avisa cuando al guardar se unieron cambios hechos por fuera (hay que recargar la vista). */
+export function onMerged(cb: () => void) {
+  mergeListener = cb
+}
+
 export async function saveProject(project: Project, scenes: Scene[]) {
   const dir = await dirFor(project)
-  const file: ProjectFile = { format: FORMAT, version: 1, project, scenes }
-  await writeJson(`${dir}/proyecto.json`, file)
+  const path = `${dir}/proyecto.json`
+  let data = { project, scenes }
+  let merged = false
+  // ¿Alguien (Claude) cambió el archivo desde que lo leímos? Entonces unir en vez de pisar.
+  const disk = await readTextFile(path, BASE).catch(() => null)
+  const base = lastWritten.get(path)
+  if (disk && base && disk !== base) {
+    try {
+      data = mergeProjects(JSON.parse(base) as ProjectFile, JSON.parse(disk) as ProjectFile, data)
+      merged = true
+    } catch {
+      /* si algo no se puede leer, se guarda lo local */
+    }
+  }
+  const file: ProjectFile = { format: FORMAT, version: 1, project: data.project, scenes: data.scenes }
+  await writeJson(path, file)
+  if (merged) {
+    await loadMediaIndex(dir)
+    mergeListener?.()
+  }
 }
 
 export async function deleteProject(id: string) {
