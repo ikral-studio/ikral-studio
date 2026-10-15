@@ -1,0 +1,35 @@
+{
+  "format": "ikral-studio-script",
+  "version": 1,
+  "project": { "title": "Promo importada", "aspectRatio": "9:16", "customFields": ["Vestuario", "Emoción"] },
+  "scenes": [
+    {
+      "title": "Todo va bien",
+      "plannedDuration": 5,
+      "script": {
+        "action": "El restaurante funciona tranquilo.",
+        "dialogue": "",
+        "cameraDirection": "Plano general.",
+        "soundDirection": "Ambiente suave.",
+        "generationPrompt": "Animación 2D cálida.",
+        "pronunciations": [],
+        "numbersToWords": false,
+        "extras": { "Vestuario": "Mandil verde", "Emoción": "Calma" }
+      }
+    },
+    {
+      "title": "El descubrimiento",
+      "plannedDuration": 7,
+      "script": {
+        "action": "El joven saca su celular y se lo muestra al abuelito.",
+        "dialogue": "Joven: ¡Mire! Con TuApp.digital llegan 25 pedidos.",
+        "cameraDirection": "Joven a la izquierda, abuelito a la derecha.",
+        "soundDirection": "Español mexicano. Sin música.",
+        "generationPrompt": "Continuidad estricta.",
+        "pronunciations": [{ "written": "TuApp.digital", "spoken": "Tu Ap Dijital" }],
+        "numbersToWords": true,
+        "extras": { "Vestuario": "Camisa azul", "Emoción": "Sorpresa" }
+      }
+    }
+  ]
+}

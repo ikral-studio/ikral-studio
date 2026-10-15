@@ -1,6 +1,7 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
 import { cloneScene, createProjectData, createScene, defaultTracks } from '../features/scene-management/factory'
@@ -53,6 +54,12 @@ interface State {
   updatePronunciation: (id: string, pid: string, patch: { written?: string; spoken?: string }) => void
   removePronunciation: (id: string, pid: string) => void
   setNumbersToWords: (id: string, on: boolean) => void
+  addCustomField: (name: string) => void
+  renameCustomField: (fieldId: string, name: string) => void
+  removeCustomField: (fieldId: string) => void
+  updateExtra: (sceneId: string, fieldId: string, value: string) => void
+  /** Importa un guion de IA: proyecto nuevo o al final del actual. Todo o nada; un solo paso de deshacer. */
+  importScript: (data: ScriptFile, mode: 'new' | 'append') => Promise<number>
 
   addAudioClip: (trackId: string, clip: { mediaId: string; name: string; start: number; duration: number; sourceDuration?: number }) => void
   moveAudioClip: (trackId: string, clipId: string, start: number) => void
@@ -511,6 +518,84 @@ export const useProject = create<State>()((set, get) => {
         `vtrim:${sceneId}`,
         400,
       )
+    },
+
+    addCustomField(name) {
+      const cur = snap()
+      const n = name.trim()
+      if (!cur || !n) return
+      const fields = cur.project.customFields ?? []
+      if (fields.some((f) => f.name.toLowerCase() === n.toLowerCase())) return
+      commit({ ...cur, project: { ...cur.project, customFields: [...fields, { id: uid('cf_'), name: n }] } })
+    },
+
+    renameCustomField(fieldId, name) {
+      const cur = snap()
+      if (!cur) return
+      const customFields = (cur.project.customFields ?? []).map((f) => (f.id === fieldId ? { ...f, name } : f))
+      commit({ ...cur, project: { ...cur.project, customFields } }, `field:${fieldId}`, 500)
+    },
+
+    removeCustomField(fieldId) {
+      const cur = snap()
+      if (!cur) return
+      // Los textos se quedan guardados en las escenas: con deshacer el campo vuelve con todo.
+      const customFields = (cur.project.customFields ?? []).filter((f) => f.id !== fieldId)
+      commit({ ...cur, project: { ...cur.project, customFields } })
+    },
+
+    updateExtra(sceneId, fieldId, value) {
+      patchScene(sceneId, (s) => ({ ...s, script: { ...s.script, extras: { ...(s.script.extras ?? {}), [fieldId]: value } } }), `extra:${sceneId}:${fieldId}`, 500)
+    },
+
+    async importScript(data, mode) {
+      const settings = get().settings
+      const base = mode === 'new' ? createProjectData(data.project.title) : get().project
+      if (!base) return 0
+      let fields: CustomField[] = [...(base.customFields ?? [])]
+      const byName = new Map(fields.map((f) => [f.name.toLowerCase(), f]))
+      const fieldFor = (name: string) => {
+        const k = name.trim().toLowerCase()
+        let f = byName.get(k)
+        if (!f) {
+          f = { id: uid('cf_'), name: name.trim() }
+          byName.set(k, f)
+          fields = [...fields, f]
+        }
+        return f
+      }
+      data.project.customFields.forEach(fieldFor)
+      const newScenes = data.scenes.map((sc, i) => {
+        const s = createScene(base.id, sc.title, sc.plannedDuration ?? settings.defaultDuration, { order: i, collapsed: true })
+        const extras: Record<string, string> = {}
+        for (const [name, value] of Object.entries(sc.script.extras ?? {})) extras[fieldFor(name).id] = value
+        s.script = {
+          action: sc.script.action,
+          dialogue: sc.script.dialogue,
+          cameraDirection: sc.script.cameraDirection,
+          soundDirection: sc.script.soundDirection,
+          generationPrompt: sc.script.generationPrompt,
+          pronunciations: sc.script.pronunciations.map((p) => ({ id: uid('pr_'), written: p.written, spoken: p.spoken })),
+          numbersToWords: sc.script.numbersToWords,
+          extras,
+        }
+        s.status = deriveStatus(s)
+        return s
+      })
+      if (mode === 'new') {
+        const project: Project = { ...base, aspectRatio: data.project.aspectRatio, customFields: fields, sceneIds: newScenes.map((s) => s.id) }
+        await get().flushSave()
+        await store.saveProject(project, newScenes) // una sola transacción: o todo o nada
+        await loadInto(project, newScenes)
+        return newScenes.length
+      }
+      const cur = snap()!
+      const scenesMap = { ...cur.scenes }
+      newScenes.forEach((s) => (scenesMap[s.id] = s))
+      commit({ project: { ...cur.project, customFields: fields, sceneIds: [...cur.project.sceneIds, ...newScenes.map((s) => s.id)] }, scenes: scenesMap })
+      set({ selectedSceneId: newScenes[0]?.id ?? get().selectedSceneId })
+      await get().flushSave()
+      return newScenes.length
     },
 
     undo() {

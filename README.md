@@ -57,3 +57,17 @@ https://ikral.com/studio/ — funciona en el navegador, sin cuenta. Lo que hagas
 [AGPL-3.0-or-later](LICENSE) © 2026 David González.
 
 Puedes usar, copiar, cambiar y compartir IKRAL Studio. Si lo modificas y lo ofreces a otros (también como servicio web), debes compartir tu código con la misma licencia.
+
+## Guion con IA (ChatGPT, Claude…)
+
+1. Panel izquierdo → **Copiar formato para IA**. Pega el texto en ChatGPT o Claude y escribe tu idea al final.
+2. La IA responde con JSON en el formato `ikral-studio-script` versión 1 (ver `src/features/script-exchange/schema.ts`).
+3. **Importar guion** → pega el JSON o sube el `.json` → **Validar y previsualizar**.
+4. Elige **Crear proyecto nuevo** (recomendado) o **Agregar al proyecto actual** (las escenas van al final; no se borra ninguna imagen, video ni música).
+
+Cada escena se crea con todos sus campos: acción, diálogos, cámara, sonido, instrucciones de generación, pronunciaciones, «Números en letras» y **campos extra**.
+
+- **Campos extra**: en cualquier escena, «Campos extra → Agregar campo» (ej. Vestuario, Emoción). Aparecen en todas las escenas, en el guion completo y en el prompt; la IA también los llena.
+- Validación estricta con Zod: si algo está mal, se dice en qué escena y campo, y **no se cambia nada**.
+- El JSON solo lleva texto. No acepta rutas de archivos, IDs ni campos desconocidos; nunca se interpreta como HTML ni código. Límites: 1 MB, 500 escenas, 5000 caracteres por campo, 20 campos extra.
+- Este formato **no** es el respaldo `.zip` del proyecto (ese lleva los archivos).

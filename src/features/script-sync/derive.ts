@@ -1,6 +1,6 @@
 // Funciones puras: todo lo que se ve en guion maestro, timeline y reproductor
 // se calcula desde las escenas. No hay copias del guion.
-import type { Project, Scene, SceneStatus, VideoVersion } from '../../types'
+import type { CustomField, Project, Scene, SceneStatus, VideoVersion } from '../../types'
 import { formatDuration, pad2 } from '../../utils'
 import { numbersToWordsInText } from '../../utils/numberWords'
 
@@ -105,12 +105,19 @@ const SECTIONS: [keyof Scene['script'], string][] = [
   ['soundDirection', 'Sonido'],
 ]
 
-export function sceneScriptText(scene: Scene, n: number): string {
+/** Campos extra con texto, en el orden del proyecto. */
+export function extraEntries(scene: Scene, fields: CustomField[] = []): [string, string][] {
+  const ex = scene.script.extras ?? {}
+  return fields.map((f): [string, string] => [f.name, (ex[f.id] ?? '').trim()]).filter(([, v]) => v)
+}
+
+export function sceneScriptText(scene: Scene, n: number, fields: CustomField[] = []): string {
   const lines = [sceneHeading(scene, n)]
   for (const [key, label] of SECTIONS) {
     const v = String(scene.script[key] ?? '').trim()
     if (v) lines.push(`${label}: ${v}`)
   }
+  for (const [name, v] of extraEntries(scene, fields)) lines.push(`${name}: ${v}`)
   return lines.join('\n')
 }
 
@@ -118,7 +125,7 @@ export function masterScriptText(project: Project, scenes: Scene[]): string {
   const head = `${project.title}\nGuion completo · ${scenes.length} escenas · ${formatDuration(
     totalDuration(buildSegments(scenes)),
   )}`
-  return [head, ...scenes.map((s, i) => sceneScriptText(s, i + 1))].join('\n\n') + '\n'
+  return [head, ...scenes.map((s, i) => sceneScriptText(s, i + 1, project.customFields))].join('\n\n') + '\n'
 }
 
 export function masterScriptMarkdown(project: Project, scenes: Scene[]): string {
@@ -133,6 +140,7 @@ export function masterScriptMarkdown(project: Project, scenes: Scene[]): string 
       const v = String(s.script[key] ?? '').trim()
       if (v) out.push('', `**${label}:** ${v}`)
     }
+    for (const [name, v] of extraEntries(s, project.customFields)) out.push('', `**${name}:** ${v}`)
   })
   return out.join('\n') + '\n'
 }
@@ -149,11 +157,12 @@ export function applyPronunciations(text: string, scene: Scene): string {
 }
 
 /** Texto limpio para pegar en Higgsfield, Kling, Wan… */
-export function generationPrompt(scene: Scene): string {
+export function generationPrompt(scene: Scene, fields: CustomField[] = []): string {
   const s = scene.script
   const parts = [s.generationPrompt, s.action, s.cameraDirection]
     .map((x) => x.trim())
     .filter(Boolean)
+  for (const [name, v] of extraEntries(scene, fields)) parts.push(`${name}: ${v}`)
   if (s.dialogue.trim()) parts.push(`Diálogo: ${s.dialogue.trim()}`)
   if (s.soundDirection.trim()) parts.push(s.soundDirection.trim())
   const text = applyPronunciations(parts.join('\n\n'), scene)
@@ -162,7 +171,7 @@ export function generationPrompt(scene: Scene): string {
 
 export function allPromptsText(project: Project, scenes: Scene[]): string {
   return (
-    [`${project.title} · Prompts de generación`, ...scenes.map((s, i) => `--- Escena ${pad2(i + 1)} · ${s.title} ---\n${generationPrompt(s)}`)].join(
+    [`${project.title} · Prompts de generación`, ...scenes.map((s, i) => `--- Escena ${pad2(i + 1)} · ${s.title} ---\n${generationPrompt(s, project.customFields)}`)].join(
       '\n\n',
     ) + '\n'
   )

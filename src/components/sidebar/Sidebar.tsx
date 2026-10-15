@@ -10,9 +10,11 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Copy, GripVertical, ImageIcon, PanelLeftClose, Plus } from 'lucide-react'
+import { Copy, FileInput, GripVertical, ImageIcon, PanelLeftClose, Plus, Sparkles } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { useUI } from '../../stores/uiStore'
+import { toast, useUI } from '../../stores/uiStore'
+import { buildAIPrompt } from '../../features/script-exchange/schema'
+import { copyToClipboard } from '../../utils'
 import { useMediaUrl } from '../../features/media-library/media'
 import { effectiveDuration } from '../../features/script-sync/derive'
 import { addSceneAndFocus, duplicateAndFocus, selectScene } from '../../features/scene-management/actions'
@@ -92,6 +94,26 @@ export function Sidebar() {
       <button className="btn !h-9" disabled={!selected} onClick={() => selected && duplicateAndFocus(selected)}>
         <Copy size={15} /> Duplicar escena
       </button>
+      <div className="flex flex-col gap-1.5">
+        <button
+          className="btn !h-9"
+          onClick={async () => {
+            const p = useProject.getState().project
+            const text = buildAIPrompt(p ? { title: p.title, aspectRatio: p.aspectRatio, customFields: (p.customFields ?? []).map((f) => f.name) } : undefined)
+            if (await copyToClipboard(text)) toast('Formato copiado: pégalo en ChatGPT o Claude y escribe tu idea al final')
+          }}
+          title="Copia las instrucciones para que ChatGPT, Claude u otra IA escriba tu guion en el formato de IKRAL Studio"
+        >
+          <Sparkles size={14} className="shrink-0 text-[#c4b5fd]" /> Copiar formato para IA
+        </button>
+        <button
+          className="btn !h-9"
+          onClick={() => useUI.setState({ modal: 'importScript' })}
+          title="Pega o sube el JSON que te dio la IA"
+        >
+          <FileInput size={14} className="shrink-0 text-[#93c5fd]" /> Importar guion
+        </button>
+      </div>
       <div className="flex items-center justify-between px-1 pt-2">
         <span className="eyebrow">Escenas</span>
         <span className="text-[11px] tabular-nums text-ink-3">{sceneIds.length}</span>

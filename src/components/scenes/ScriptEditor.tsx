@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { ClipboardCopy, Languages, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { ClipboardCopy, Languages, ListPlus, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { toast } from '../../stores/uiStore'
+import { askConfirm, toast } from '../../stores/uiStore'
 import { generationPrompt, sceneScriptText } from '../../features/script-sync/derive'
 import { copyToClipboard } from '../../utils'
-import type { ScriptField } from '../../types'
+import type { CustomField, ScriptField } from '../../types'
+
+const NO_FIELDS: CustomField[] = []
 
 const FIELDS: { key: ScriptField; label: string; hint: string; rows: number }[] = [
   { key: 'action', label: 'Acción visual', hint: 'Qué ocurre físicamente en la escena.', rows: 3 },
@@ -18,21 +20,22 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
   const script = useProject((s) => s.scenes[sceneId]?.script)
   const { updateScript, addPronunciation, updatePronunciation, removePronunciation, setNumbersToWords } = useProject.getState()
   const [showPrompt, setShowPrompt] = useState(false)
+  const fields = useProject((s) => s.project?.customFields ?? NO_FIELDS)
   if (!script) return null
 
   const copyScene = async () => {
     const scene = useProject.getState().scenes[sceneId]
-    if (scene && (await copyToClipboard(sceneScriptText(scene, n)))) toast('Guion de la escena copiado')
+    if (scene && (await copyToClipboard(sceneScriptText(scene, n, fields)))) toast('Guion de la escena copiado')
   }
   const copyPrompt = async () => {
     const scene = useProject.getState().scenes[sceneId]
     if (!scene) return
-    const text = generationPrompt(scene)
+    const text = generationPrompt(scene, fields)
     if (!text.trim()) return toast('El prompt está vacío: escribe la acción o las instrucciones', 'info')
     if (await copyToClipboard(text)) toast('Prompt copiado, listo para pegar en el generador')
   }
   const scene = useProject.getState().scenes[sceneId]
-  const prompt = scene ? generationPrompt(scene) : ''
+  const prompt = scene ? generationPrompt(scene, fields) : ''
 
   return (
     <div>
@@ -61,6 +64,8 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
           </label>
         ))}
       </div>
+
+      <ExtraFields sceneId={sceneId} fields={fields} values={script.extras ?? {}} />
 
       <div className="mt-3 rounded-xl border border-line bg-[#0f1828] p-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -125,6 +130,106 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
         <pre className="mt-1.5 whitespace-pre-wrap rounded-xl border border-line bg-[#0b1322] p-3 font-sans text-[12px] leading-relaxed text-ink-2">
           {prompt || 'Vacío: escribe la acción o las instrucciones de generación.'}
         </pre>
+      )}
+    </div>
+  )
+}
+
+/** Campos extra del proyecto (Vestuario, Emoción…): salen en todas las escenas. */
+function ExtraFields({ sceneId, fields, values }: { sceneId: string; fields: CustomField[]; values: Record<string, string> }) {
+  const { updateExtra, addCustomField, renameCustomField, removeCustomField } = useProject.getState()
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
+  const add = () => {
+    const n = name.trim()
+    if (!n) return setAdding(false)
+    if (fields.some((f) => f.name.toLowerCase() === n.toLowerCase())) return toast('Ya existe un campo con ese nombre', 'info')
+    addCustomField(n)
+    setName('')
+    setAdding(false)
+    toast(`Campo «${n}» agregado a todas las escenas`)
+  }
+  const remove = async (f: CustomField) => {
+    const ok = await askConfirm({
+      title: `¿Quitar el campo «${f.name}»?`,
+      body: 'Desaparece de todas las escenas, del guion y del prompt. Puedes deshacer con ⌘Z.',
+      confirmLabel: 'Quitar campo',
+      danger: true,
+    })
+    if (ok) removeCustomField(f.id)
+  }
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-[#0f1828] p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="label flex items-center gap-1.5">
+          <ListPlus size={13} /> Campos extra <span className="text-ink-3">(en todas las escenas)</span>
+        </span>
+        {!adding && (
+          <button className="btn btn-sm btn-ghost" onClick={() => setAdding(true)}>
+            <Plus size={13} /> Agregar campo
+          </button>
+        )}
+      </div>
+      {adding && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <input
+            autoFocus
+            className="field !py-1.5"
+            placeholder="Nombre del campo, ej. Vestuario"
+            aria-label="Nombre del campo nuevo"
+            maxLength={40}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') add()
+              if (e.key === 'Escape') setAdding(false)
+            }}
+          />
+          <button className="btn btn-sm btn-primary" onClick={add}>Agregar</button>
+        </div>
+      )}
+      {fields.length === 0 && !adding ? (
+        <p className="mt-1 text-[11.5px] text-ink-3">Opcional. Crea campos como «Vestuario» o «Emoción»; la IA también los llena al importar.</p>
+      ) : (
+        <div className="mt-2 grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {fields.map((f) => (
+            <label key={f.id} className="flex flex-col gap-1">
+              <span className="flex items-center gap-1">
+                {editing === f.id ? (
+                  <input
+                    autoFocus
+                    className="field !py-0.5 !text-[11.5px]"
+                    defaultValue={f.name}
+                    maxLength={40}
+                    aria-label="Nuevo nombre del campo"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim()
+                      if (v) renameCustomField(f.id, v)
+                      setEditing(null)
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                  />
+                ) : (
+                  <span className="label">{f.name}</span>
+                )}
+                <button type="button" className="icon-btn sm !h-5 !w-5" onClick={() => setEditing(f.id)} aria-label={`Renombrar ${f.name}`} title="Renombrar">
+                  <Pencil size={11} />
+                </button>
+                <button type="button" className="icon-btn sm !h-5 !w-5 hover:!text-bad" onClick={() => remove(f)} aria-label={`Quitar campo ${f.name}`} title="Quitar campo">
+                  <Trash2 size={11} />
+                </button>
+              </span>
+              <textarea
+                className="field"
+                rows={2}
+                aria-label={f.name}
+                value={values[f.id] ?? ''}
+                onChange={(e) => updateExtra(sceneId, f.id, e.target.value)}
+              />
+            </label>
+          ))}
+        </div>
       )}
     </div>
   )

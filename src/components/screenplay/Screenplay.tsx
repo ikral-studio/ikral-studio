@@ -3,7 +3,7 @@ import { ClipboardCopy, FileText, MoreHorizontal, Printer, FileCode2, Sparkles, 
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { useOrderedScenes } from '../../stores/selectors'
-import { allPromptsText, effectiveDuration, masterScriptMarkdown, masterScriptText } from '../../features/script-sync/derive'
+import { allPromptsText, effectiveDuration, extraEntries, masterScriptMarkdown, masterScriptText } from '../../features/script-sync/derive'
 import { selectScene } from '../../features/scene-management/actions'
 import { usePlayback } from '../../features/playback/engine'
 import { copyToClipboard, downloadText, formatDuration, pad2, safeFilename } from '../../utils'
@@ -65,6 +65,7 @@ export function Screenplay() {
   const scenes = useOrderedScenes()
   const selected = useProject((s) => s.selectedSceneId)
   const playingIndex = usePlayback((s) => (s.playing ? s.index : -1))
+  const fields = useProject((s) => s.project?.customFields)
   const listRef = useRef<HTMLDivElement>(null)
 
   // Al seleccionar una escena, llevar su sección a la vista dentro del guion.
@@ -96,6 +97,7 @@ export function Screenplay() {
         {scenes.length === 0 && <p className="text-[12.5px] text-ink-3">El guion aparece aquí en cuanto agregues escenas.</p>}
         {scenes.map((s, i) => {
           const parts = PARTS.filter(([k]) => String(s.script[k] ?? '').trim())
+          const extras = extraEntries(s, fields)
           const active = s.id === selected
           return (
             <article
@@ -106,14 +108,21 @@ export function Screenplay() {
               <button className="text-left text-[13px] font-semibold hover:text-sel-2" onClick={() => selectScene(s.id, { seek: true })}>
                 Escena {pad2(i + 1)} · {s.title} <span className="font-normal text-ink-3">({formatDuration(effectiveDuration(s))})</span>
               </button>
-              {parts.length === 0 ? (
+              {parts.length === 0 && extras.length === 0 ? (
                 <p className="mt-0.5 text-[12px] italic text-ink-3">Sin guion todavía.</p>
               ) : (
-                parts.map(([k, label]) => (
-                  <p key={k} className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-2">
-                    <span className="font-medium text-ink">{label}:</span> {String(s.script[k])}
-                  </p>
-                ))
+                <>
+                  {parts.map(([k, label]) => (
+                    <p key={k} className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-2">
+                      <span className="font-medium text-ink">{label}:</span> {String(s.script[k])}
+                    </p>
+                  ))}
+                  {extras.map(([name, v]) => (
+                    <p key={name} className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-2">
+                      <span className="font-medium text-ink">{name}:</span> {v}
+                    </p>
+                  ))}
+                </>
               )}
             </article>
           )
@@ -142,6 +151,11 @@ export function PrintScript() {
           {PARTS.filter(([k]) => String(s.script[k] ?? '').trim()).map(([k, label]) => (
             <p key={k}>
               <b>{label}:</b> {String(s.script[k])}
+            </p>
+          ))}
+          {extraEntries(s, project.customFields).map(([name, v]) => (
+            <p key={name}>
+              <b>{name}:</b> {v}
             </p>
           ))}
         </section>

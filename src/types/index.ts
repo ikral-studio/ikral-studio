@@ -6,10 +6,17 @@ export interface Project {
   description?: string
   aspectRatio: AspectRatio
   sceneIds: string[]
+  /** Campos extra que tiene cada escena (ej. Vestuario, Emoción). */
+  customFields?: CustomField[]
   /** Pistas de música (2). Opcional para proyectos viejos. */
   audioTracks?: AudioTrack[]
   createdAt: string
   updatedAt: string
+}
+
+export interface CustomField {
+  id: string
+  name: string
 }
 
 export type SceneStatus =
@@ -44,6 +51,8 @@ export interface SceneScript {
   pronunciations: Pronunciation[]
   /** Al copiar el prompt, cambiar números por palabras (1253 → mil doscientos cincuenta y tres). */
   numbersToWords?: boolean
+  /** Valores de los campos extra: id del campo → texto. */
+  extras?: Record<string, string>
 }
 
 export interface VideoVersion {
@@ -131,4 +140,4 @@ export interface Settings {
   keys?: Partial<Record<string, string[]>>
 }
 
-export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes' | 'numbersToWords'>
+export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes' | 'numbersToWords' | 'extras'>
