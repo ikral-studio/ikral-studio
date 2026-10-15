@@ -59,7 +59,7 @@ interface State {
   removeAudioClip: (trackId: string, clipId: string) => void
   updateTrack: (trackId: string, patch: Partial<Pick<AudioTrack, 'volume' | 'muted'>>) => void
   /** Corta todos los clips de música que pasan por el segundo t. Devuelve cuántos cortó. */
-  splitAudioAt: (t: number) => number
+  splitAudioAt: (t: number, only?: { trackId: string; clipId: string }) => number
   trimAudioClip: (trackId: string, clipId: string, edge: 'left' | 'right', time: number) => void
   /** Parte la escena en dos en el segundo local t. Devuelve el id de la parte 2. */
   splitSceneAt: (sceneId: string, localT: number) => string | null
@@ -415,13 +415,14 @@ export const useProject = create<State>()((set, get) => {
       patchTracks(trackId, (t) => ({ ...t, ...patch }), 'volume' in patch ? `vol:${trackId}` : undefined)
     },
 
-    splitAudioAt(t) {
+    splitAudioAt(t, only) {
       const cur = snap()
       if (!cur) return 0
       let n = 0
       const audioTracks = (cur.project.audioTracks ?? []).map((tr) => ({
         ...tr,
         clips: tr.clips.flatMap((c) => {
+          if (only && (only.trackId !== tr.id || only.clipId !== c.id)) return [c]
           const cut = t - c.start
           if (cut < 0.1 || cut > c.duration - 0.1) return [c]
           n++

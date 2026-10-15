@@ -15,6 +15,8 @@ interface PlaybackState {
   index: number
   mode: 'video' | 'frames' | 'empty'
   error: string | null
+  /** Reproduciendo hacia atrás. */
+  reverse: boolean
 }
 
 export const usePlayback = create<PlaybackState>()(() => ({
@@ -26,6 +28,7 @@ export const usePlayback = create<PlaybackState>()(() => ({
   index: -1,
   mode: 'empty',
   error: null,
+  reverse: false,
 }))
 
 class PlaybackController {
@@ -40,6 +43,7 @@ class PlaybackController {
   /** Un <audio> por cada clip de música. */
   private audios = new Map<string, { el: HTMLAudioElement; mediaId: string }>()
   private tracks: AudioTrack[] = []
+  private lastSeek = 0
 
   constructor() {
     const sync = () => {
@@ -93,15 +97,31 @@ class PlaybackController {
     if (!total) return
     let t = usePlayback.getState().time
     if (t >= total - 0.05) t = 0
-    usePlayback.setState({ playing: true })
+    usePlayback.setState({ playing: true, reverse: false })
     await this.enter(t, true)
     this.last = performance.now()
     cancelAnimationFrame(this.raf)
     this.raf = requestAnimationFrame(this.tick)
   }
 
+  /** Reproduce hacia atrás: el video se mueve cuadro por cuadro (sin sonido). */
+  playReverse() {
+    const total = this.total
+    if (!total) return
+    const st = usePlayback.getState()
+    let t = st.time
+    if (t <= 0.05) t = total - 0.01
+    this.video?.pause()
+    usePlayback.setState({ playing: true, reverse: true, time: t })
+    void this.enter(t, false)
+    this.syncAudio()
+    this.last = performance.now()
+    cancelAnimationFrame(this.raf)
+    this.raf = requestAnimationFrame(this.tick)
+  }
+
   pause() {
-    usePlayback.setState({ playing: false })
+    usePlayback.setState({ playing: false, reverse: false })
     cancelAnimationFrame(this.raf)
     this.video?.pause()
     this.syncAudio()
@@ -187,7 +207,7 @@ class PlaybackController {
         const el = entry.el
         el.volume = track.muted ? 0 : Math.min(1, track.volume * master)
         const t = st.time
-        const active = st.playing && t >= clip.start && t < clip.start + clip.duration && t < total && !!el.getAttribute('src')
+        const active = st.playing && !st.reverse && t >= clip.start && t < clip.start + clip.duration && t < total && !!el.getAttribute('src')
         if (active) {
           const want = (clip.offset ?? 0) + (t - clip.start)
           if (el.paused) {
@@ -291,6 +311,33 @@ class PlaybackController {
     this.last = performance.now()
   }
 
+  private tickReverse(now: number, seg: Segment) {
+    const st = usePlayback.getState()
+    const dt = (now - this.last) / 1000
+    this.last = now
+    const t = st.time - dt
+    if (t <= 0) {
+      if (st.loop) {
+        void this.enter(this.total - 0.01, false)
+      } else {
+        this.pause()
+        usePlayback.setState({ time: 0 })
+        void this.enter(0, false)
+        return
+      }
+    } else if (t < seg.start) {
+      // pasar al final de la escena anterior
+      void this.enter(Math.max(0, seg.start - 0.001), false)
+    } else {
+      usePlayback.setState({ time: t })
+      if (st.mode === 'video' && this.video && seg.video && now - this.lastSeek > 50) {
+        this.video.currentTime = videoRange(seg.video).from + (t - seg.start)
+        this.lastSeek = now
+      }
+    }
+    this.raf = requestAnimationFrame(this.tick)
+  }
+
   private tick = (now: number) => {
     const st = usePlayback.getState()
     if (!st.playing) return
@@ -302,6 +349,10 @@ class PlaybackController {
     }
     if (!seg) {
       this.pause()
+      return
+    }
+    if (st.reverse) {
+      this.tickReverse(now, seg)
       return
     }
     if (st.mode === 'video' && this.video) {
@@ -321,6 +372,8 @@ class PlaybackController {
     this.raf = requestAnimationFrame(this.tick)
   }
 }
+
+export type { Segment }
 
 function currentSegmentReload(c: PlaybackController) {
   const st = usePlayback.getState()

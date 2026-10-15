@@ -127,6 +127,8 @@ export interface MediaRecord extends MediaAsset {
 export interface Settings {
   defaultDuration: number
   fit: 'contain' | 'cover'
+  /** Atajos personalizados (acción → teclas). */
+  keys?: Partial<Record<string, string[]>>
 }
 
 export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes' | 'numbersToWords'>

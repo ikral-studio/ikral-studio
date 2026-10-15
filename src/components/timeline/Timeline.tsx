@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, ImageIcon, Maximize2, Minus, Music, Pause, Play, Plus, Repeat, Scissors, Volume2, VolumeX, X } from 'lucide-react'
+import { Film, ImageIcon, Maximize2, Minus, MousePointer2, Music, Pause, Play, Plus, Repeat, Scissors, Volume2, VolumeX, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
@@ -12,7 +12,7 @@ import { addSceneAndFocus, selectScene } from '../../features/scene-management/a
 import { clamp, formatDuration, formatTime } from '../../utils'
 import { importFiles } from '../../features/scene-management/actions'
 import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
-import { toast } from '../../stores/uiStore'
+import { toast, useUI } from '../../stores/uiStore'
 import type { AudioClip, AudioTrack } from '../../types'
 import { accentFor } from '../common/StatusChip'
 
@@ -74,7 +74,7 @@ function Mini({ mediaId }: { mediaId: string }) {
 }
 
 const StoryBlock = memo(function StoryBlock({ seg, w, selected, playing }: { seg: Segment; w: number; selected: boolean; playing: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: seg.scene.id, disabled: playing })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: seg.scene.id, disabled: playing || useUI.getState().tool === 'razor' })
   const ids = storyboardMediaIds(seg.scene)
   const maxThumbs = Math.max(1, Math.floor(w / 46))
   const shown = ids.length <= maxThumbs ? ids : ids.filter((_, i) => i % Math.ceil(ids.length / maxThumbs) === 0 || i === ids.length - 1)
@@ -190,10 +190,14 @@ export function Timeline() {
   const moveScene = useProject((s) => s.moveScene)
   const sceneIds = useMemo(() => segments.map((s) => s.scene.id), [segments])
   const playing = usePlayback((s) => s.playing)
+  const reverse = usePlayback((s) => s.reverse)
   const loop = usePlayback((s) => s.loop)
   const time = usePlayback((s) => s.time)
   const total = totalDuration(segments)
-  const [pps, setPps] = useState(24)
+  const pps = useUI((s) => s.zoom)
+  const setPps = (f: number | ((p: number) => number)) => useUI.setState((s) => ({ zoom: typeof f === 'function' ? f(s.zoom) : f }))
+  const tool = useUI((s) => s.tool)
+  const [razorX, setRazorX] = useState<number | null>(null)
   const layout = useMemo(() => layoutFor(segments, pps), [segments, pps])
   const tracks = useProject((s) => s.project?.audioTracks ?? EMPTY_TRACKS)
   const musicEnd = Math.max(0, ...tracks.flatMap((t) => t.clips.map((c) => c.start + c.duration)))
@@ -276,8 +280,29 @@ export function Timeline() {
         <span className="text-[13px] tabular-nums text-ink">
           {formatTime(time)} <span className="text-ink-3">/ {formatTime(total)}</span>
         </span>
+        {reverse && playing && <span className="chip bg-warn/15 text-[#fcd34d]">◀◀ Hacia atrás</span>}
         <span className="text-[11.5px] text-ink-3">{segments.length} escenas</span>
-        <div className="ml-2 flex items-center gap-1" role="group" aria-label="Cortar en el cabezal">
+        <div className="ml-2 flex items-center gap-0.5 rounded-lg border border-line p-0.5" role="group" aria-label="Herramienta">
+          <button
+            className={`icon-btn sm ${tool === 'select' ? '!bg-sel/20 !text-white' : ''}`}
+            onClick={() => useUI.setState({ tool: 'select' })}
+            aria-pressed={tool === 'select'}
+            aria-label="Herramienta selección"
+            title="Selección (V)"
+          >
+            <MousePointer2 size={14} />
+          </button>
+          <button
+            className={`icon-btn sm ${tool === 'razor' ? '!bg-bad/25 !text-white' : ''}`}
+            onClick={() => useUI.setState({ tool: 'razor' })}
+            aria-pressed={tool === 'razor'}
+            aria-label="Herramienta tijera"
+            title="Tijera: clic en el timeline corta (C)"
+          >
+            <Scissors size={14} />
+          </button>
+        </div>
+        <div className="flex items-center gap-1" role="group" aria-label="Cortar en el cabezal">
           <button className="btn btn-sm" onClick={cutVideo} disabled={!segments.length} title="Parte en dos la escena donde está el cabezal">
             <Scissors size={13} /> Cortar video
           </button>
@@ -313,7 +338,48 @@ export function Timeline() {
             <TrackHeader key={t.id} track={t} color={MUSIC_COLORS[i % 2]} />
           ))}
         </div>
-        <div ref={scrollRef} className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+        <div
+          ref={scrollRef}
+          className={`relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden ${tool === 'razor' ? 'cursor-crosshair [&_*]:!cursor-crosshair' : ''}`}
+          onPointerMove={(e) => {
+            if (tool !== 'razor') return
+            const el = scrollRef.current!
+            setRazorX(e.clientX - el.getBoundingClientRect().left + el.scrollLeft)
+          }}
+          onPointerLeave={() => setRazorX(null)}
+          onPointerDownCapture={(e) => {
+            if (tool !== 'razor') return
+            const target = e.target as HTMLElement
+            if (target.closest('[aria-label="Regla de tiempo"]')) return
+            e.preventDefault()
+            e.stopPropagation()
+            const el = scrollRef.current!
+            const x = e.clientX - el.getBoundingClientRect().left + el.scrollLeft - TRACK_PAD
+            const t = xToTime(x, segments, layout, pps)
+            const clipEl = target.closest<HTMLElement>('[data-music-clip]')
+            if (clipEl) {
+              const [trackId, clipId] = clipEl.dataset.musicClip!.split(':')
+              const n = useProject.getState().splitAudioAt(t, { trackId, clipId })
+              if (!n) toast('Muy cerca de la orilla para cortar', 'info')
+              return
+            }
+            if (target.closest('[aria-label^="Pista "]')) return
+            const { index, offset } = locateTime(segments, t)
+            const seg = segments[index]
+            if (!seg) return
+            const id = useProject.getState().splitSceneAt(seg.scene.id, offset)
+            if (!id) toast('Muy cerca de la orilla para cortar', 'info')
+          }}
+          onClickCapture={(e) => {
+            if (tool === 'razor' && !(e.target as HTMLElement).closest('[aria-label="Regla de tiempo"]')) {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+          }}
+        >
+          {tool === 'razor' && razorX !== null && (
+            <div className="pointer-events-none absolute bottom-0 top-7 z-40 w-0 border-l-2 border-dashed border-bad" style={{ left: razorX }} />
+          )}
           <div className="relative flex h-full flex-col" style={{ width: width + TRACK_PAD * 2 + 40, minWidth: '100%' }}>
             <div
               className="relative h-7 shrink-0 cursor-pointer touch-none border-b border-line"
@@ -341,6 +407,7 @@ export function Timeline() {
               <>
                 <div className="group/track relative min-h-0 flex-1 py-1.5" style={{ paddingLeft: TRACK_PAD }}>
                   {!playing &&
+                    tool === 'select' &&
                     layout.slice(1).map((l, i) => (
                       <button
                         key={sceneIds[i + 1]}
@@ -459,10 +526,11 @@ function MusicClip({ track, clip, color, toX, toTime }: { track: AudioTrack; cli
       title={`${clip.name} · ${formatTime(clip.start)} → ${formatTime(clip.start + clip.duration)} · arrastra para moverla; jala las orillas para estirar o encoger`}
       role="slider"
       tabIndex={0}
+      data-music-clip={`${track.id}:${clip.id}`}
       aria-label={`${clip.name}, empieza en ${formatTime(clip.start)}`}
       aria-valuenow={Math.round(clip.start)}
       onPointerDown={(e) => {
-        if ((e.target as HTMLElement).closest('button')) return
+        if ((e.target as HTMLElement).closest('button') || useUI.getState().tool === 'razor') return
         e.currentTarget.setPointerCapture(e.pointerId)
         const ox = e.clientX
         const startX = x

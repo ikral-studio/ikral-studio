@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Loader2, Trash2, Upload, HardDrive, ShieldCheck } from 'lucide-react'
+import { FolderOpen, Keyboard, Loader2, RotateCcw, Trash2, Upload, HardDrive, ShieldCheck } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { deleteProject, listProjects } from '../../database/db'
@@ -9,6 +9,73 @@ import { pickFiles } from '../../hooks/useFileDrop'
 import { formatBytes } from '../../utils'
 import { Modal } from '../common/Overlays'
 import type { Project } from '../../types'
+import { ACTIONS, DEFAULT_KEYS, RESERVED, assignKey, keyLabel, mergeKeys, normalizeKey, type ActionId, type KeyBindings } from '../../features/shortcuts/keys'
+import { shortcutCapture } from '../../hooks/useShortcuts'
+
+function useBindings(): [KeyBindings, (b: KeyBindings) => void] {
+  const saved = useProject((s) => s.settings.keys)
+  return [mergeKeys(saved as Partial<KeyBindings>), (b) => useProject.getState().updateSettings({ keys: b })]
+}
+
+function KeyEditor() {
+  const [keys, setKeys] = useBindings()
+  const [listening, setListening] = useState<ActionId | null>(null)
+  useEffect(() => {
+    if (!listening) return
+    shortcutCapture.active = true
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === 'Escape') return setListening(null)
+      if (e.metaKey || e.ctrlKey || e.altKey) return toast('Usa una tecla sola, sin ⌘, Ctrl ni Alt', 'info')
+      const k = normalizeKey(e)
+      if (RESERVED.includes(k)) return toast('Esa tecla no se puede usar', 'info')
+      const owner = (Object.keys(keys) as ActionId[]).find((id) => id !== listening && keys[id].includes(k))
+      setKeys(assignKey(keys, listening, k))
+      if (owner) toast(`«${keyLabel(k)}» se quitó de «${ACTIONS.find((a) => a.id === owner)!.label}»`, 'info')
+      setListening(null)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      shortcutCapture.active = false
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [listening, keys, setKeys])
+  return (
+    <div className="rounded-xl border border-line bg-[#0f1828] p-3.5">
+      <div className="mb-2 flex items-center gap-2 font-medium">
+        <Keyboard size={16} /> Atajos de teclado
+        <button className="btn btn-sm btn-ghost ml-auto" onClick={() => setKeys(DEFAULT_KEYS)} title="Volver a las teclas de fábrica">
+          <RotateCcw size={13} /> Restaurar
+        </button>
+      </div>
+      <p className="mb-2 text-[12px] text-ink-3">Toca «Cambiar» y luego la tecla que quieras. Esc cancela.</p>
+      <ul className="flex flex-col">
+        {ACTIONS.map((a) => (
+          <li key={a.id} className="flex items-center gap-2 border-b border-line py-1.5 last:border-0">
+            <span className="flex-1 text-[12.5px] text-ink-2">{a.label}</span>
+            {keys[a.id].length ? (
+              keys[a.id].map((k) => (
+                <kbd key={k} className="min-w-7 rounded-md border border-line-2 bg-card px-1.5 py-0.5 text-center font-mono text-[12px]">
+                  {keyLabel(k)}
+                </kbd>
+              ))
+            ) : (
+              <span className="text-[11.5px] text-ink-3">sin tecla</span>
+            )}
+            <button
+              className={`btn btn-sm ${listening === a.id ? '!border-sel !bg-sel/20' : ''}`}
+              onClick={() => setListening(listening === a.id ? null : a.id)}
+              aria-label={`Cambiar tecla de ${a.label}`}
+            >
+              {listening === a.id ? 'Toca una tecla…' : 'Cambiar'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 const close = () => useUI.setState({ modal: null })
 
@@ -111,7 +178,7 @@ function SettingsModal() {
     toast(ok ? 'El navegador protegerá los archivos del proyecto' : 'El navegador no aceptó la protección (se intentará de nuevo al importar)', ok ? 'ok' : 'info')
   }
   return (
-    <Modal title="Configuración" onClose={close} width={500}>
+    <Modal title="Configuración" onClose={close} width={560}>
       <div className="flex flex-col gap-5">
         <label className="flex items-center justify-between gap-4">
           <span>
@@ -141,6 +208,7 @@ function SettingsModal() {
             </button>
           </div>
         </div>
+        <KeyEditor />
         <div className="rounded-xl border border-line bg-[#0f1828] p-3.5">
           <div className="mb-2 flex items-center gap-2 font-medium">
             <HardDrive size={16} /> Almacenamiento
@@ -181,17 +249,16 @@ function clampNum(v: number, min: number, max: number, fallback: number) {
 }
 
 function HelpModal() {
+  const [keys] = useBindings()
   const rows: [string, string][] = [
-    ['Espacio', 'Reproducir / pausar (si no estás escribiendo)'],
+    ...ACTIONS.map((a): [string, string] => [keys[a.id].map(keyLabel).join(' / ') || '—', a.label]),
     ['⌘S / Ctrl+S', 'Guardar ahora'],
     ['⌘Z / ⇧⌘Z', 'Deshacer / rehacer'],
-    ['Esc', 'Cerrar ventanas'],
-    ['Supr / ⌫', 'Eliminar la escena seleccionada (pide confirmación)'],
-    ['↑ / ↓', 'Escena anterior / siguiente'],
+    ['Esc', 'Cerrar ventanas · salir de la tijera'],
   ]
   return (
     <Modal title="Ayuda" onClose={close} width={560}>
-      <h3 className="mb-2 font-semibold">Atajos de teclado</h3>
+      <h3 className="mb-2 font-semibold">Atajos de teclado <span className="text-[12px] font-normal text-ink-3">(cámbialos en Configuración)</span></h3>
       <table className="w-full text-[12.5px]">
         <tbody>
           {rows.map(([k, v]) => (

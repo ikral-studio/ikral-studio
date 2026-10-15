@@ -27,6 +27,10 @@ interface UIState {
   rightCollapsed: boolean
   /** Pide a la tarjeta de esa escena que se desplace a la vista. */
   scrollRequest: { id: string; n: number } | null
+  /** Herramienta del timeline. */
+  tool: 'select' | 'razor'
+  /** Zoom del timeline en píxeles por segundo. */
+  zoom: number
 }
 
 export const useUI = create<UIState>()(() => ({
@@ -37,7 +41,13 @@ export const useUI = create<UIState>()(() => ({
   leftCollapsed: false,
   rightCollapsed: false,
   scrollRequest: null,
+  tool: 'select',
+  zoom: 24,
 }))
+
+export function zoomBy(f: number) {
+  useUI.setState((s) => ({ zoom: Math.min(200, Math.max(4, s.zoom * f)) }))
+}
 
 export function toast(text: string, kind: Toast['kind'] = 'ok') {
   const t = { id: uid(), text, kind }
