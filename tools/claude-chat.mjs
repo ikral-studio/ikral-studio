@@ -33,32 +33,45 @@ const write = (f, data) => {
   renameSync(f + '.tmp', f)
 }
 
-const dir = (cmd === 'escuchar' ? arg1 : arg2) || latestProject()
-const userFile = join(dir, 'chat-usuario.json')
-const claudeFile = join(dir, 'chat-claude.json')
-const claude = () => read(claudeFile, { messages: [] })
-const pending = () => {
-  const user = read(userFile, { messages: [] }).messages
-  const c = claude()
+const allProjects = () => readdirSync(ROOT).map((n) => join(ROOT, n)).filter((d) => existsSync(join(d, 'proyecto.json')))
+/** Proyecto donde se escribió el último mensaje (o el último modificado). */
+function lastChatProject() {
+  const withChat = allProjects().filter((d) => existsSync(join(d, 'chat-usuario.json')))
+  if (!withChat.length) return latestProject()
+  return withChat.sort((a, b) => statSync(join(b, 'chat-usuario.json')).mtimeMs - statSync(join(a, 'chat-usuario.json')).mtimeMs)[0]
+}
+const files = (d) => ({ user: join(d, 'chat-usuario.json'), claude: join(d, 'chat-claude.json') })
+const claudeOf = (d) => read(files(d).claude, { messages: [] })
+const pendingOf = (d) => {
+  const user = read(files(d).user, { messages: [] }).messages
+  const c = claudeOf(d)
   const i = c.readUpTo ? user.findIndex((m) => m.id === c.readUpTo) : -1
   return user.slice(i + 1)
 }
-const touch = (patch = {}) => write(claudeFile, { ...claude(), lastSeen: new Date().toISOString(), ...patch })
+const touchOf = (d, patch = {}) => write(files(d).claude, { ...claudeOf(d), lastSeen: new Date().toISOString(), ...patch })
+
+const dir = cmd === 'escuchar' ? arg1 : arg2 || lastChatProject()
+const claude = () => claudeOf(dir)
+const claudeFile = dir ? files(dir).claude : ''
+const touch = (patch) => touchOf(dir, patch)
 
 if (cmd === 'escuchar') {
-  touch()
+  // Escucha uno o TODOS los proyectos (así funciona aunque abras uno nuevo).
+  const targets = () => (dir ? [dir] : allProjects())
+  targets().forEach((d) => touchOf(d))
   let beat = Date.now()
   const timer = setInterval(() => {
-    const p = pending()
-    if (p.length) {
-      clearInterval(timer)
-      const last = p[p.length - 1]
-      touch({ readUpTo: last.id, working: 'Leyendo tu mensaje…' })
-      console.log(JSON.stringify({ carpeta: dir, mensajes: p }, null, 2))
-      process.exit(0)
+    for (const d of targets()) {
+      const p = pendingOf(d)
+      if (p.length) {
+        clearInterval(timer)
+        touchOf(d, { readUpTo: p[p.length - 1].id, working: 'Leyendo tu mensaje…' })
+        console.log(JSON.stringify({ carpeta: d, mensajes: p }, null, 2))
+        process.exit(0)
+      }
     }
     if (Date.now() - beat > 20000) {
-      touch()
+      targets().forEach((d) => touchOf(d))
       beat = Date.now()
     }
   }, 1500)
