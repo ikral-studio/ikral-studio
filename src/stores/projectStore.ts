@@ -176,7 +176,7 @@ export const useProject = create<State>()((set, get) => {
     commit({ project: cur.project, scenes: { ...cur.scenes, [id]: updated } }, coalesce, delay)
   }
 
-  async function loadInto(project: Project, scenes: Scene[]) {
+  async function loadInto(project: Project, scenes: Scene[], opts: { cleanup?: boolean } = { cleanup: true }) {
     const map: Record<string, Scene> = {}
     scenes.forEach((s) => (map[s.id] = s))
     // Reparar: escenas huérfanas o IDs sin escena
@@ -193,9 +193,11 @@ export const useProject = create<State>()((set, get) => {
     void store.onMerged(() => {
       if (!saveTimer) void get().reloadCurrent()
     })
-    store
-      .collectGarbage(project.id, Object.values(map), project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)))
-      .catch(() => {})
+    // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
+    if (opts.cleanup)
+      store
+        .collectGarbage(project.id, Object.values(map), project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)))
+        .catch(() => {})
   }
 
   return {
@@ -219,7 +221,7 @@ export const useProject = create<State>()((set, get) => {
       const loaded = await store.loadProject(id)
       if (loaded) {
         const sel = get().selectedSceneId
-        await loadInto(loaded.project, loaded.scenes)
+        await loadInto(loaded.project, loaded.scenes, { cleanup: false })
         if (sel && loaded.scenes.some((s) => s.id === sel)) set({ selectedSceneId: sel })
       }
     },

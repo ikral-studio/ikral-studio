@@ -225,8 +225,9 @@ export async function collectGarbage(projectId: string, scenes: Scene[], extraUs
   for (const sn of await listSnapshots(projectId)) mediaIdsOf(sn.project, sn.scenes).forEach((id) => used.add(id))
   const list = await loadMediaIndex(dir)
   let n = 0
+  const recent = Date.now() - 60 * 60 * 1000
   for (const [id, asset] of Object.entries(list)) {
-    if (used.has(id)) continue
+    if (used.has(id) || Date.parse(asset.createdAt) > recent) continue
     await remove(mediaPath(dir, asset), BASE).catch(() => {})
     await remove(thumbPath(dir, id), BASE).catch(() => {})
     delete list[id]
