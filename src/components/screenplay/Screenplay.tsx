@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ClipboardCopy, FileText, MoreHorizontal, Printer, FileCode2, Sparkles, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
+import { ClipboardCopy, FileText, MoreHorizontal, Printer, FileCode2, Sparkles, PanelRightClose, PanelRightOpen, Table2, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { useOrderedScenes } from '../../stores/selectors'
@@ -51,6 +51,9 @@ function ExportMenu() {
           </button>
           <button role="menuitem" className={item} onClick={run(() => window.print())}>
             <Printer size={15} /> Imprimir / Guardar PDF
+          </button>
+          <button role="menuitem" className={item} onClick={run(() => useUI.setState({ modal: 'shotlist' }))}>
+            <Table2 size={15} /> Lista de tomas
           </button>
           <div className="my-1 h-px bg-line" />
           <button role="menuitem" className={item} onClick={run(() => { const d = data(); downloadText(allPromptsText(d.project, d.ordered), `${d.name}-prompts.txt`); toast('Prompts exportados') })}>

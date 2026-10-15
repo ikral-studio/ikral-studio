@@ -16,7 +16,7 @@ interface ConfirmRequest {
 }
 
 export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: string }
-export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | null
+export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | null
 
 interface UIState {
   toasts: Toast[]

@@ -4,6 +4,7 @@ import type { CustomField, Project, Scene, SceneStatus, VideoVersion } from '../
 import { formatDuration, pad2 } from '../../utils'
 import { numbersToWordsInText } from '../../utils/numberWords'
 import { cameraPrompt, cameraSpanish } from '../camera/camera'
+import { charactersPrompt, stylePrompt, styleSpanish } from '../project-style/style'
 
 export function orderedScenes(project: Project | null, scenes: Record<string, Scene>): Scene[] {
   if (!project) return []
@@ -125,9 +126,10 @@ export function sceneScriptText(scene: Scene, n: number, fields: CustomField[] =
 }
 
 export function masterScriptText(project: Project, scenes: Scene[]): string {
+  const style = styleSpanish(project)
   const head = `${project.title}\nGuion completo · ${scenes.length} escenas · ${formatDuration(
     totalDuration(buildSegments(scenes)),
-  )}`
+  )}${style ? `\nEstilo: ${style}` : ''}`
   return [head, ...scenes.map((s, i) => sceneScriptText(s, i + 1, project.customFields))].join('\n\n') + '\n'
 }
 
@@ -137,6 +139,9 @@ export function masterScriptMarkdown(project: Project, scenes: Scene[]): string 
     '',
     `_Guion completo · ${scenes.length} escenas · ${formatDuration(totalDuration(buildSegments(scenes)))}_`,
   ]
+  if (styleSpanish(project)) out.push('', `**Estilo:** ${styleSpanish(project)}`)
+  const chars = (project.characters ?? []).filter((c) => c.name.trim())
+  if (chars.length) out.push('', '**Personajes:**', ...chars.map((c) => `- ${c.name}: ${c.description}`))
   scenes.forEach((s, i) => {
     out.push('', `## Escena ${pad2(i + 1)} · ${s.title} (${formatDuration(effectiveDuration(s))})`)
     for (const [key, label] of SECTIONS) {
@@ -162,9 +167,9 @@ export function applyPronunciations(text: string, scene: Scene): string {
 }
 
 /** Texto limpio para pegar en Higgsfield, Kling, Wan… */
-export function generationPrompt(scene: Scene, fields: CustomField[] = []): string {
+export function generationPrompt(scene: Scene, fields: CustomField[] = [], project?: Project | null): string {
   const s = scene.script
-  const parts = [s.generationPrompt, s.action, s.cameraDirection, cameraPrompt(s.camera)]
+  const parts = [stylePrompt(project), s.generationPrompt, s.action, charactersPrompt(project, scene), s.cameraDirection, cameraPrompt(s.camera)]
     .map((x) => x.trim())
     .filter(Boolean)
   for (const [name, v] of extraEntries(scene, fields)) parts.push(`${name}: ${v}`)
@@ -176,7 +181,7 @@ export function generationPrompt(scene: Scene, fields: CustomField[] = []): stri
 
 export function allPromptsText(project: Project, scenes: Scene[]): string {
   return (
-    [`${project.title} · Prompts de generación`, ...scenes.map((s, i) => `--- Escena ${pad2(i + 1)} · ${s.title} ---\n${generationPrompt(s, project.customFields)}`)].join(
+    [`${project.title} · Prompts de generación`, ...scenes.map((s, i) => `--- Escena ${pad2(i + 1)} · ${s.title} ---\n${generationPrompt(s, project.customFields, project)}`)].join(
       '\n\n',
     ) + '\n'
   )

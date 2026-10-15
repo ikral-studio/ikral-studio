@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, CameraSpec, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, CameraSpec, Character, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
@@ -55,6 +55,10 @@ interface State {
   removePronunciation: (id: string, pid: string) => void
   setNumbersToWords: (id: string, on: boolean) => void
   setCamera: (id: string, camera: CameraSpec | undefined) => void
+  setStyle: (patch: { preset?: string; notes?: string }) => void
+  addCharacter: () => void
+  updateCharacter: (id: string, patch: Partial<Omit<Character, 'id'>>) => void
+  removeCharacter: (id: string) => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -401,6 +405,33 @@ export const useProject = create<State>()((set, get) => {
       }))
     },
 
+    setStyle(patch) {
+      const cur = snap()
+      if (!cur) return
+      const style = { ...(cur.project.style ?? {}), ...patch }
+      commit({ ...cur, project: { ...cur.project, style } }, 'notes' in patch ? 'style-notes' : undefined, 'notes' in patch ? 500 : 0)
+    },
+
+    addCharacter() {
+      const cur = snap()
+      if (!cur) return
+      const characters = [...(cur.project.characters ?? []), { id: uid('ch_'), name: '', description: '' }]
+      commit({ ...cur, project: { ...cur.project, characters } })
+    },
+
+    updateCharacter(id, patch) {
+      const cur = snap()
+      if (!cur) return
+      const characters = (cur.project.characters ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c))
+      commit({ ...cur, project: { ...cur.project, characters } }, `char:${id}`, 500)
+    },
+
+    removeCharacter(id) {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: { ...cur.project, characters: (cur.project.characters ?? []).filter((c) => c.id !== id) } })
+    },
+
     setCamera(id, camera) {
       patchScene(id, (s) => ({ ...s, script: { ...s.script, camera } }))
     },
@@ -572,6 +603,12 @@ export const useProject = create<State>()((set, get) => {
         return f
       }
       data.project.customFields.forEach(fieldFor)
+      const characters = [...(base.characters ?? [])]
+      for (const c of data.project.characters ?? []) {
+        if (!characters.some((x) => x.name.trim().toLowerCase() === c.name.trim().toLowerCase()))
+          characters.push({ id: uid('ch_'), name: c.name.trim(), description: c.description })
+      }
+      const style = base.style?.preset || base.style?.notes?.trim() ? base.style : data.project.style ? { notes: data.project.style } : base.style
       const newScenes = data.scenes.map((sc, i) => {
         const s = createScene(base.id, sc.title, sc.plannedDuration ?? settings.defaultDuration, { order: i, collapsed: true })
         const extras: Record<string, string> = {}
@@ -591,7 +628,7 @@ export const useProject = create<State>()((set, get) => {
         return s
       })
       if (mode === 'new') {
-        const project: Project = { ...base, aspectRatio: data.project.aspectRatio, customFields: fields, sceneIds: newScenes.map((s) => s.id) }
+        const project: Project = { ...base, aspectRatio: data.project.aspectRatio, customFields: fields, characters, style, sceneIds: newScenes.map((s) => s.id) }
         await get().flushSave()
         await store.saveProject(project, newScenes) // una sola transacción: o todo o nada
         await loadInto(project, newScenes)
@@ -600,7 +637,7 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()!
       const scenesMap = { ...cur.scenes }
       newScenes.forEach((s) => (scenesMap[s.id] = s))
-      commit({ project: { ...cur.project, customFields: fields, sceneIds: [...cur.project.sceneIds, ...newScenes.map((s) => s.id)] }, scenes: scenesMap })
+      commit({ project: { ...cur.project, customFields: fields, characters, style, sceneIds: [...cur.project.sceneIds, ...newScenes.map((s) => s.id)] }, scenes: scenesMap })
       set({ selectedSceneId: newScenes[0]?.id ?? get().selectedSceneId })
       await get().flushSave()
       return newScenes.length

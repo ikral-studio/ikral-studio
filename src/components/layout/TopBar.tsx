@@ -17,6 +17,7 @@ import {
   Archive,
   Film,
   BookOpenText,
+  Table2,
 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
@@ -214,6 +215,9 @@ export function TopBar() {
           aria-label="Guion en panel lateral"
         >
           <BookOpenText size={17} />
+        </button>
+        <button className="icon-btn" onClick={() => useUI.setState({ modal: 'shotlist' })} title="Lista de tomas" aria-label="Lista de tomas">
+          <Table2 size={17} />
         </button>
         <button className="icon-btn" onClick={exportNle} disabled={exporting} title="Exportar edición para Premiere, Final Cut o DaVinci" aria-label="Exportar edición para editor de video">
           <Film size={17} />

@@ -6,12 +6,22 @@ export interface Project {
   description?: string
   aspectRatio: AspectRatio
   sceneIds: string[]
+  /** Estilo visual de todo el proyecto (se agrega a cada prompt). */
+  style?: { preset?: string; notes?: string }
+  /** Personajes: su descripción se agrega al prompt de las escenas donde aparecen. */
+  characters?: Character[]
   /** Campos extra que tiene cada escena (ej. Vestuario, Emoción). */
   customFields?: CustomField[]
   /** Pistas de música (2). Opcional para proyectos viejos. */
   audioTracks?: AudioTrack[]
   createdAt: string
   updatedAt: string
+}
+
+export interface Character {
+  id: string
+  name: string
+  description: string
 }
 
 export interface CustomField {

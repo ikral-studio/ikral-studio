@@ -68,6 +68,11 @@ export const scriptFileSchema = z
         title: z.string().trim().min(1, 'falta el título del proyecto').max(LIMITS.maxTitle),
         aspectRatio: z.enum(['16:9', '9:16']).default('16:9'),
         customFields: z.array(z.string().trim().min(1).max(LIMITS.maxFieldName)).max(LIMITS.maxFields).default([]),
+        style: text.optional(),
+        characters: z
+          .array(z.object({ name: z.string().trim().min(1).max(LIMITS.maxTitle), description: text }).strict())
+          .max(50)
+          .default([]),
       })
       .strict(),
     scenes: z.array(scene).min(1, 'no hay escenas').max(LIMITS.maxScenes, `máximo ${LIMITS.maxScenes} escenas`),
@@ -80,7 +85,16 @@ export type ImportedScene = ScriptFile['scenes'][number]
 export const EXAMPLE: ScriptFile = {
   format: SCRIPT_FORMAT,
   version: SCRIPT_VERSION,
-  project: { title: 'Promocional de TuApp.digital', aspectRatio: '16:9', customFields: ['Vestuario', 'Emoción'] },
+  project: {
+    title: 'Promocional de TuApp.digital',
+    aspectRatio: '16:9',
+    customFields: ['Vestuario', 'Emoción'],
+    style: 'Animación 2D cálida, colores de restaurante mexicano, luz de tarde',
+    characters: [
+      { name: 'Joven', description: 'hombre de 25 años, cabello negro corto, camisa azul de manga corta' },
+      { name: 'Abuelito', description: 'hombre de 75 años, bigote blanco, suéter café' },
+    ],
+  },
   scenes: [
     {
       title: 'El descubrimiento',
@@ -125,6 +139,10 @@ const FIELD_NAMES: Record<string, string> = {
   transition: 'Transición',
   speed: 'Velocidad',
   customFields: 'Campos extra del proyecto',
+  style: 'Estilo visual',
+  characters: 'Personajes',
+  description: 'Descripción',
+  name: 'Nombre',
 }
 
 function describePath(path: PropertyKey[]): string {
@@ -233,6 +251,8 @@ Reglas del formato:
 ${cameraIdsForAI()}
       - "speed": "slow", "normal" o "fast" (velocidad del movimiento).
     - "extras": objeto con los campos extra del proyecto, usando exactamente sus nombres como claves.
+- "project.style": estilo visual de TODO el video (ej. "cine realista 35 mm, colores cálidos"); se repite en cada escena.
+- "project.characters": personajes con "name" y "description" física y de ropa fija (edad, cabello, ropa). Usa esos mismos nombres en las escenas para que se vean iguales en todos los clips.
 - "project.customFields": lista de nombres de campos extra (ej. "Vestuario", "Emoción"). ${
     fields ? `Este proyecto usa: ${fields.map((f) => `"${f}"`).join(', ')}. Llénalos en "extras" de CADA escena.` : 'Si no hacen falta, usa [] y "extras": {}.'
   }

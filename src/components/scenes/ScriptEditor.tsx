@@ -22,6 +22,7 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
   const { updateScript, addPronunciation, updatePronunciation, removePronunciation, setNumbersToWords } = useProject.getState()
   const [showPrompt, setShowPrompt] = useState(false)
   const fields = useProject((s) => s.project?.customFields ?? NO_FIELDS)
+  const project = useProject((s) => s.project)
   if (!script) return null
 
   const copyScene = async () => {
@@ -31,12 +32,12 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
   const copyPrompt = async () => {
     const scene = useProject.getState().scenes[sceneId]
     if (!scene) return
-    const text = generationPrompt(scene, fields)
+    const text = generationPrompt(scene, fields, project)
     if (!text.trim()) return toast('El prompt está vacío: escribe la acción o las instrucciones', 'info')
     if (await copyToClipboard(text)) toast('Prompt copiado, listo para pegar en el generador')
   }
   const scene = useProject.getState().scenes[sceneId]
-  const prompt = scene ? generationPrompt(scene, fields) : ''
+  const prompt = scene ? generationPrompt(scene, fields, project) : ''
 
   return (
     <div>

@@ -3,12 +3,14 @@ import { Clapperboard, Plus } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { addSceneAndFocus } from '../../features/scene-management/actions'
 import { SceneCard } from './SceneCard'
+import { ProjectStylePanel } from './ProjectStylePanel'
 import { EMPTY_IDS } from '../../stores/selectors'
 
 export function ScenesArea() {
   const sceneIds = useProject((s) => s.project?.sceneIds ?? EMPTY_IDS)
   return (
     <main className="no-print h-full overflow-y-auto py-3" aria-label="Tarjetas de escenas">
+      <ProjectStylePanel />
       {sceneIds.length === 0 ? (
         <div className="mx-auto mt-16 flex max-w-sm flex-col items-center gap-3 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-card">

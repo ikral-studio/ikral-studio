@@ -35,6 +35,8 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Atajos configurables: A atrás, D adelante (otra vez = 2×, 4×, 8×), C tijera, V selección, W/S zoom, Espacio, flechas, Supr.
 - Guion en columna alta: botón del libro (arriba) abre el guion completo de arriba a abajo para leerlo cómodo.
 - Biblioteca de cámara (debajo de «Dirección de cámara»): 74 tomas con dibujo (plano, ángulo, movimiento, lente, composición, luz, tiempo, transición), velocidad del movimiento y preset de Higgsfield. Escribe «Cámara: …» en español en el guion y la frase en inglés con lo que la cámara NO debe hacer en el prompt. La IA también la puede llenar al importar.
+- Estilo y personajes (arriba de las escenas): un estilo visual para todo el video y personajes con su descripción; entran solos al prompt de las escenas donde aparecen (continuidad).
+- Lista de tomas: tabla con plano, ángulo, movimiento, lente, luz y estado; copiar, CSV o Markdown.
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
 
 ## Limitaciones de esta versión
