@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { useProject } from '../stores/projectStore'
-import { loadProject } from '../database/db'
+import { loadProject } from '../database/idb'
 
 describe('store del proyecto', () => {
   beforeAll(async () => {

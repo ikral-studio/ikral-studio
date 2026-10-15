@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { buildAIPrompt, EXAMPLE, parseScriptText } from '../features/script-exchange/schema'
 import { useProject } from '../stores/projectStore'
 import { generationPrompt, masterScriptText, orderedScenes } from '../features/script-sync/derive'
-import { loadProject } from '../database/db'
+import { loadProject } from '../database/idb'
 
 const sample = readFileSync('tests-e2e/fixtures/guion-ia.json', 'utf8')
 

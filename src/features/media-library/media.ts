@@ -1,6 +1,6 @@
 // Importar archivos, leer metadatos, crear miniaturas y entregar URLs temporales.
 import { useEffect, useState } from 'react'
-import { getMedia, getMediaAsset, putMedia } from '../../database/db'
+import { getMedia, getMediaAsset, isDesktop, mediaFileUrl, putMedia } from '../../database/db'
 import type { MediaAsset, MediaKind, MediaRecord } from '../../types'
 import { nowIso, uid } from '../../utils'
 
@@ -182,11 +182,11 @@ export function getMediaUrl(id: string, thumb = false): Promise<string | null> {
   const key = (thumb ? 't:' : 'f:') + id
   let p = urlCache.get(key)
   if (!p) {
-    p = getMedia(id).then((rec) => {
+    p = (isDesktop() ? mediaFileUrl(id, thumb) : Promise.resolve(null)).then((direct) => direct ?? getMedia(id).then((rec) => {
       if (!rec) return null
       const blob = thumb ? (rec.thumb ?? rec.blob) : rec.blob
       return URL.createObjectURL(blob)
-    })
+    }))
     urlCache.set(key, p)
     p.then((u) => u === null && urlCache.delete(key))
   }
@@ -209,7 +209,7 @@ export async function getMediaBlob(id: string): Promise<MediaRecord | undefined>
 
 /** Libera las URLs de un proyecto anterior. */
 export function releaseAllUrls() {
-  urlCache.forEach((p) => p.then((u) => u && URL.revokeObjectURL(u)))
+  urlCache.forEach((p) => p.then((u) => u?.startsWith('blob:') && URL.revokeObjectURL(u)))
   urlCache.clear()
   metaCache.clear()
 }

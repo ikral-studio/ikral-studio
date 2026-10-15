@@ -10,6 +10,18 @@ npm run dev        # http://localhost:5173
 npm run build      # versión para subir al servidor (carpeta dist/)
 ```
 
+## App de escritorio (Mac)
+
+Guarda todo en carpetas de tu Mac (`Documentos/IKRAL Studio`), sin límite de espacio. Ver [docs/carpeta-del-proyecto.md](docs/carpeta-del-proyecto.md).
+
+```bash
+# Requiere Rust (https://rustup.rs)
+npm run app:dev     # abrir en modo desarrollo
+npm run app:build   # crear IKRAL Studio.app y .dmg en src-tauri/target/release/bundle/
+```
+
+Hecha con [Tauri](https://tauri.app). La versión web sigue funcionando igual (guarda en el navegador).
+
 ## Pruebas
 
 ```bash
@@ -44,7 +56,7 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 
 ## Limitaciones de esta versión
 
-- Todo se guarda **en el navegador** de esa computadora. No hay nube. Usa «Exportar proyecto» para tener copia.
+- Versión web: todo se guarda **en el navegador** de esa computadora. Usa «Exportar proyecto» para tener copia. La app de escritorio guarda en carpetas del disco.
 - No existe «Exportar video» (MP4 final). Para terminar, exporta la edición a Premiere, Final Cut o DaVinci.
 - No se puede arrastrar un archivo de esta página directo a otra web (límite de los navegadores). Usa Descargar + Copiar prompt.
 - shadcn/ui no se usó: los componentes son propios con Tailwind (menos peso).

@@ -1,176 +1,42 @@
-import Dexie, { type Table } from 'dexie'
+// Guardado: en la app de escritorio, carpetas de tu Mac (fsdb); en el navegador, IndexedDB (idb).
+import * as idb from './idb'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../types'
 
-/** En disco se guarda como ArrayBuffer: Safari falla a veces al guardar Blob/File. */
-export interface StoredMedia extends MediaAsset {
-  data: ArrayBuffer
-  thumbData?: ArrayBuffer
-  thumbType?: string
+export type { Snapshot } from './idb'
+export { SNAPSHOT_KEEP, mediaIdsOf } from './idb'
+
+export const isDesktop = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+type Backend = typeof idb & {
+  mediaFileUrl?: (id: string, thumb?: boolean) => Promise<string | null>
+  watchProject?: (projectId: string, onChange: () => void) => Promise<void>
+  projectFolderPath?: (projectId: string) => Promise<string | null>
 }
 
-/** Respaldo automático: copia del proyecto y sus escenas (los archivos se comparten, no se duplican). */
-export interface Snapshot {
-  id: string
-  projectId: string
-  createdAt: string
-  reason: 'auto' | 'before-restore' | 'before-import'
-  project: Project
-  scenes: Scene[]
+let backendPromise: Promise<Backend> | null = null
+function backend(): Promise<Backend> {
+  if (!backendPromise) backendPromise = isDesktop() ? (import('./fsdb') as unknown as Promise<Backend>) : Promise.resolve(idb as Backend)
+  return backendPromise
 }
 
-class StudioDB extends Dexie {
-  projects!: Table<Project, string>
-  scenes!: Table<Scene, string>
-  media!: Table<StoredMedia, string>
-  kv!: Table<{ key: string; value: unknown }, string>
-  snapshots!: Table<Snapshot, string>
+export const listProjects = async (): Promise<Project[]> => (await backend()).listProjects()
+export const loadProject = async (id: string) => (await backend()).loadProject(id)
+export const saveProject = async (p: Project, s: Scene[]) => (await backend()).saveProject(p, s)
+export const deleteProject = async (id: string) => (await backend()).deleteProject(id)
+export const collectGarbage = async (pid: string, s: Scene[], extra?: string[]) => (await backend()).collectGarbage(pid, s, extra)
+export const putMedia = async (r: MediaRecord) => (await backend()).putMedia(r)
+export const getMedia = async (id: string): Promise<MediaRecord | undefined> => (await backend()).getMedia(id)
+export const getMediaAsset = async (id: string): Promise<MediaAsset | undefined> => (await backend()).getMediaAsset(id)
+export const bulkGetMedia = async (ids: string[]) => (await backend()).bulkGetMedia(ids)
+export const addSnapshot = async (p: Project, s: Scene[], r: idb.Snapshot['reason']) => (await backend()).addSnapshot(p, s, r)
+export const listSnapshots = async (pid: string) => (await backend()).listSnapshots(pid)
+export const getSnapshot = async (id: string) => (await backend()).getSnapshot(id)
+export const importProjectData = async (p: Project, s: Scene[], r: MediaRecord[]) => (await backend()).importProjectData(p, s, r)
+export const getKV = async <T,>(key: string): Promise<T | undefined> => (await backend()).getKV<T>(key)
+export const setKV = async (key: string, value: unknown) => (await backend()).setKV(key, value)
 
-  constructor() {
-    super('ikral-studio')
-    this.version(1).stores({
-      projects: 'id, updatedAt',
-      scenes: 'id, projectId',
-      media: 'id, projectId',
-      kv: 'key',
-    })
-    this.version(2).stores({
-      snapshots: 'id, projectId, createdAt',
-    })
-  }
-}
-
-export const db = new StudioDB()
-
-export async function putMedia(rec: MediaRecord) {
-  const { blob, thumb, ...asset } = rec
-  const stored: StoredMedia = {
-    ...asset,
-    data: await blob.arrayBuffer(),
-    thumbData: thumb ? await thumb.arrayBuffer() : undefined,
-    thumbType: thumb?.type,
-  }
-  await db.media.put(stored)
-}
-
-function toRecord(s: StoredMedia): MediaRecord {
-  const { data, thumbData, thumbType, ...asset } = s
-  return {
-    ...asset,
-    blob: new Blob([data], { type: asset.mimeType }),
-    thumb: thumbData ? new Blob([thumbData], { type: thumbType || 'image/jpeg' }) : undefined,
-  }
-}
-
-export async function getMedia(id: string): Promise<MediaRecord | undefined> {
-  const s = await db.media.get(id)
-  return s ? toRecord(s) : undefined
-}
-
-export async function getMediaAsset(id: string): Promise<MediaAsset | undefined> {
-  const s = await db.media.get(id)
-  if (!s) return undefined
-  const { data, thumbData, thumbType, ...asset } = s
-  void data
-  void thumbData
-  void thumbType
-  return asset
-}
-
-export async function bulkGetMedia(ids: string[]): Promise<MediaRecord[]> {
-  const rows = await db.media.bulkGet(ids)
-  return rows.filter((r): r is StoredMedia => !!r).map(toRecord)
-}
-
-export async function listProjects(): Promise<Project[]> {
-  return db.projects.orderBy('updatedAt').reverse().toArray()
-}
-
-export async function loadProject(id: string) {
-  const project = await db.projects.get(id)
-  if (!project) return null
-  const scenes = await db.scenes.where('projectId').equals(id).toArray()
-  return { project, scenes }
-}
-
-/** Guarda el proyecto y sus escenas; borra escenas que ya no existen. */
-export async function saveProject(project: Project, scenes: Scene[]) {
-  await db.transaction('rw', db.projects, db.scenes, async () => {
-    await db.projects.put(project)
-    const keep = new Set(scenes.map((s) => s.id))
-    const stored = await db.scenes.where('projectId').equals(project.id).primaryKeys()
-    const gone = stored.filter((id) => !keep.has(id))
-    if (gone.length) await db.scenes.bulkDelete(gone)
-    await db.scenes.bulkPut(scenes)
-  })
-}
-
-export async function deleteProject(id: string) {
-  await db.transaction('rw', db.projects, db.scenes, db.media, async () => {
-    await db.projects.delete(id)
-    await db.scenes.where('projectId').equals(id).delete()
-    await db.media.where('projectId').equals(id).delete()
-  })
-  await db.snapshots.where('projectId').equals(id).delete()
-}
-
-/** Borra los archivos del proyecto que ya ninguna escena usa. */
-export async function collectGarbage(projectId: string, scenes: Scene[], extraUsed?: string[]) {
-  const used = new Set<string>()
-  for (const s of scenes) {
-    if (s.startImageId) used.add(s.startImageId)
-    if (s.endImageId) used.add(s.endImageId)
-    s.storyboardFrames.forEach((f) => used.add(f.mediaId))
-    s.videoVersions.forEach((v) => used.add(v.mediaId))
-  }
-  extraUsed?.forEach((id) => used.add(id))
-  // Los respaldos automáticos también cuentan: si se restaura uno, sus archivos deben seguir ahí.
-  const snaps = await db.snapshots.where('projectId').equals(projectId).toArray()
-  for (const sn of snaps) mediaIdsOf(sn.project, sn.scenes).forEach((id) => used.add(id))
-  const ids = await db.media.where('projectId').equals(projectId).primaryKeys()
-  const orphan = ids.filter((id) => !used.has(id))
-  if (orphan.length) await db.media.bulkDelete(orphan)
-  return orphan.length
-}
-
-export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
-  const used: string[] = []
-  for (const s of scenes) {
-    if (s.startImageId) used.push(s.startImageId)
-    if (s.endImageId) used.push(s.endImageId)
-    s.storyboardFrames.forEach((f) => used.push(f.mediaId))
-    s.videoVersions.forEach((v) => used.push(v.mediaId))
-  }
-  project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
-  return used
-}
-
-export const SNAPSHOT_KEEP = 30
-
-export async function addSnapshot(project: Project, scenes: Scene[], reason: Snapshot['reason']) {
-  const snap: Snapshot = {
-    id: `sn_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-    projectId: project.id,
-    createdAt: new Date().toISOString(),
-    reason,
-    project: structuredClone(project),
-    scenes: structuredClone(scenes),
-  }
-  await db.snapshots.put(snap)
-  const all = await db.snapshots.where('projectId').equals(project.id).sortBy('createdAt')
-  const extra = all.slice(0, Math.max(0, all.length - SNAPSHOT_KEEP))
-  if (extra.length) await db.snapshots.bulkDelete(extra.map((s) => s.id))
-  return snap
-}
-
-export async function listSnapshots(projectId: string): Promise<Snapshot[]> {
-  return (await db.snapshots.where('projectId').equals(projectId).sortBy('createdAt')).reverse()
-}
-
-export async function getKV<T>(key: string): Promise<T | undefined> {
-  const row = await db.kv.get(key)
-  return row?.value as T | undefined
-}
-
-export async function setKV(key: string, value: unknown) {
-  await db.kv.put({ key, value })
-}
+/** Solo escritorio: URL directa al archivo en disco. En el navegador devuelve null. */
+export const mediaFileUrl = async (id: string, thumb = false) => (await backend()).mediaFileUrl?.(id, thumb) ?? null
+/** Solo escritorio: avisa cuando proyecto.json cambia por fuera (por ejemplo, lo editó Claude). */
+export const watchProject = async (pid: string, cb: () => void) => (await backend()).watchProject?.(pid, cb)
+export const projectFolderPath = async (pid: string) => (await backend()).projectFolderPath?.(pid) ?? null

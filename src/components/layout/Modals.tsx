@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FolderOpen, History, Keyboard, Loader2, RotateCcw, Save, Trash2, Upload, HardDrive, ShieldCheck } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
-import { deleteProject, listProjects, listSnapshots, type Snapshot } from '../../database/db'
+import { deleteProject, isDesktop, listProjects, listSnapshots, projectFolderPath, type Snapshot } from '../../database/db'
 import { importProjectZip } from '../../features/projects/backup'
 import { releaseAllUrls } from '../../features/media-library/media'
 import { pickFiles } from '../../hooks/useFileDrop'
@@ -233,6 +233,12 @@ function SettingsModal() {
   const update = useProject((s) => s.updateSettings)
   const [usage, setUsage] = useState<{ used: number; quota: number } | null>(null)
   const [persisted, setPersisted] = useState<boolean | null>(null)
+  const desktop = isDesktop()
+  const projectId = useProject((s) => s.project?.id)
+  const [folder, setFolder] = useState<string | null>(null)
+  useEffect(() => {
+    if (desktop && projectId) void projectFolderPath(projectId).then(setFolder)
+  }, [desktop, projectId])
   useEffect(() => {
     navigator.storage?.estimate?.().then((e) => setUsage({ used: e.usage ?? 0, quota: e.quota ?? 0 }))
     navigator.storage?.persisted?.().then(setPersisted)
@@ -278,10 +284,20 @@ function SettingsModal() {
           <div className="mb-2 flex items-center gap-2 font-medium">
             <HardDrive size={16} /> Almacenamiento
           </div>
-          <p className="text-[12.5px] leading-relaxed text-ink-2">
-            Todo se guarda <b>en este navegador</b> (IndexedDB), no en la nube. Para no perder nada, usa «Exportar proyecto»: descarga un .zip con
-            todas las imágenes y videos.
-          </p>
+          {desktop ? (
+            <>
+              <p className="text-[12.5px] leading-relaxed text-ink-2">
+                Todo se guarda <b>en tu Mac</b>, sin límite de espacio, en la carpeta:
+              </p>
+              <code className="mt-1.5 block rounded-lg bg-black/30 px-2.5 py-1.5 font-mono text-[11.5px] text-ink">{folder ?? 'Documentos/IKRAL Studio/Proyectos'}</code>
+              <p className="mt-2 text-[12px] text-ink-3">Cada proyecto es una carpeta con «proyecto.json», sus archivos y respaldos. Claude puede trabajar directo ahí.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-[12.5px] leading-relaxed text-ink-2">
+                Todo se guarda <b>en este navegador</b> (IndexedDB), no en la nube. Para no perder nada, usa «Exportar proyecto»: descarga un .zip con
+                todas las imágenes y videos.
+              </p>
           {usage && (
             <div className="mt-3">
               <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -303,6 +319,8 @@ function SettingsModal() {
               </button>
             )}
           </div>
+            </>
+          )}
         </div>
       </div>
     </Modal>

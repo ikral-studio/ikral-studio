@@ -1,6 +1,6 @@
 // Respaldo portátil: un .zip con project.json + los archivos reales (no URLs temporales).
 import JSZip from 'jszip'
-import { bulkGetMedia, db, putMedia } from '../../database/db'
+import { bulkGetMedia, importProjectData } from '../../database/db'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../../types'
 import { extFromMime, nowIso, uid } from '../../utils'
 
@@ -115,10 +115,6 @@ export async function importProjectZip(file: Blob): Promise<string> {
     })),
     updatedAt: nowIso(),
   }
-  for (const r of records) await putMedia(r)
-  await db.transaction('rw', db.projects, db.scenes, async () => {
-    await db.scenes.bulkPut(scenes)
-    await db.projects.put(project)
-  })
+  await importProjectData(project, scenes, records)
   return projectId
 }

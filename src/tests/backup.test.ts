@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { useProject } from '../stores/projectStore'
-import { collectGarbage, db, listSnapshots, SNAPSHOT_KEEP } from '../database/db'
+import { collectGarbage, db, listSnapshots, SNAPSHOT_KEEP } from '../database/idb'
 
 describe('respaldos automáticos', () => {
   beforeAll(async () => {

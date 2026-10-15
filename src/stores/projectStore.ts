@@ -180,6 +180,10 @@ export const useProject = create<State>()((set, get) => {
     project = { ...project, sceneIds: ids, audioTracks: project.audioTracks?.length ? project.audioTracks : defaultTracks() }
     set({ project, scenes: map, selectedSceneId: ids[0] ?? null, past: [], future: [], saveState: 'saved' })
     await store.setKV('lastProjectId', project.id)
+    // App de escritorio: si alguien (Claude) cambia proyecto.json por fuera, recargar.
+    void store.watchProject(project.id, () => {
+      if (!saveTimer && !saving) void get().reloadCurrent()
+    })
     store
       .collectGarbage(project.id, Object.values(map), project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)))
       .catch(() => {})
@@ -221,7 +225,7 @@ export const useProject = create<State>()((set, get) => {
     },
 
     async restoreSnapshot(snapshotId) {
-      const snap = await store.db.snapshots.get(snapshotId)
+      const snap = await store.getSnapshot(snapshotId)
       const cur = get().project
       if (!snap || !cur || snap.projectId !== cur.id) return
       await get().backupNow('before-restore')
