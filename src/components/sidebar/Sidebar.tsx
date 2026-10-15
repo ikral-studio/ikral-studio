@@ -91,6 +91,7 @@ function ImportScriptButton() {
       {...drop.props}
       className={`btn !h-9 ${drop.over ? '!border-sel-2 !bg-sel/20 !text-white' : ''}`}
       onClick={() => useUI.setState({ modal: 'importScript' })}
+      aria-label="Importar guion"
       title="Pega, sube o arrastra aquí el JSON que te dio la IA"
     >
       <FileInput size={14} className="shrink-0 text-[#93c5fd]" /> {drop.over ? 'Suelta el guion aquí' : 'Importar guion'}
