@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>IKRAL Studio usa el micrófono para que le hables a Claude en el chat.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>IKRAL Studio convierte tu voz en texto para el chat con Claude.</string>
+</dict>
+</plist>
