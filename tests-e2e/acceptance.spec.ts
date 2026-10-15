@@ -486,3 +486,14 @@ test('extra · estilo del proyecto, personajes y lista de tomas', async ({ page 
   await page.reload()
   await expect(page.getByRole('button', { name: /Estilo y personajes/ })).toContainText('Anime · 1 personaje')
 })
+
+test('extra · duración sugerida según el guion', async ({ page }) => {
+  await freshProject(page, 'Tiempos')
+  await addScenes(page, 1)
+  const c = card(page, 1)
+  await c.getByPlaceholder('Quién habla y qué dice. Ej.: Joven: —¡Mire!').fill('Joven: ¡Mire! Con esta aplicación pueden organizar todos sus pedidos y cobrar sin filas.')
+  await expect(c.getByText('Duración sugerida:')).toBeVisible()
+  await c.getByRole('button', { name: /^Usar \d+ s$/ }).click()
+  await expect(c.getByLabel('Duración planificada en segundos')).toHaveValue('7')
+  await expect(c.getByText('Ya la estás usando')).toBeVisible()
+})

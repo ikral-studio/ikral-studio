@@ -3,6 +3,7 @@ import { ClipboardCopy, Languages, ListPlus, Pencil, Plus, Sparkles, Trash2 } fr
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
 import { CameraSummary } from './CameraLibrary'
+import { SuggestChip } from './SceneCard'
 import { generationPrompt, sceneScriptText } from '../../features/script-sync/derive'
 import { copyToClipboard } from '../../utils'
 import type { CustomField, ScriptField } from '../../types'
@@ -68,6 +69,10 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
             {f.key === 'cameraDirection' && <CameraSummary sceneId={sceneId} />}
           </div>
         ))}
+      </div>
+
+      <div className="mt-3">
+        <SuggestChip sceneId={sceneId} full />
       </div>
 
       <ExtraFields sceneId={sceneId} fields={fields} values={script.extras ?? {}} />

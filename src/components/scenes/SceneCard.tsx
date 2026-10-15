@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { CheckCheck, ChevronDown, ChevronUp, ClipboardPaste, Clock3, Copy, Film, ImageIcon, Play, Trash2 } from 'lucide-react'
+import { CheckCheck, ChevronDown, ChevronUp, ClipboardPaste, Clock3, Copy, Film, ImageIcon, Play, Timer, Trash2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { openPasteScene, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -8,6 +8,7 @@ import { confirmDeleteScene, duplicateAndFocus, selectScene } from '../../featur
 import { usePlayback } from '../../features/playback/engine'
 import { formatTime, pad2 } from '../../utils'
 import { StatusChip, accentFor } from '../common/StatusChip'
+import { suggestDuration } from '../../features/timing/suggest'
 import { MediaSlot } from './MediaSlot'
 import { FramesStrip } from './FramesStrip'
 import { ScriptEditor } from './ScriptEditor'
@@ -48,6 +49,43 @@ function DurationInput({ sceneId }: { sceneId: string }) {
       />
       <span className="text-[12px]">s</span>
     </label>
+  )
+}
+
+/** «⏱ 9 s»: duración sugerida según el guion; clic para usarla. */
+export function SuggestChip({ sceneId, full = false }: { sceneId: string; full?: boolean }) {
+  const scene = useProject((s) => s.scenes[sceneId])
+  const sug = scene ? suggestDuration(scene) : null
+  if (!scene || !sug) return null
+  const same = Math.abs(sug.seconds - scene.plannedDuration) < 1
+  if (same && !full) return null
+  const use = () => useProject.getState().updateScene(sceneId, { plannedDuration: sug.seconds })
+  if (full)
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-[#0f1828] px-2.5 py-2 text-[12px]">
+        <Timer size={14} className="text-[#fcd34d]" />
+        <span>
+          Duración sugerida: <b className="tabular-nums">{sug.seconds} s</b>
+        </span>
+        <span className="text-ink-3">({sug.reasons.join(' · ')})</span>
+        {same ? (
+          <span className="chip ml-auto bg-ok/15 text-[#86efac]">Ya la estás usando</span>
+        ) : (
+          <button className="btn btn-sm ml-auto" onClick={use}>
+            Usar {sug.seconds} s
+          </button>
+        )}
+      </div>
+    )
+  return (
+    <button
+      className="chip shrink-0 bg-warn/15 tabular-nums text-[#fcd34d] hover:bg-warn/25"
+      onClick={use}
+      title={`Duración sugerida según el guion: ${sug.reasons.join(' · ')}. Clic para usarla.`}
+      aria-label={`Usar duración sugerida de ${sug.seconds} segundos`}
+    >
+      <Timer size={11} /> {sug.seconds} s
+    </button>
   )
 }
 
@@ -99,6 +137,7 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
           </span>
         )}
         <DurationInput sceneId={id} />
+        <SuggestChip sceneId={id} />
         {video && Math.abs(video.duration - scene.plannedDuration) >= 0.5 && (
           <span className="chip bg-white/5 text-ink-2" title="Duración real del video activo">
             <Film size={11} /> {formatTime(video.duration)}
