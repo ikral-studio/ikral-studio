@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Clapperboard, Plus } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { addSceneAndFocus } from '../../features/scene-management/actions'
@@ -17,20 +18,39 @@ export function ScenesArea() {
           <p className="text-[13px] leading-relaxed text-ink-2">
             Agrega la primera escena. Luego pon su imagen inicial, su imagen final, el guion y el video generado.
           </p>
-          <button className="btn btn-primary !h-10 mt-1" onClick={addSceneAndFocus}>
+          <button className="btn btn-primary !h-10 mt-1" onClick={() => addSceneAndFocus()}>
             <Plus size={17} /> Agregar escena
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col">
           {sceneIds.map((id, i) => (
-            <SceneCard key={id} id={id} n={i + 1} />
+            <Fragment key={id}>
+              {i > 0 && <InsertGap index={i} />}
+              <SceneCard id={id} n={i + 1} />
+            </Fragment>
           ))}
-          <button className="dropzone flex h-12 items-center justify-center gap-2 text-[13px] text-ink-3 hover:text-ink-2" onClick={addSceneAndFocus}>
+          <button className="dropzone mt-3 flex h-12 items-center justify-center gap-2 text-[13px] text-ink-3 hover:text-ink-2" onClick={() => addSceneAndFocus()}>
             <Plus size={16} /> Agregar escena
           </button>
         </div>
       )}
     </main>
+  )
+}
+
+/** Línea entre dos tarjetas: al pasar el ratón aparece «+ Insertar escena aquí». */
+function InsertGap({ index }: { index: number }) {
+  return (
+    <div className="group relative flex h-3 items-center justify-center">
+      <div className="absolute inset-x-6 top-1/2 h-px bg-sel-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" />
+      <button
+        className="chip relative z-10 !h-6 border border-sel-2 bg-bg !px-2.5 text-[11.5px] text-[#bfdbfe] opacity-0 transition-opacity hover:bg-sel hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={() => addSceneAndFocus(index)}
+        aria-label={`Insertar escena nueva entre la ${index} y la ${index + 1}`}
+      >
+        <Plus size={12} /> Insertar escena aquí
+      </button>
+    </div>
   )
 }

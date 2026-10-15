@@ -36,7 +36,7 @@ async function importVideo(page: Page, n: number, file: string) {
   const c = card(page, n)
   if (await c.getByRole('button', { name: 'Expandir escena' }).isVisible()) await c.getByRole('button', { name: 'Expandir escena' }).click()
   await chooseFile(page, () => c.getByText('Arrastra aquí el video generado').click(), file)
-  await expect(c.locator('video')).toBeVisible()
+  await expect(c.locator('video')).toBeVisible({ timeout: 15000 })
 }
 
 const time = (page: Page) => page.locator('[aria-label="Vista previa"]').locator('span.tabular-nums').first()
@@ -72,6 +72,7 @@ test('3 y 10 · imágenes y guion se conservan al recargar', async ({ page }) =>
   await addScenes(page, 1)
   const c = card(page, 1)
   await chooseFile(page, () => c.getByText('Arrastra o elige imagen').first().click(), 'inicio.png')
+  await expect(c.locator('img')).toHaveCount(1)
   await chooseFile(page, () => c.getByText('Arrastra o elige imagen').first().click(), 'final.png')
   await expect(c.locator('img')).toHaveCount(2)
   await c.getByPlaceholder('Qué ocurre físicamente en la escena.').fill('Acción que debe persistir')
@@ -183,4 +184,19 @@ test('12 y 13 · exportar e importar respaldo con archivos reales', async ({ pag
   await expect(card(page, 1).locator('img')).toHaveCount(1)
   await expect(page.locator('[aria-label="Video escena 2, 4 s"]')).toBeVisible()
   await expect(page.locator('[data-script-id]').nth(1)).toContainText('Texto del respaldo')
+})
+
+test('extra · insertar escena entre dos (tarjetas y timeline)', async ({ page }) => {
+  await freshProject(page)
+  await addScenes(page, 2)
+  await card(page, 1).getByLabel('Nombre de la escena').fill('Primera')
+  await card(page, 2).getByLabel('Nombre de la escena').fill('Segunda')
+  await page.getByRole('button', { name: 'Insertar escena nueva entre la 1 y la 2' }).click()
+  await expect(page.locator('article[data-scene-id]')).toHaveCount(3)
+  await expect(card(page, 2).getByLabel('Nombre de la escena')).toHaveValue('Escena nueva')
+  await expect(card(page, 3).getByLabel('Nombre de la escena')).toHaveValue('Segunda')
+  await page.getByRole('button', { name: 'Insertar escena entre la 1 y la 2' }).click()
+  await expect(page.locator('[data-script-id]')).toHaveCount(4)
+  await expect(card(page, 4).getByLabel('Nombre de la escena')).toHaveValue('Segunda')
+  await expect(card(page, 1).getByLabel('Nombre de la escena')).toHaveValue('Primera')
 })

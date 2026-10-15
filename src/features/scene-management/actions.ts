@@ -28,9 +28,10 @@ export function selectScene(id: string, opts: { scroll?: boolean; seek?: boolean
   if (opts.seek && !usePlayback.getState().playing) playback.seekScene(id)
 }
 
-export function addSceneAndFocus() {
-  const id = useProject.getState().addScene()
+export function addSceneAndFocus(index?: number) {
+  const id = useProject.getState().addScene(index)
   if (id) requestScroll(id)
+  if (id && index !== undefined) toast(`Escena nueva en el lugar ${pad2(index + 1)}`)
 }
 
 export function duplicateAndFocus(id: string) {

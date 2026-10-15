@@ -82,7 +82,7 @@ export function Sidebar() {
   return (
     <aside className="area-left no-print flex flex-col gap-2 overflow-hidden bg-bg py-3 pl-3" aria-label="Escenas">
       <div className="flex gap-1.5">
-        <button className="btn btn-primary !h-10 flex-1 text-[13.5px]" onClick={addSceneAndFocus}>
+        <button className="btn btn-primary !h-10 flex-1 text-[13.5px]" onClick={() => addSceneAndFocus()}>
           <Plus size={18} /> Agregar escena
         </button>
         <button className="icon-btn !h-10" onClick={() => useUI.setState({ leftCollapsed: true })} title="Ocultar panel" aria-label="Ocultar panel de escenas">
@@ -114,7 +114,7 @@ export function Sidebar() {
             </SortableContext>
           </DndContext>
         )}
-        <button className="dropzone mt-2 flex h-11 w-full items-center justify-center gap-2 text-[12.5px] text-ink-3 hover:text-ink-2" onClick={addSceneAndFocus}>
+        <button className="dropzone mt-2 flex h-11 w-full items-center justify-center gap-2 text-[12.5px] text-ink-3 hover:text-ink-2" onClick={() => addSceneAndFocus()}>
           <Plus size={15} /> Agregar nueva escena
         </button>
       </div>

@@ -33,7 +33,8 @@ interface State {
   updateSettings: (patch: Partial<Settings>) => void
 
   select: (id: string | null) => void
-  addScene: (afterId?: string) => string | null
+  /** index = posición donde entra la escena nueva (por defecto, al final). */
+  addScene: (index?: number) => string | null
   duplicateScene: (id: string) => void
   deleteScene: (id: string) => void
   moveScene: (id: string, toIndex: number) => void
@@ -210,14 +211,13 @@ export const useProject = create<State>()((set, get) => {
       set({ selectedSceneId: id })
     },
 
-    addScene(afterId) {
+    addScene(index) {
       const cur = snap()
       if (!cur) return null
-      const n = cur.project.sceneIds.length + 1
-      const scene = createScene(cur.project.id, `Escena ${n}`, get().settings.defaultDuration)
       const ids = [...cur.project.sceneIds]
-      const at = afterId ? ids.indexOf(afterId) + 1 : ids.length
-      ids.splice(at > 0 ? at : ids.length, 0, scene.id)
+      const at = index === undefined ? ids.length : clamp(index, 0, ids.length)
+      const scene = createScene(cur.project.id, at === ids.length ? `Escena ${ids.length + 1}` : 'Escena nueva', get().settings.defaultDuration)
+      ids.splice(at, 0, scene.id)
       commit({ project: { ...cur.project, sceneIds: ids }, scenes: { ...cur.scenes, [scene.id]: scene } })
       set({ selectedSceneId: scene.id })
       return scene.id

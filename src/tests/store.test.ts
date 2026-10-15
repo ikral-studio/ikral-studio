@@ -37,3 +37,14 @@ describe('store del proyecto', () => {
     expect(st().scenes[id].script.action).toBe('')
   })
 })
+
+describe('insertar escena', () => {
+  it('entra en la posición pedida', () => {
+    const st = useProject.getState
+    const before = [...st().project!.sceneIds]
+    const id = st().addScene(1)!
+    expect(st().project!.sceneIds[1]).toBe(id)
+    expect(st().project!.sceneIds.filter((x) => x !== id)).toEqual(before)
+    expect(st().selectedSceneId).toBe(id)
+  })
+})

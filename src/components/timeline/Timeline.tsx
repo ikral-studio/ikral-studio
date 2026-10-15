@@ -8,7 +8,7 @@ import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
 import { useMediaUrl } from '../../features/media-library/media'
 import { storyboardMediaIds, totalDuration, type Segment } from '../../features/script-sync/derive'
-import { selectScene } from '../../features/scene-management/actions'
+import { addSceneAndFocus, selectScene } from '../../features/scene-management/actions'
 import { clamp, formatDuration, formatTime } from '../../utils'
 import { accentFor } from '../common/StatusChip'
 
@@ -260,7 +260,20 @@ export function Timeline() {
               <div className="flex flex-1 items-center px-4 text-[12.5px] text-ink-3">El timeline se llena cuando agregas escenas.</div>
             ) : (
               <>
-                <div className="min-h-0 flex-1 py-1.5" style={{ paddingLeft: TRACK_PAD }}>
+                <div className="group/track relative min-h-0 flex-1 py-1.5" style={{ paddingLeft: TRACK_PAD }}>
+                  {!playing &&
+                    layout.slice(1).map((l, i) => (
+                      <button
+                        key={sceneIds[i + 1]}
+                        className="absolute top-0 z-20 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-sel-2 bg-bg text-[#bfdbfe] opacity-0 shadow transition-opacity hover:bg-sel hover:text-white focus-visible:opacity-100 group-hover/track:opacity-100"
+                        style={{ left: TRACK_PAD + l.x }}
+                        onClick={() => addSceneAndFocus(i + 1)}
+                        title="Insertar escena aquí"
+                        aria-label={`Insertar escena entre la ${i + 1} y la ${i + 2}`}
+                      >
+                        <Plus size={12} />
+                      </button>
+                    ))}
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                     <SortableContext items={sceneIds} strategy={horizontalListSortingStrategy}>
                       <div className="flex h-full">
