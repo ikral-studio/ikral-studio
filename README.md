@@ -31,12 +31,13 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Reordenar: dnd-kit (ratón y teclado). Insertar escena entre dos.
 - Música: 2 pistas (MP3, M4A, WAV), clips que se mueven en el tiempo, volumen y silencio por pista; suenan sincronizadas en la vista previa.
 - Cortar video (parte la escena en 2) y cortar música en el cabezal; orillas para estirar o encoger clips sin dañar el archivo.
+- Exportar edición: .zip con media + FCP7 XML (Premiere, DaVinci) + FCPXML (Final Cut). Aún sin probar dentro de esos editores.
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
 
 ## Limitaciones de esta versión
 
 - Todo se guarda **en el navegador** de esa computadora. No hay nube. Usa «Exportar proyecto» para tener copia.
-- No existe «Exportar video» (no hay renderizador). La película se ve completa en la Vista previa.
+- No existe «Exportar video» (MP4 final). Para terminar, exporta la edición a Premiere, Final Cut o DaVinci.
 - No se puede arrastrar un archivo de esta página directo a otra web (límite de los navegadores). Usa Descargar + Copiar prompt.
 - shadcn/ui no se usó: los componentes son propios con Tailwind (menos peso).
 - Las pruebas automáticas corren en WebKit. Chromium headless no trae el códec H.264.

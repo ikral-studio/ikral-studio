@@ -214,7 +214,8 @@ function HelpModal() {
       <h3 className="mb-2 mt-5 font-semibold">Dónde se guarda</h3>
       <p className="text-[12.5px] leading-relaxed text-ink-2">
         En este navegador y esta computadora. Para tener copia, usa <b>Exportar proyecto</b> (.zip con todos los archivos) y guárdalo donde quieras.
-        «Exportar video» todavía no existe: la película se ve completa en la vista previa.
+        «Exportar video» (un MP4 final) todavía no existe. Para terminar la edición en Premiere, Final Cut o DaVinci usa el botón 🎬
+        «Exportar edición»: baja un .zip con los archivos y la línea de tiempo.
       </p>
     </Modal>
   )

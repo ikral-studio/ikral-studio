@@ -15,10 +15,12 @@ import {
   Smartphone,
   Undo2,
   Archive,
+  Film,
 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { exportProjectZip } from '../../features/projects/backup'
+import { exportNleZip } from '../../features/projects/nleExport'
 import { masterScriptMarkdown, orderedScenes } from '../../features/script-sync/derive'
 import { downloadBlob, downloadText, safeFilename } from '../../utils'
 
@@ -118,6 +120,23 @@ export function TopBar() {
     }
   }
 
+  const exportNle = async () => {
+    const { project, scenes, flushSave } = useProject.getState()
+    if (!project) return
+    setExporting(true)
+    try {
+      await flushSave()
+      const blob = await exportNleZip(project, orderedScenes(project, scenes))
+      downloadBlob(blob, `${safeFilename(project.title)}-para-editor.zip`)
+      toast('Listo: abre el .zip y lee LEEME.txt')
+    } catch (e) {
+      console.error(e)
+      toast('No se pudo exportar la edición', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const exportScript = () => {
     const { project, scenes } = useProject.getState()
     if (!project) return
@@ -184,6 +203,9 @@ export function TopBar() {
         </button>
         <button className="icon-btn" onClick={() => useUI.setState({ modal: 'projects' })} title="Abrir proyecto" aria-label="Abrir proyecto">
           <FolderOpen size={17} />
+        </button>
+        <button className="icon-btn" onClick={exportNle} disabled={exporting} title="Exportar edición para Premiere, Final Cut o DaVinci" aria-label="Exportar edición para editor de video">
+          <Film size={17} />
         </button>
         <button className="icon-btn" onClick={exportScript} title="Exportar guion (Markdown)" aria-label="Exportar guion">
           <FileDown size={17} />

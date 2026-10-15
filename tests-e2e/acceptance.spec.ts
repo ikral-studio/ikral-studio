@@ -274,3 +274,20 @@ test('extra · cortar video y música, y estirar orillas', async ({ page }) => {
   // deshacer
   await page.keyboard.press('Meta+z')
 })
+
+test('extra · exportar edición para Premiere / Final Cut / DaVinci', async ({ page }) => {
+  await freshProject(page, 'Para editor')
+  await addScenes(page, 2)
+  await importVideo(page, 1, 'clip1.mp4')
+  await chooseFile(page, () => card(page, 2).getByText('Arrastra o elige imagen').first().click(), 'inicio.png')
+  await chooseFile(page, () => page.getByRole('button', { name: 'Agregar música a Música 1' }).click(), 'musica.mp3')
+  const dl = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Exportar edición para editor de video' }).click()
+  const zip = await JSZip.loadAsync(await readFile(await (await dl).path()))
+  const names = Object.keys(zip.files)
+  expect(names).toEqual(expect.arrayContaining(['Premiere-DaVinci.xml', 'FinalCut.fcpxml', 'LEEME.txt']))
+  expect(names.filter((n) => n.startsWith('media/') && !n.endsWith('/'))).toHaveLength(3)
+  const xml = await zip.file('Premiere-DaVinci.xml')!.async('string')
+  expect(xml).toContain('<pathurl>media/001-clip1.mp4</pathurl>')
+  expect(xml.match(/<clipitem /g)!.length).toBe(4) // video, imagen, audio del video, música
+})
