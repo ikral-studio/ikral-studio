@@ -10,9 +10,9 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Copy, FileInput, GripVertical, ImageIcon, PanelLeftClose, Plus, Sparkles } from 'lucide-react'
+import { ClipboardPaste, Copy, FileInput, GripVertical, ImageIcon, PanelLeftClose, Plus, Sparkles } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { toast, useUI } from '../../stores/uiStore'
+import { openPasteScene, toast, useUI } from '../../stores/uiStore'
 import { buildAIPrompt } from '../../features/script-exchange/schema'
 import { copyToClipboard } from '../../utils'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -55,6 +55,14 @@ const SceneItem = memo(function SceneItem({ id, n }: { id: string; n: number }) 
           <StatusChip status={scene.status} compact />
         </div>
       </div>
+      <button
+        className="icon-btn sm !absolute right-1 bottom-1 bg-panel/80 text-ink-3 opacity-0 hover:!text-[#c4b5fd] group-hover:opacity-100 focus-visible:opacity-100"
+        onClick={() => openPasteScene(id)}
+        aria-label={`Pegar escena de IA en la escena ${n}`}
+        title="Pegar escena de IA (JSON de ChatGPT o Claude)"
+      >
+        <ClipboardPaste size={14} />
+      </button>
       <button
         className="icon-btn sm !absolute right-1 top-1 cursor-grab bg-panel/80 text-ink-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing disabled:cursor-not-allowed"
         aria-label={`Mover escena ${n} (arrastra o usa flechas)`}

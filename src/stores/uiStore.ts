@@ -16,7 +16,7 @@ interface ConfirmRequest {
 }
 
 export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: string }
-export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | null
+export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | null
 
 interface UIState {
   toasts: Toast[]
@@ -33,6 +33,8 @@ interface UIState {
   zoom: number
   /** Guion completo abierto en la columna alta de la derecha. */
   scriptDock: boolean
+  /** Escena que se va a llenar con «Pegar escena de IA». */
+  pasteSceneId: string | null
 }
 
 export const useUI = create<UIState>()(() => ({
@@ -46,7 +48,12 @@ export const useUI = create<UIState>()(() => ({
   tool: 'select',
   zoom: 24,
   scriptDock: false,
+  pasteSceneId: null,
 }))
+
+export function openPasteScene(sceneId: string) {
+  useUI.setState({ modal: 'pasteScene', pasteSceneId: sceneId })
+}
 
 export function zoomBy(f: number) {
   useUI.setState((s) => ({ zoom: Math.min(200, Math.max(4, s.zoom * f)) }))

@@ -68,6 +68,7 @@ Puedes usar, copiar, cambiar y compartir IKRAL Studio. Si lo modificas y lo ofre
 
 Cada escena se crea con todos sus campos: acción, diálogos, cámara, sonido, instrucciones de generación, pronunciaciones, «Números en letras» y **campos extra**.
 
+- **Pegar escena de IA** (📋 en cada escena y en el panel izquierdo): si te faltó una escena, pídele a la IA solo esa y pega el JSON; llena solo sus textos, sin tocar imágenes, videos ni música.
 - **Campos extra**: en cualquier escena, «Campos extra → Agregar campo» (ej. Vestuario, Emoción). Aparecen en todas las escenas, en el guion completo y en el prompt; la IA también los llena.
 - Validación estricta con Zod: si algo está mal, se dice en qué escena y campo, y **no se cambia nada**.
 - El JSON solo lleva texto. No acepta rutas de archivos, IDs ni campos desconocidos; nunca se interpreta como HTML ni código. Límites: 1 MB, 500 escenas, 5000 caracteres por campo, 20 campos extra.

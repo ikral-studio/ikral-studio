@@ -136,6 +136,41 @@ export function parseScriptText(raw: string): ParseResult {
   return { ok: false, errors }
 }
 
+export type SceneParseResult =
+  | { ok: true; scene: ImportedScene; customFields: string[]; hasDuration: boolean }
+  | { ok: false; errors: string[] }
+
+/**
+ * Para «Pegar escena de IA»: acepta el formato completo con UNA escena,
+ * o solo el objeto de la escena ({ title, plannedDuration, script }).
+ */
+export function parseSceneText(raw: string): SceneParseResult {
+  if (raw.length > LIMITS.maxChars) return { ok: false, errors: ['El texto es demasiado grande (máximo 1 MB).'] }
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start < 0 || end <= start) return { ok: false, errors: ['No encontré JSON. Pega solo lo que devolvió la IA.'] }
+  let json: unknown
+  try {
+    json = JSON.parse(raw.slice(start, end + 1))
+  } catch (e) {
+    return { ok: false, errors: [`El JSON está mal escrito: ${e instanceof Error ? e.message : String(e)}`] }
+  }
+  if (json && typeof json === 'object' && 'format' in json) {
+    const r = parseScriptText(JSON.stringify(json))
+    if (!r.ok) return r
+    if (r.data.scenes.length !== 1)
+      return { ok: false, errors: [`El JSON trae ${r.data.scenes.length} escenas. Aquí va solo una (para varias usa «Importar guion»).`] }
+    const hasDuration = !!(json as { scenes?: { plannedDuration?: unknown }[] }).scenes?.[0]?.plannedDuration
+    return { ok: true, scene: r.data.scenes[0], customFields: r.data.project.customFields, hasDuration }
+  }
+  const r = scene.safeParse(json)
+  if (!r.success) {
+    const wrapped = parseScriptText(JSON.stringify({ format: SCRIPT_FORMAT, version: SCRIPT_VERSION, project: { title: 'x' }, scenes: [json] }))
+    return wrapped.ok ? { ok: false, errors: ['JSON no válido'] } : { ok: false, errors: wrapped.errors }
+  }
+  return { ok: true, scene: r.data, customFields: [], hasDuration: 'plannedDuration' in (json as object) }
+}
+
 /** Instrucciones para pegar en ChatGPT, Claude u otra IA. */
 export function buildAIPrompt(project?: { title: string; aspectRatio: string; customFields?: string[] }): string {
   const fields = project?.customFields?.length ? project.customFields : null
@@ -170,6 +205,7 @@ Reglas del formato:
   }
 - Escribe los nombres comerciales correctamente (por ejemplo "TuApp.digital"); la pronunciación va solo en "pronunciations".
 - NO inventes rutas de imágenes, archivos, enlaces, identificadores internos ni referencias a medios. No agregues campos que no estén aquí.
+- Si más adelante te pido UNA sola escena (por ejemplo, una que faltó), responde con este mismo formato completo pero con un solo elemento en "scenes".
 
 Ejemplo válido:
 ${JSON.stringify(example, null, 2)}

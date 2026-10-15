@@ -419,3 +419,30 @@ test('extra · guion en columna alta', async ({ page }) => {
   await page.getByLabel('Cerrar panel del guion').click()
   await expect(dock).toHaveCount(0)
 })
+
+test('extra · pegar UNA escena de IA en una escena que faltaba', async ({ page }) => {
+  const full = JSON.parse(await readFile(fx('guion-ia.json'), 'utf8'))
+  full.scenes = [full.scenes[1]]
+  await freshProject(page, 'Falta una')
+  await addScenes(page, 3)
+  await importVideo(page, 3, 'clip1.mp4')
+  // la escena 3 (con video) se mueve a la posición 2
+  const handle = page.getByRole('button', { name: /Mover escena 3/ })
+  await handle.focus()
+  await page.keyboard.press('Space')
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('Space')
+  await card(page, 2).getByRole('button', { name: 'Pegar escena de IA' }).click()
+  await page.getByLabel('JSON de la escena').fill(JSON.stringify(full))
+  await page.getByRole('button', { name: 'Validar y previsualizar' }).click()
+  await expect(page.getByText('La escena es válida')).toBeVisible()
+  await page.getByRole('button', { name: 'Actualizar escena 02' }).click()
+  await expect(card(page, 2).getByLabel('Nombre de la escena')).toHaveValue('El descubrimiento')
+  await expect(page.locator('[data-script-id]').nth(1)).toContainText('Joven: ¡Mire! Con TuApp.digital llegan 25 pedidos.')
+  await expect(page.locator('[aria-label="Video escena 2, 3 s"]')).toBeVisible()
+  // desde el panel izquierdo también; JSON con 2 escenas se rechaza
+  await page.getByRole('button', { name: 'Pegar escena de IA en la escena 1' }).click({ force: true })
+  await page.getByLabel('JSON de la escena').fill(await readFile(fx('guion-ia.json'), 'utf8'))
+  await page.getByRole('button', { name: 'Validar y previsualizar' }).click()
+  await expect(page.getByRole('alert')).toContainText('trae 2 escenas')
+})

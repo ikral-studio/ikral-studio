@@ -81,3 +81,39 @@ describe('importar guion', () => {
     expect(st().project!.sceneIds.length).toBe(before)
   })
 })
+
+import { parseSceneText } from '../features/script-exchange/schema'
+describe('pegar una escena', () => {
+  const one = JSON.parse(sample)
+  one.scenes = [one.scenes[1]]
+  it('acepta el formato con una escena o solo el objeto de la escena', () => {
+    const a = parseSceneText(JSON.stringify(one))
+    expect(a.ok && a.scene.title).toBe('El descubrimiento')
+    const b = parseSceneText('```json\n' + JSON.stringify(one.scenes[0]) + '\n```')
+    expect(b.ok && b.scene.script.dialogue).toContain('¡Mire!')
+    const c = parseSceneText(JSON.stringify({ title: 'Sin duración', script: { action: 'x' } }))
+    expect(c.ok && c.hasDuration).toBe(false)
+  })
+  it('rechaza varias escenas y errores de campo', () => {
+    const r = parseSceneText(sample)
+    expect(r.ok).toBe(false)
+    expect((r as { errors: string[] }).errors[0]).toMatch(/trae 2 escenas/)
+    const bad = parseSceneText(JSON.stringify({ title: 'x', script: { dialogue: 3 } }))
+    expect((bad as { errors: string[] }).errors.join()).toMatch(/Diálogos/)
+  })
+  it('llena solo los textos y deja el video', async () => {
+    const st = useProject.getState
+    const id = st().addScene()!
+    st().addVideoVersion(id, { mediaId: 'vid2', duration: 5 })
+    const r = parseSceneText(JSON.stringify(one))
+    if (!r.ok) throw new Error()
+    st().applySceneFromAI(id, r.scene, { customFields: r.customFields, keepDuration: false })
+    const s = st().scenes[id]
+    expect(s.title).toBe('El descubrimiento')
+    expect(s.plannedDuration).toBe(7)
+    expect(s.script.cameraDirection).toContain('Joven a la izquierda')
+    expect(s.videoVersions[0].mediaId).toBe('vid2')
+    st().undo()
+    expect(st().scenes[id].title).not.toBe('El descubrimiento')
+  })
+})

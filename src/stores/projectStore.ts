@@ -1,7 +1,7 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
 import type { AspectRatio, AudioTrack, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
-import type { ScriptFile } from '../features/script-exchange/schema'
+import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
 import { cloneScene, createProjectData, createScene, defaultTracks } from '../features/scene-management/factory'
@@ -60,6 +60,8 @@ interface State {
   updateExtra: (sceneId: string, fieldId: string, value: string) => void
   /** Importa un guion de IA: proyecto nuevo o al final del actual. Todo o nada; un solo paso de deshacer. */
   importScript: (data: ScriptFile, mode: 'new' | 'append') => Promise<number>
+  /** Llena los textos de UNA escena con lo que dio la IA. Imágenes, videos y música no se tocan. */
+  applySceneFromAI: (sceneId: string, data: ImportedScene, opts: { customFields: string[]; keepDuration: boolean }) => void
 
   addAudioClip: (trackId: string, clip: { mediaId: string; name: string; start: number; duration: number; sourceDuration?: number }) => void
   moveAudioClip: (trackId: string, clipId: string, start: number) => void
@@ -596,6 +598,46 @@ export const useProject = create<State>()((set, get) => {
       set({ selectedSceneId: newScenes[0]?.id ?? get().selectedSceneId })
       await get().flushSave()
       return newScenes.length
+    },
+
+    applySceneFromAI(sceneId, data, opts) {
+      const cur = snap()
+      const scene = cur?.scenes[sceneId]
+      if (!cur || !scene) return
+      let fields: CustomField[] = [...(cur.project.customFields ?? [])]
+      const byName = new Map(fields.map((f) => [f.name.toLowerCase(), f]))
+      const fieldFor = (name: string) => {
+        const k = name.trim().toLowerCase()
+        let f = byName.get(k)
+        if (!f) {
+          f = { id: uid('cf_'), name: name.trim() }
+          byName.set(k, f)
+          fields = [...fields, f]
+        }
+        return f
+      }
+      opts.customFields.forEach(fieldFor)
+      const extras: Record<string, string> = { ...(scene.script.extras ?? {}) }
+      for (const [name, value] of Object.entries(data.script.extras ?? {})) extras[fieldFor(name).id] = value
+      const updated: Scene = {
+        ...scene,
+        title: data.title,
+        plannedDuration: opts.keepDuration ? scene.plannedDuration : data.plannedDuration,
+        script: {
+          ...scene.script,
+          action: data.script.action,
+          dialogue: data.script.dialogue,
+          cameraDirection: data.script.cameraDirection,
+          soundDirection: data.script.soundDirection,
+          generationPrompt: data.script.generationPrompt,
+          pronunciations: data.script.pronunciations.map((p) => ({ id: uid('pr_'), written: p.written, spoken: p.spoken })),
+          numbersToWords: data.script.numbersToWords,
+          extras,
+        },
+        updatedAt: nowIso(),
+      }
+      updated.status = deriveStatus(updated)
+      commit({ project: { ...cur.project, customFields: fields }, scenes: { ...cur.scenes, [sceneId]: updated } })
     },
 
     undo() {

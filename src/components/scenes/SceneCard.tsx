@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { CheckCheck, ChevronDown, ChevronUp, Clock3, Copy, Film, ImageIcon, Play, Trash2 } from 'lucide-react'
+import { CheckCheck, ChevronDown, ChevronUp, ClipboardPaste, Clock3, Copy, Film, ImageIcon, Play, Trash2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { useUI } from '../../stores/uiStore'
+import { openPasteScene, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
 import { activeVideo } from '../../features/script-sync/derive'
 import { confirmDeleteScene, duplicateAndFocus, selectScene } from '../../features/scene-management/actions'
@@ -114,6 +114,9 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
             aria-label="Marcar como revisada"
           >
             <CheckCheck size={16} />
+          </button>
+          <button className="icon-btn hover:!text-[#c4b5fd]" onClick={() => openPasteScene(id)} title="Pegar escena de IA (JSON de ChatGPT o Claude)" aria-label="Pegar escena de IA">
+            <ClipboardPaste size={15} />
           </button>
           <button className="icon-btn" onClick={() => duplicateAndFocus(id)} title="Duplicar" aria-label="Duplicar escena">
             <Copy size={15} />
