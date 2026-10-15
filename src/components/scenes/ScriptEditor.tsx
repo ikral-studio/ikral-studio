@@ -4,6 +4,8 @@ import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
 import { CameraSummary } from './CameraLibrary'
 import { SuggestChip } from './SceneCard'
+import { isDesktop } from '../../database/db'
+import { requestImages } from '../../features/chat/requests'
 import { generationPrompt, sceneScriptText } from '../../features/script-sync/derive'
 import { copyToClipboard } from '../../utils'
 import type { CustomField, ScriptField } from '../../types'
@@ -51,6 +53,11 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
           <button className="btn btn-sm !border-sel/60 !text-[#bfdbfe]" onClick={copyPrompt}>
             <Sparkles size={13} /> Copiar prompt de generación
           </button>
+          {isDesktop() && (
+            <button className="btn btn-sm !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void requestImages([sceneId])} title="Claude genera con ChatGPT la imagen inicial y final que falten">
+              <Sparkles size={13} /> Generar imágenes
+            </button>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">

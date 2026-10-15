@@ -308,6 +308,8 @@ export interface ChatMessage {
   at: string
   sceneId?: string
   sceneLabel?: string
+  /** Pedido hecho con un botón (por ejemplo, generar imágenes). */
+  request?: { type: 'generate-images'; sceneIds: string[] }
 }
 interface ClaudeChatFile {
   messages: ChatMessage[]

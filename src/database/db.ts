@@ -23,6 +23,8 @@ export interface ChatMessage {
   at: string
   sceneId?: string
   sceneLabel?: string
+  /** Pedido hecho con un botón (por ejemplo, generar imágenes). */
+  request?: { type: 'generate-images'; sceneIds: string[] }
 }
 
 let backendPromise: Promise<Backend> | null = null

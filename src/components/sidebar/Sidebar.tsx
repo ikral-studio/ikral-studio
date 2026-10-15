@@ -15,6 +15,8 @@ import { useProject } from '../../stores/projectStore'
 import { openPasteScene, toast, useUI } from '../../stores/uiStore'
 import { buildAIPrompt } from '../../features/script-exchange/schema'
 import { useFileDrop } from '../../hooks/useFileDrop'
+import { isDesktop } from '../../database/db'
+import { requestImages, scenesMissingImages } from '../../features/chat/requests'
 import { copyToClipboard } from '../../utils'
 import { useMediaUrl } from '../../features/media-library/media'
 import { effectiveDuration } from '../../features/script-sync/derive'
@@ -137,6 +139,11 @@ export function Sidebar() {
           <Sparkles size={14} className="shrink-0 text-[#c4b5fd]" /> Copiar formato para IA
         </button>
         <ImportScriptButton />
+        {isDesktop() && (
+          <button className="btn !h-9" onClick={() => void requestImages(scenesMissingImages())} title="Claude genera con ChatGPT las imágenes que faltan en todo el proyecto">
+            <Sparkles size={14} className="shrink-0 text-[#ddd6fe]" /> Generar imágenes faltantes
+          </button>
+        )}
       </div>
       <div className="flex items-center justify-between px-1 pt-2">
         <span className="eyebrow">Escenas</span>
