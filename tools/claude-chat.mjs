@@ -8,6 +8,7 @@
 // Si no das carpeta, usa el proyecto modificado más recientemente en Documentos/IKRAL Studio/Proyectos.
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 
 const ROOT = join(homedir(), 'Documents', 'IKRAL Studio', 'Proyectos')
@@ -31,6 +32,15 @@ const read = (f, d) => {
 const write = (f, data) => {
   writeFileSync(f + '.tmp', JSON.stringify(data, null, 2))
   renameSync(f + '.tmp', f)
+}
+
+/** Si la lectura en voz alta (/hablar) está prendida en esta Mac, también lee la respuesta del chat. */
+function speak(text) {
+  const script = join(homedir(), '.claude', 'hablar-say.sh')
+  if (!existsSync(script) || !existsSync(join(homedir(), '.claude', 'hablar-on'))) return
+  const child = spawn('bash', [script], { detached: true, stdio: ['pipe', 'ignore', 'ignore'] })
+  child.stdin.end(JSON.stringify({ last_assistant_message: text }))
+  child.unref()
 }
 
 const allProjects = () => readdirSync(ROOT).map((n) => join(ROOT, n)).filter((d) => existsSync(join(d, 'proyecto.json')))
@@ -81,6 +91,7 @@ if (cmd === 'escuchar') {
   const c = claude()
   const msg = { id: 'msg_' + Date.now().toString(36), from: 'claude', text: arg1 || '', at: new Date().toISOString() }
   write(claudeFile, { ...c, messages: [...c.messages, msg], working: undefined, lastSeen: new Date().toISOString() })
+  speak(msg.text)
   console.log('respondido')
 } else {
   console.log('Uso: escuchar | trabajando "texto" | responder "texto"  [carpeta]')
