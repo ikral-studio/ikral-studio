@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, Film, Loader2, Maximize2, Plus, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Film, Loader2, Maximize2, Plus, RefreshCw, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -7,7 +7,7 @@ import { importFiles } from '../../features/scene-management/actions'
 import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { formatDuration } from '../../utils'
 import { downloadMedia, orientationMismatch } from './MediaSlot'
-import { videoRange } from '../../features/script-sync/derive'
+import { placedClips, versionLength } from '../../features/script-sync/derive'
 import type { MediaAsset, VideoVersion } from '../../types'
 
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov'
@@ -47,18 +47,24 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
   const aspect = useProject((s) => s.project?.aspectRatio ?? '16:9')
   const { addVideoVersion, replaceActiveVideo, setActiveVersion, removeVersion } = useProject.getState()
   const active = versions?.find((v) => v.id === activeId)
-  const url = useMediaUrl(active?.mediaId)
+  const clips = active ? placedClips(active) : []
+  const [clipIdx, setClipIdx] = useState(0)
+  const shown = clips[Math.min(clipIdx, Math.max(0, clips.length - 1))]
+  const url = useMediaUrl(shown?.clip.mediaId)
   const [busy, setBusy] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
 
-  const importAs = async (files: File[], mode: 'new' | 'replace') => {
+  const importAs = async (files: File[], mode: 'new' | 'replace' | 'clip') => {
     if (!files[0]) return
     setBusy(true)
     const [asset] = await importFiles([files[0]], 'video')
     setBusy(false)
     if (!asset) return
     if (mode === 'replace') replaceActiveVideo(sceneId, toVersion(asset))
-    else addVideoVersion(sceneId, toVersion(asset))
+    else if (mode === 'clip') {
+      useProject.getState().addClip(sceneId, toVersion(asset))
+      setClipIdx(clips.length)
+    } else addVideoVersion(sceneId, toVersion(asset))
     toast(`Video guardado · ${formatDuration(asset.duration ?? 0)}`)
   }
   const drop = useFileDrop((f) => importAs(f, 'new'))
@@ -81,10 +87,10 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
         <span className="text-[13px] font-semibold">Video generado</span>
         {active && (
           <span className="text-[11px] tabular-nums text-ink-3">
-            {formatDuration(videoRange(active).length)}
-            {videoRange(active).length < active.duration - 0.01 && ` (recortado de ${formatDuration(active.duration)})`}
+            {formatDuration(versionLength(active))}
+            {clips.length > 1 && ` en ${clips.length} videos`}
             {active.width ? ` · ${active.width}×${active.height}` : ''}
-            {Math.abs(videoRange(active).length - planned) >= 0.5 && ` · planeado ${formatDuration(planned)}`}
+            {Math.abs(versionLength(active) - planned) >= 0.5 && ` · planeado ${formatDuration(planned)}`}
           </span>
         )}
       </div>
@@ -107,6 +113,35 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
           ))}
           <button className="btn btn-sm btn-ghost" onClick={async () => importAs(await pickFiles(VIDEO_ACCEPT), 'new')}>
             <Plus size={13} /> Nueva versión
+          </button>
+        </div>
+      )}
+
+      {active && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-[#0f1828] p-1.5" aria-label="Videos de esta escena">
+          <span className="label px-1">Videos de la escena:</span>
+          {clips.map((c, i) => (
+            <span key={c.clip.id} className={`flex items-center rounded-lg border ${i === clipIdx ? 'border-sel bg-sel/15' : 'border-line'}`}>
+              <button className="px-2 py-1 text-[11.5px] tabular-nums" onClick={() => setClipIdx(i)} aria-pressed={i === clipIdx} title="Ver este video">
+                {i + 1} · {formatDuration(c.length)}
+              </button>
+              {clips.length > 1 && (
+                <>
+                  <button className="icon-btn sm !h-6 !w-5" disabled={i === 0} onClick={() => { useProject.getState().moveClip(sceneId, c.clip.id, -1); setClipIdx(i - 1) }} aria-label={`Mover video ${i + 1} antes`}>
+                    <ChevronLeft size={12} />
+                  </button>
+                  <button className="icon-btn sm !h-6 !w-5" disabled={i === clips.length - 1} onClick={() => { useProject.getState().moveClip(sceneId, c.clip.id, 1); setClipIdx(i + 1) }} aria-label={`Mover video ${i + 1} después`}>
+                    <ChevronRight size={12} />
+                  </button>
+                  <button className="icon-btn sm !h-6 !w-5 hover:!text-bad" onClick={() => { useProject.getState().removeClip(sceneId, c.clip.id); setClipIdx(0) }} aria-label={`Quitar video ${i + 1} de la escena`}>
+                    <X size={12} />
+                  </button>
+                </>
+              )}
+            </span>
+          ))}
+          <button className="btn btn-sm !border-[#38bdd8]/50 !text-[#cdeff7]" onClick={async () => importAs(await pickFiles(VIDEO_ACCEPT), 'clip')} title="Agrega otro video que sigue al anterior en esta misma escena">
+            <Plus size={13} /> Otro video
           </button>
         </div>
       )}
@@ -135,13 +170,13 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
       {active && (
         <>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <button className="btn btn-sm" onClick={() => useUI.setState({ lightbox: { mediaId: active.mediaId, kind: 'video', title: fileBase } })}>
+            <button className="btn btn-sm" onClick={() => useUI.setState({ lightbox: { mediaId: shown?.clip.mediaId ?? active.mediaId, kind: 'video', title: fileBase } })}>
               <Maximize2 size={13} /> Ampliar
             </button>
             <button className="btn btn-sm" onClick={async () => importAs(await pickFiles(VIDEO_ACCEPT), 'replace')}>
               <RefreshCw size={13} /> Reemplazar
             </button>
-            <button className="btn btn-sm" onClick={() => downloadMedia(active.mediaId, fileBase)}>
+            <button className="btn btn-sm" onClick={() => downloadMedia(shown?.clip.mediaId ?? active.mediaId, fileBase)}>
               <Download size={13} /> Descargar
             </button>
             <button className={`btn btn-sm ${showMeta ? '!border-sel' : ''}`} onClick={() => setShowMeta((v) => !v)} aria-expanded={showMeta}>

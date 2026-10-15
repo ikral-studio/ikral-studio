@@ -5,7 +5,7 @@ import type { ImportedScene, ScriptFile } from '../features/script-exchange/sche
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
 import { cloneScene, createProjectData, createScene, defaultTracks } from '../features/scene-management/factory'
-import { deriveStatus } from '../features/script-sync/derive'
+import { clipAt, deriveStatus, placedClips, versionClips, withClips } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -78,6 +78,10 @@ interface State {
   /** Parte la escena en dos en el segundo local t. Devuelve el id de la parte 2. */
   splitSceneAt: (sceneId: string, localT: number) => string | null
   trimVideo: (sceneId: string, edge: 'left' | 'right', fileTime: number) => void
+  /** Otro video que sigue al anterior dentro de la misma escena (versión activa). */
+  addClip: (sceneId: string, clip: { mediaId: string; duration: number; width?: number; height?: number }) => void
+  removeClip: (sceneId: string, clipId: string) => void
+  moveClip: (sceneId: string, clipId: string, dir: -1 | 1) => void
 
   undo: () => void
   redo: () => void
@@ -569,12 +573,20 @@ export const useProject = create<State>()((set, get) => {
       second.title = `${scene.title} (parte 2)`
       const first: Scene = { ...scene, updatedAt: nowIso() }
       if (v) {
-        const from = Math.max(0, v.trimIn ?? 0)
-        const to = Math.min(v.duration, v.trimOut ?? v.duration)
-        const cut = from + localT
-        if (cut < from + 0.1 || cut > to - 0.1) return null
-        first.videoVersions = scene.videoVersions.map((x) => (x.id === v.id ? { ...x, trimOut: cut } : x))
-        second.videoVersions = second.videoVersions.map((x) => (x.id === second.activeVideoVersionId ? { ...x, trimIn: cut, trimOut: to } : x))
+        // Con varios videos: la parte 1 se queda con los videos antes del corte y la parte 2 con los de después.
+        const at = clipAt(v, localT)
+        const cut = at.from + (localT - at.start)
+        const all = placedClips(v)
+        const total = all.reduce((a, p) => a + p.length, 0)
+        if (localT < 0.1 || localT > total - 0.1) return null
+        const before = all.slice(0, at.index).map((p) => p.clip)
+        const after = all.slice(at.index + 1).map((p) => p.clip)
+        const cutClip = at.clip
+        const firstClips = cut - at.from >= 0.1 ? [...before, { ...cutClip, trimOut: cut }] : before
+        const secondClips = at.to - cut >= 0.1 ? [{ ...cutClip, id: uid('vc_'), trimIn: cut, trimOut: at.to }, ...after] : after
+        if (!firstClips.length || !secondClips.length) return null
+        first.videoVersions = scene.videoVersions.map((x) => (x.id === v.id ? withClips(x, firstClips) : x))
+        second.videoVersions = second.videoVersions.map((x) => (x.id === second.activeVideoVersionId ? withClips(x, secondClips) : x))
       } else {
         if (localT < 0.5 || localT > scene.plannedDuration - 0.5) return null
         second.plannedDuration = Math.round((scene.plannedDuration - localT) * 10) / 10
@@ -595,17 +607,56 @@ export const useProject = create<State>()((set, get) => {
           ...s,
           videoVersions: s.videoVersions.map((v) => {
             if (v.id !== s.activeVideoVersionId) return v
-            const from = v.trimIn ?? 0
-            const to = v.trimOut ?? v.duration
+            // Orilla izquierda = primer video; orilla derecha = último video.
+            const clips = versionClips(v)
+            const i = edge === 'left' ? 0 : clips.length - 1
+            const c = clips[i]
+            const from = c.trimIn ?? 0
+            const to = c.trimOut ?? c.duration
             const r = (x: number) => Math.round(x * 100) / 100
-            return edge === 'left'
-              ? { ...v, trimIn: r(clamp(fileTime, 0, to - 0.3)) }
-              : { ...v, trimOut: r(clamp(fileTime, from + 0.3, v.duration)) }
+            clips[i] = edge === 'left' ? { ...c, trimIn: r(clamp(fileTime, 0, to - 0.3)) } : { ...c, trimOut: r(clamp(fileTime, from + 0.3, c.duration)) }
+            return withClips(v, clips)
           }),
         }),
         `vtrim:${sceneId}`,
         400,
       )
+    },
+
+    addClip(sceneId, clip) {
+      patchScene(sceneId, (s) => {
+        const active = s.videoVersions.find((v) => v.id === s.activeVideoVersionId)
+        if (!active) {
+          const version: VideoVersion = { id: uid('vv_'), ...clip, createdAt: nowIso() }
+          return { ...s, videoVersions: [...s.videoVersions, version], activeVideoVersionId: version.id }
+        }
+        const clips = [...versionClips(active), { id: uid('vc_'), ...clip }]
+        return { ...s, videoVersions: s.videoVersions.map((v) => (v.id === active.id ? withClips(v, clips) : v)) }
+      })
+    },
+
+    removeClip(sceneId, clipId) {
+      patchScene(sceneId, (s) => {
+        const active = s.videoVersions.find((v) => v.id === s.activeVideoVersionId)
+        if (!active) return s
+        const clips = versionClips(active).filter((c) => c.id !== clipId)
+        if (!clips.length) return s
+        // Si se quita el primero, el siguiente toma su lugar sin cambiar el id de la versión.
+        return { ...s, videoVersions: s.videoVersions.map((v) => (v.id === active.id ? withClips(v, clips) : v)) }
+      })
+    },
+
+    moveClip(sceneId, clipId, dir) {
+      patchScene(sceneId, (s) => {
+        const active = s.videoVersions.find((v) => v.id === s.activeVideoVersionId)
+        if (!active) return s
+        const clips = versionClips(active)
+        const i = clips.findIndex((c) => c.id === clipId)
+        const j = i + dir
+        if (i < 0 || j < 0 || j >= clips.length) return s
+        ;[clips[i], clips[j]] = [clips[j], clips[i]]
+        return { ...s, videoVersions: s.videoVersions.map((v) => (v.id === active.id ? withClips(v, clips) : v)) }
+      })
     },
 
     addCustomField(name) {

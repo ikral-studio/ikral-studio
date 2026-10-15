@@ -20,6 +20,6 @@ Puedes editar `proyecto.json` mientras la app está abierta: la app detecta el c
 
 - Formato: `{ "format": "ikral-studio-project", "version": 1, "project": {…}, "scenes": [ … ] }`.
 - El orden de las escenas es `project.sceneIds`. Cada escena tiene `id`, `title`, `plannedDuration` y `script` (`action`, `dialogue`, `cameraDirection`, `soundDirection`, `generationPrompt`, `pronunciations`, `numbersToWords`, `camera`, `extras`). Los tipos exactos están en `src/types/index.ts`.
-- Para agregar un archivo: cópialo a `archivos/<id>.<ext>`, agrégalo a `archivos.json` con `{ id, projectId, name, mimeType, size, kind, width?, height?, duration?, createdAt }` y referencia su `id` en la escena (`startImageId`, `endImageId`, o en `videoVersions` con `{ id, mediaId, duration, createdAt }` y `activeVideoVersionId`).
+- Para agregar un archivo: cópialo a `archivos/<id>.<ext>`, agrégalo a `archivos.json` con `{ id, projectId, name, mimeType, size, kind, width?, height?, duration?, createdAt }` y referencia su `id` en la escena (`startImageId`, `endImageId`, o en `videoVersions` con `{ id, mediaId, duration, createdAt }` y `activeVideoVersionId`). Si una escena lleva varios videos seguidos, van en `clips` de la versión (`{ id, mediaId, duration, trimIn?, trimOut? }`).
 - Escribe el JSON completo y válido de una vez (la app escribe con archivo temporal + renombrar; haz lo mismo).
 - No borres archivos: la app limpia sola los que ya nadie usa (y respeta los que usan los respaldos).

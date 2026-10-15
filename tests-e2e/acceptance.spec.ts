@@ -537,3 +537,25 @@ test('extra · soltar el .json sobre «Importar guion»', async ({ page }) => {
   await expect(page.getByText('El guion es válido')).toBeVisible()
   await expect(page.getByRole('dialog')).toContainText('Promo importada')
 })
+
+test('extra · varios videos seguidos en una escena', async ({ page }) => {
+  await freshProject(page, 'Varios videos')
+  await addScenes(page, 1)
+  await importVideo(page, 1, 'clip1.mp4') // 3 s
+  await chooseFile(page, () => card(page, 1).getByRole('button', { name: 'Otro video' }).click(), 'clip3.mp4') // 2 s
+  await expect(page.locator('[aria-label="Video escena 1, 5 s"]')).toBeVisible()
+  await expect(card(page, 1).getByLabel('Videos de esta escena')).toContainText('2 · 2 s')
+  const preview = page.locator('[aria-label="Vista previa"]')
+  await page.locator('[aria-label="Línea de tiempo"]').getByRole('switch').click() // loop off
+  await preview.getByRole('button', { name: 'Reproducir' }).click()
+  await page.waitForTimeout(4000)
+  expect(await seconds(page)).toBeGreaterThanOrEqual(3) // ya va en el segundo video, sin saltar de escena
+  await expect(preview.getByRole('button', { name: 'Reproducir' })).toBeVisible({ timeout: 4000 })
+  expect(await seconds(page)).toBe(5)
+  const dl = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Exportar edición para editor de video' }).click()
+  const zip = await JSZip.loadAsync(await readFile(await (await dl).path()))
+  const xml = await zip.file('Premiere-DaVinci.xml')!.async('string')
+  expect(xml).toContain('(1/2)')
+  expect(xml).toContain('(2/2)')
+})

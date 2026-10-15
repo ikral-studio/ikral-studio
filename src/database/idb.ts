@@ -120,7 +120,10 @@ export async function collectGarbage(projectId: string, scenes: Scene[], extraUs
     if (s.startImageId) used.add(s.startImageId)
     if (s.endImageId) used.add(s.endImageId)
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
-    s.videoVersions.forEach((v) => used.add(v.mediaId))
+    s.videoVersions.forEach((v) => {
+      used.add(v.mediaId)
+      v.clips?.forEach((c) => used.add(c.mediaId))
+    })
   }
   extraUsed?.forEach((id) => used.add(id))
   // Los respaldos automáticos también cuentan: si se restaura uno, sus archivos deben seguir ahí.
@@ -138,7 +141,10 @@ export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
     if (s.startImageId) used.push(s.startImageId)
     if (s.endImageId) used.push(s.endImageId)
     s.storyboardFrames.forEach((f) => used.push(f.mediaId))
-    s.videoVersions.forEach((v) => used.push(v.mediaId))
+    s.videoVersions.forEach((v) => {
+      used.push(v.mediaId)
+      v.clips?.forEach((c) => used.push(c.mediaId))
+    })
   }
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
   return used

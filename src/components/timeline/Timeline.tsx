@@ -7,7 +7,7 @@ import { useProject } from '../../stores/projectStore'
 import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
 import { useMediaUrl } from '../../features/media-library/media'
-import { locateTime, storyboardMediaIds, totalDuration, videoRange, type Segment } from '../../features/script-sync/derive'
+import { locateTime, placedClips, storyboardMediaIds, totalDuration, type Segment } from '../../features/script-sync/derive'
 import { addSceneAndFocus, selectScene } from '../../features/scene-management/actions'
 import { clamp, formatDuration, formatTime } from '../../utils'
 import { importFiles } from '../../features/scene-management/actions'
@@ -139,13 +139,15 @@ const VideoBlock = memo(function VideoBlock({ seg, w, selected, pps }: { seg: Se
       </div>
     )
   const v = seg.video
-  const range = videoRange(v)
+  const clips = placedClips(v)
+  const firstC = clips[0]
+  const lastC = clips[clips.length - 1]
   const drag = (edge: 'left' | 'right') => (e: React.PointerEvent) => {
     e.stopPropagation()
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     const ox = e.clientX
-    const base = edge === 'left' ? range.from : range.to
+    const base = edge === 'left' ? firstC.from : lastC.to
     const move = (ev: PointerEvent) => useProject.getState().trimVideo(seg.scene.id, edge, base + (ev.clientX - ox) / pps)
     const up = () => {
       window.removeEventListener('pointermove', move)
@@ -154,20 +156,23 @@ const VideoBlock = memo(function VideoBlock({ seg, w, selected, pps }: { seg: Se
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
-  const trimmed = range.from > 0.01 || range.to < v.duration - 0.01
+  const trimmed = firstC.from > 0.01 || lastC.to < lastC.clip.duration - 0.01
   return (
     <div style={{ width: w }} className="relative h-full shrink-0 px-[2px]">
       <EdgeHandle side="left" label={`Estirar el inicio del video de la escena ${seg.index + 1}`} onPointerDown={drag('left')} />
       <EdgeHandle side="right" label={`Estirar el final del video de la escena ${seg.index + 1}`} onPointerDown={drag('right')} />
       <button
         onClick={() => selectScene(seg.scene.id, { seek: true })}
-        title={trimmed ? `Recortado: usa del segundo ${range.from.toFixed(1)} al ${range.to.toFixed(1)} (de ${v.duration.toFixed(1)}) · jala las orillas` : 'Jala las orillas para recortar'}
-        className={`flex h-full w-full items-center gap-1.5 overflow-hidden rounded-lg border pr-2 text-left text-[11px] font-medium text-white ${selected ? 'border-white ring-2 ring-sel-2' : 'border-black/30'}`}
+        title={`${clips.length > 1 ? `${clips.length} videos seguidos · ` : ''}${trimmed ? 'recortado · ' : ''}jala las orillas para recortar`}
+        className={`relative flex h-full w-full items-center gap-1.5 overflow-hidden rounded-lg border pr-2 text-left text-[11px] font-medium text-white ${selected ? 'border-white ring-2 ring-sel-2' : 'border-black/30'}`}
         style={{ background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
         aria-label={`Video escena ${seg.index + 1}, ${formatDuration(seg.duration)}`}
       >
         <div className="h-full w-[52px] shrink-0 bg-black/30">{url && <img src={url} alt="" className="h-full w-full object-cover" />}</div>
-        <span className="truncate">Escena {seg.index + 1} · {formatDuration(seg.duration)}</span>
+        <span className="truncate">Escena {seg.index + 1} · {formatDuration(seg.duration)}{clips.length > 1 ? ` · ${clips.length} videos` : ''}</span>
+        {clips.slice(1).map((c) => (
+          <span key={c.clip.id} className="pointer-events-none absolute bottom-1 top-1 w-[2px] rounded bg-white/70" style={{ left: `${(c.start / seg.duration) * 100}%` }} />
+        ))}
       </button>
     </div>
   )

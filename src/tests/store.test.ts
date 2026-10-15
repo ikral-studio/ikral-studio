@@ -82,3 +82,27 @@ describe('cortar y estirar', () => {
     expect(st().scenes[second].videoVersions[0].trimOut).toBe(8)
   })
 })
+
+import { placedClips, versionLength, clipAt } from '../features/script-sync/derive'
+describe('varios videos en una escena', () => {
+  it('se suman, se reproducen en orden y se cortan bien', () => {
+    const st = useProject.getState
+    const id = st().addScene()!
+    st().addVideoVersion(id, { mediaId: 'a', duration: 4 })
+    st().addClip(id, { mediaId: 'b', duration: 6 })
+    const v = () => st().scenes[id].videoVersions[0]
+    expect(versionLength(v())).toBe(10)
+    expect(clipAt(v(), 5)).toMatchObject({ index: 1, start: 4 })
+    st().moveClip(id, placedClips(v())[1].clip.id, -1)
+    expect(placedClips(v()).map((p) => p.clip.mediaId)).toEqual(['b', 'a'])
+    // estirar: la orilla derecha toca el último video
+    st().trimVideo(id, 'right', 3)
+    expect(versionLength(v())).toBe(9)
+    // cortar a los 7 s: parte 1 = b(6) + 1 s de a; parte 2 = 2 s de a
+    const second = st().splitSceneAt(id, 7)!
+    expect(versionLength(v())).toBeCloseTo(7)
+    expect(versionLength(st().scenes[second].videoVersions[0])).toBeCloseTo(2)
+    st().removeClip(id, placedClips(v())[0].clip.id)
+    expect(placedClips(v()).map((p) => p.clip.mediaId)).toEqual(['a'])
+  })
+})

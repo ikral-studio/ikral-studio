@@ -92,7 +92,20 @@ export interface VideoVersion {
   /** Recorte sin tocar el archivo: segundo de entrada y de salida dentro del video. */
   trimIn?: number
   trimOut?: number
+  /** Videos que siguen al primero dentro de la misma escena (se reproducen uno tras otro). */
+  clips?: VideoClip[]
   createdAt: string
+}
+
+/** Un video dentro de una versión. El primero son los datos de la propia versión. */
+export interface VideoClip {
+  id: string
+  mediaId: string
+  duration: number
+  width?: number
+  height?: number
+  trimIn?: number
+  trimOut?: number
 }
 
 export interface Scene {

@@ -5,7 +5,7 @@
 import JSZip from 'jszip'
 import type { MediaRecord, Project, Scene } from '../../types'
 import { getMediaBlob } from '../media-library/media'
-import { buildSegments, storyboardMediaIds, videoRange } from '../script-sync/derive'
+import { buildSegments, placedClips, storyboardMediaIds } from '../script-sync/derive'
 import { extFromMime, safeFilename } from '../../utils'
 
 export const FPS = 30
@@ -78,11 +78,17 @@ export async function buildNleTimeline(project: Project, scenes: Scene[]): Promi
     const len = fr(seg.end) - start
     const name = `Escena ${seg.index + 1} · ${seg.scene.title}`
     if (seg.video) {
-      const range = videoRange(seg.video)
-      const file = await fileFor(seg.video.mediaId, 'video', seg.video.duration)
-      if (!file) continue
-      video.push({ name, file, start, len, srcIn: fr(range.from), hasAudio: true })
-      audio.push({ name, file, start, len, srcIn: fr(range.from), track: 1 })
+      // Cada video de la escena es un clip seguido del anterior.
+      const parts = placedClips(seg.video)
+      for (const [i, pc] of parts.entries()) {
+        const file = await fileFor(pc.clip.mediaId, 'video', pc.clip.duration)
+        if (!file) continue
+        const cStart = fr(seg.start + pc.start)
+        const cLen = i === parts.length - 1 ? start + len - cStart : fr(seg.start + pc.start + pc.length) - cStart
+        const cname = parts.length > 1 ? `${name} (${i + 1}/${parts.length})` : name
+        video.push({ name: cname, file, start: cStart, len: cLen, srcIn: fr(pc.from), hasAudio: true })
+        audio.push({ name: cname, file, start: cStart, len: cLen, srcIn: fr(pc.from), track: 1 })
+      }
     } else {
       const still = storyboardMediaIds(seg.scene)[0]
       if (!still) continue // hueco

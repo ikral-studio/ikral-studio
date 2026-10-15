@@ -22,7 +22,10 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
     if (s.startImageId) used.add(s.startImageId)
     if (s.endImageId) used.add(s.endImageId)
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
-    s.videoVersions.forEach((v) => used.add(v.mediaId))
+    s.videoVersions.forEach((v) => {
+      used.add(v.mediaId)
+      v.clips?.forEach((c) => used.add(c.mediaId))
+    })
   })
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
   const records = await bulkGetMedia([...used])
@@ -88,7 +91,8 @@ export async function importProjectZip(file: Blob): Promise<string> {
       .map((v) => {
         const nid = uid('vv_')
         vmap.set(v.id, nid)
-        return { ...v, id: nid, mediaId: mediaMap.get(v.mediaId)! }
+        const clips = v.clips?.filter((c) => mediaMap.has(c.mediaId)).map((c) => ({ ...c, id: uid('vc_'), mediaId: mediaMap.get(c.mediaId)! }))
+        return { ...v, id: nid, mediaId: mediaMap.get(v.mediaId)!, clips: clips?.length ? clips : undefined }
       })
     return {
       ...s,

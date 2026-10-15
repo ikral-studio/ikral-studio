@@ -1,6 +1,6 @@
 // Funciones puras: todo lo que se ve en guion maestro, timeline y reproductor
 // se calcula desde las escenas. No hay copias del guion.
-import type { CustomField, Project, Scene, SceneStatus, VideoVersion } from '../../types'
+import type { CustomField, Project, Scene, SceneStatus, VideoClip, VideoVersion } from '../../types'
 import { formatDuration, pad2 } from '../../utils'
 import { numbersToWordsInText } from '../../utils/numberWords'
 import { cameraPrompt, cameraSpanish } from '../camera/camera'
@@ -16,8 +16,53 @@ export function activeVideo(scene: Scene): VideoVersion | undefined {
   return scene.videoVersions.find((v) => v.id === scene.activeVideoVersionId)
 }
 
+/** Todos los videos de una versión, en orden (el primero es la versión misma). */
+export function versionClips(v: VideoVersion): VideoClip[] {
+  return [{ id: v.id, mediaId: v.mediaId, duration: v.duration, width: v.width, height: v.height, trimIn: v.trimIn, trimOut: v.trimOut }, ...(v.clips ?? [])]
+}
+
+/** Vuelve a armar la versión a partir de su lista de videos. */
+export function withClips(v: VideoVersion, clips: VideoClip[]): VideoVersion {
+  const [first, ...rest] = clips
+  // El id de la versión es del primer video; si otro lo traía (por reordenar), recibe uno nuevo.
+  const others = rest.map((c) => (c.id === v.id ? { ...c, id: `vc_${Math.random().toString(36).slice(2, 10)}` } : c))
+  return { ...v, mediaId: first.mediaId, duration: first.duration, width: first.width, height: first.height, trimIn: first.trimIn, trimOut: first.trimOut, clips: others.length ? others : undefined }
+}
+
+export interface PlacedClip {
+  clip: VideoClip
+  index: number
+  /** Dónde empieza dentro de la escena (segundos). */
+  start: number
+  from: number
+  to: number
+  length: number
+}
+
+/** Cada video con su lugar dentro de la escena. */
+export function placedClips(v: VideoVersion): PlacedClip[] {
+  let t = 0
+  return versionClips(v).map((clip, index) => {
+    const r = videoRange(clip)
+    const p = { clip, index, start: t, from: r.from, to: r.to, length: r.length }
+    t += r.length
+    return p
+  })
+}
+
+/** Qué video y en qué segundo, para un instante dentro de la escena. */
+export function clipAt(v: VideoVersion, offset: number): PlacedClip {
+  const list = placedClips(v)
+  return list.find((p) => offset < p.start + p.length) ?? list[list.length - 1]
+}
+
+/** Largo total que usa la versión (todos sus videos, con recortes). */
+export function versionLength(v: VideoVersion): number {
+  return placedClips(v).reduce((a, p) => a + p.length, 0)
+}
+
 /** Tramo del archivo de video que se usa (recorte no destructivo). */
-export function videoRange(v: VideoVersion): { from: number; to: number; length: number } {
+export function videoRange(v: { duration: number; trimIn?: number; trimOut?: number }): { from: number; to: number; length: number } {
   const from = Math.max(0, Math.min(v.trimIn ?? 0, v.duration))
   const to = Math.max(from, Math.min(v.trimOut ?? v.duration, v.duration))
   return { from, to, length: to - from }
@@ -26,7 +71,7 @@ export function videoRange(v: VideoVersion): { from: number; to: number; length:
 /** Duración que ocupa la escena en timeline y reproducción. */
 export function effectiveDuration(scene: Scene): number {
   const v = activeVideo(scene)
-  if (v && v.duration > 0) return Math.max(0.1, videoRange(v).length)
+  if (v && v.duration > 0) return Math.max(0.1, versionLength(v))
   return Math.max(0.5, scene.plannedDuration)
 }
 
