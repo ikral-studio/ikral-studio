@@ -48,3 +48,37 @@ describe('insertar escena', () => {
     expect(st().selectedSceneId).toBe(id)
   })
 })
+
+describe('cortar y estirar', () => {
+  it('cortar música y estirar sus orillas sin pasarse del archivo', () => {
+    const st = useProject.getState
+    const tr = st().project!.audioTracks![0]
+    st().addAudioClip(tr.id, { mediaId: 'm1', name: 'canción', start: 2, duration: 10, sourceDuration: 10 })
+    expect(st().splitAudioAt(5)).toBe(1)
+    const [a, b] = st().project!.audioTracks![0].clips
+    expect([a.start, a.duration, a.offset ?? 0]).toEqual([2, 3, 0])
+    expect([b.start, b.duration, b.offset]).toEqual([5, 7, 3])
+    // estirar la parte 2 hacia la izquierda recupera el audio cortado, no más allá del inicio del archivo
+    st().trimAudioClip(tr.id, b.id, 'left', 0)
+    const b2 = st().project!.audioTracks![0].clips[1]
+    expect([b2.start, b2.offset, b2.duration]).toEqual([2, 0, 10])
+    // estirar a la derecha no pasa del largo del archivo
+    st().trimAudioClip(tr.id, a.id, 'right', 99)
+    expect(st().project!.audioTracks![0].clips[0].duration).toBe(10)
+  })
+  it('partir una escena con video en dos y estirar su recorte', () => {
+    const st = useProject.getState
+    const id = st().addScene()!
+    st().addVideoVersion(id, { mediaId: 'v1', duration: 8 })
+    const second = st().splitSceneAt(id, 3)!
+    const v1 = st().scenes[id].videoVersions[0]
+    const v2 = st().scenes[second].videoVersions[0]
+    expect([v1.trimIn ?? 0, v1.trimOut]).toEqual([0, 3])
+    expect([v2.trimIn, v2.trimOut]).toEqual([3, 8])
+    expect(st().project!.sceneIds.indexOf(second)).toBe(st().project!.sceneIds.indexOf(id) + 1)
+    st().trimVideo(second, 'left', 1)
+    expect(st().scenes[second].videoVersions[0].trimIn).toBe(1)
+    st().trimVideo(second, 'right', 50)
+    expect(st().scenes[second].videoVersions[0].trimOut).toBe(8)
+  })
+})

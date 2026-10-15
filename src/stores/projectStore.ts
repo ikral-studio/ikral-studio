@@ -54,10 +54,16 @@ interface State {
   removePronunciation: (id: string, pid: string) => void
   setNumbersToWords: (id: string, on: boolean) => void
 
-  addAudioClip: (trackId: string, clip: { mediaId: string; name: string; start: number; duration: number }) => void
+  addAudioClip: (trackId: string, clip: { mediaId: string; name: string; start: number; duration: number; sourceDuration?: number }) => void
   moveAudioClip: (trackId: string, clipId: string, start: number) => void
   removeAudioClip: (trackId: string, clipId: string) => void
   updateTrack: (trackId: string, patch: Partial<Pick<AudioTrack, 'volume' | 'muted'>>) => void
+  /** Corta todos los clips de música que pasan por el segundo t. Devuelve cuántos cortó. */
+  splitAudioAt: (t: number) => number
+  trimAudioClip: (trackId: string, clipId: string, edge: 'left' | 'right', time: number) => void
+  /** Parte la escena en dos en el segundo local t. Devuelve el id de la parte 2. */
+  splitSceneAt: (sceneId: string, localT: number) => string | null
+  trimVideo: (sceneId: string, edge: 'left' | 'right', fileTime: number) => void
 
   undo: () => void
   redo: () => void
@@ -407,6 +413,103 @@ export const useProject = create<State>()((set, get) => {
 
     updateTrack(trackId, patch) {
       patchTracks(trackId, (t) => ({ ...t, ...patch }), 'volume' in patch ? `vol:${trackId}` : undefined)
+    },
+
+    splitAudioAt(t) {
+      const cur = snap()
+      if (!cur) return 0
+      let n = 0
+      const audioTracks = (cur.project.audioTracks ?? []).map((tr) => ({
+        ...tr,
+        clips: tr.clips.flatMap((c) => {
+          const cut = t - c.start
+          if (cut < 0.1 || cut > c.duration - 0.1) return [c]
+          n++
+          const offset = c.offset ?? 0
+          const sourceDuration = c.sourceDuration ?? offset + c.duration
+          return [
+            { ...c, duration: cut, sourceDuration },
+            { ...c, id: uid('ac_'), start: t, offset: offset + cut, duration: c.duration - cut, sourceDuration },
+          ]
+        }),
+      }))
+      if (n) commit({ ...cur, project: { ...cur.project, audioTracks } })
+      return n
+    },
+
+    trimAudioClip(trackId, clipId, edge, time) {
+      patchTracks(
+        trackId,
+        (tr) => ({
+          ...tr,
+          clips: tr.clips.map((c) => {
+            if (c.id !== clipId) return c
+            const offset = c.offset ?? 0
+            const src = c.sourceDuration ?? offset + c.duration
+            const end = c.start + c.duration
+            const r = (x: number) => Math.round(x * 100) / 100
+            if (edge === 'right') {
+              const maxEnd = c.start + (src - offset)
+              const newEnd = clamp(time, c.start + 0.2, maxEnd)
+              return { ...c, duration: r(newEnd - c.start), sourceDuration: src }
+            }
+            // izquierda: mover inicio y offset juntos para que el audio no se desfase
+            const minStart = Math.max(0, c.start - offset)
+            const newStart = clamp(time, minStart, end - 0.2)
+            const d = newStart - c.start
+            return { ...c, start: r(newStart), offset: r(offset + d), duration: r(end - newStart), sourceDuration: src }
+          }),
+        }),
+        `trim:${clipId}`,
+      )
+    },
+
+    splitSceneAt(sceneId, localT) {
+      const cur = snap()
+      const scene = cur?.scenes[sceneId]
+      if (!cur || !scene) return null
+      const v = scene.videoVersions.find((x) => x.id === scene.activeVideoVersionId)
+      const second = cloneScene(scene)
+      second.title = `${scene.title} (parte 2)`
+      const first: Scene = { ...scene, updatedAt: nowIso() }
+      if (v) {
+        const from = Math.max(0, v.trimIn ?? 0)
+        const to = Math.min(v.duration, v.trimOut ?? v.duration)
+        const cut = from + localT
+        if (cut < from + 0.1 || cut > to - 0.1) return null
+        first.videoVersions = scene.videoVersions.map((x) => (x.id === v.id ? { ...x, trimOut: cut } : x))
+        second.videoVersions = second.videoVersions.map((x) => (x.id === second.activeVideoVersionId ? { ...x, trimIn: cut, trimOut: to } : x))
+      } else {
+        if (localT < 0.5 || localT > scene.plannedDuration - 0.5) return null
+        second.plannedDuration = Math.round((scene.plannedDuration - localT) * 10) / 10
+        first.plannedDuration = Math.round(localT * 10) / 10
+      }
+      first.status = deriveStatus(first)
+      second.status = deriveStatus(second)
+      const ids = [...cur.project.sceneIds]
+      ids.splice(ids.indexOf(sceneId) + 1, 0, second.id)
+      commit({ project: { ...cur.project, sceneIds: ids }, scenes: { ...cur.scenes, [sceneId]: first, [second.id]: second } })
+      return second.id
+    },
+
+    trimVideo(sceneId, edge, fileTime) {
+      patchScene(
+        sceneId,
+        (s) => ({
+          ...s,
+          videoVersions: s.videoVersions.map((v) => {
+            if (v.id !== s.activeVideoVersionId) return v
+            const from = v.trimIn ?? 0
+            const to = v.trimOut ?? v.duration
+            const r = (x: number) => Math.round(x * 100) / 100
+            return edge === 'left'
+              ? { ...v, trimIn: r(clamp(fileTime, 0, to - 0.3)) }
+              : { ...v, trimOut: r(clamp(fileTime, from + 0.3, v.duration)) }
+          }),
+        }),
+        `vtrim:${sceneId}`,
+        400,
+      )
     },
 
     undo() {

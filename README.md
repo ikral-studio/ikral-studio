@@ -30,6 +30,7 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Respaldo: `.zip` con `project.json` + archivos reales (`src/features/projects/backup.ts`).
 - Reordenar: dnd-kit (ratón y teclado). Insertar escena entre dos.
 - Música: 2 pistas (MP3, M4A, WAV), clips que se mueven en el tiempo, volumen y silencio por pista; suenan sincronizadas en la vista previa.
+- Cortar video (parte la escena en 2) y cortar música en el cabezal; orillas para estirar o encoger clips sin dañar el archivo.
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
 
 ## Limitaciones de esta versión

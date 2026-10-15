@@ -7,6 +7,7 @@ import { importFiles } from '../../features/scene-management/actions'
 import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { formatDuration } from '../../utils'
 import { downloadMedia, orientationMismatch } from './MediaSlot'
+import { videoRange } from '../../features/script-sync/derive'
 import type { MediaAsset, VideoVersion } from '../../types'
 
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov'
@@ -80,9 +81,10 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
         <span className="text-[13px] font-semibold">Video generado</span>
         {active && (
           <span className="text-[11px] tabular-nums text-ink-3">
-            {formatDuration(active.duration)}
+            {formatDuration(videoRange(active).length)}
+            {videoRange(active).length < active.duration - 0.01 && ` (recortado de ${formatDuration(active.duration)})`}
             {active.width ? ` · ${active.width}×${active.height}` : ''}
-            {Math.abs(active.duration - planned) >= 0.5 && ` · planeado ${formatDuration(planned)}`}
+            {Math.abs(videoRange(active).length - planned) >= 0.5 && ` · planeado ${formatDuration(planned)}`}
           </span>
         )}
       </div>

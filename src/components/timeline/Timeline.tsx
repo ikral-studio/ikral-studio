@@ -2,12 +2,12 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, ImageIcon, Maximize2, Minus, Music, Pause, Play, Plus, Repeat, Volume2, VolumeX, X } from 'lucide-react'
+import { Film, ImageIcon, Maximize2, Minus, Music, Pause, Play, Plus, Repeat, Scissors, Volume2, VolumeX, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
 import { useMediaUrl } from '../../features/media-library/media'
-import { storyboardMediaIds, totalDuration, type Segment } from '../../features/script-sync/derive'
+import { locateTime, storyboardMediaIds, totalDuration, videoRange, type Segment } from '../../features/script-sync/derive'
 import { addSceneAndFocus, selectScene } from '../../features/scene-management/actions'
 import { clamp, formatDuration, formatTime } from '../../utils'
 import { importFiles } from '../../features/scene-management/actions'
@@ -108,7 +108,22 @@ const StoryBlock = memo(function StoryBlock({ seg, w, selected, playing }: { seg
   )
 })
 
-const VideoBlock = memo(function VideoBlock({ seg, w, selected }: { seg: Segment; w: number; selected: boolean }) {
+/** Orilla que se jala para estirar o encoger (recorte sin dañar el archivo). */
+function EdgeHandle({ side, label, onPointerDown }: { side: 'left' | 'right'; label: string; onPointerDown: (e: React.PointerEvent) => void }) {
+  return (
+    <span
+      role="separator"
+      aria-label={label}
+      title="Jala para estirar o encoger"
+      onPointerDown={onPointerDown}
+      className={`absolute top-0 bottom-0 z-10 w-2 cursor-ew-resize touch-none bg-white/0 hover:bg-white/50 ${side === 'left' ? 'left-0 rounded-l-md' : 'right-0 rounded-r-md'}`}
+    >
+      <span className={`absolute top-1/2 h-3.5 w-[2px] -translate-y-1/2 rounded bg-white/70 ${side === 'left' ? 'left-[3px]' : 'right-[3px]'}`} />
+    </span>
+  )
+}
+
+const VideoBlock = memo(function VideoBlock({ seg, w, selected, pps }: { seg: Segment; w: number; selected: boolean; pps: number }) {
   const url = useMediaUrl(seg.video?.mediaId, true)
   const color = accentFor(seg.index)
   if (!seg.video)
@@ -123,10 +138,30 @@ const VideoBlock = memo(function VideoBlock({ seg, w, selected }: { seg: Segment
         </button>
       </div>
     )
+  const v = seg.video
+  const range = videoRange(v)
+  const drag = (edge: 'left' | 'right') => (e: React.PointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    const ox = e.clientX
+    const base = edge === 'left' ? range.from : range.to
+    const move = (ev: PointerEvent) => useProject.getState().trimVideo(seg.scene.id, edge, base + (ev.clientX - ox) / pps)
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  const trimmed = range.from > 0.01 || range.to < v.duration - 0.01
   return (
-    <div style={{ width: w }} className="h-full shrink-0 px-[2px]">
+    <div style={{ width: w }} className="relative h-full shrink-0 px-[2px]">
+      <EdgeHandle side="left" label={`Estirar el inicio del video de la escena ${seg.index + 1}`} onPointerDown={drag('left')} />
+      <EdgeHandle side="right" label={`Estirar el final del video de la escena ${seg.index + 1}`} onPointerDown={drag('right')} />
       <button
         onClick={() => selectScene(seg.scene.id, { seek: true })}
+        title={trimmed ? `Recortado: usa del segundo ${range.from.toFixed(1)} al ${range.to.toFixed(1)} (de ${v.duration.toFixed(1)}) · jala las orillas` : 'Jala las orillas para recortar'}
         className={`flex h-full w-full items-center gap-1.5 overflow-hidden rounded-lg border pr-2 text-left text-[11px] font-medium text-white ${selected ? 'border-white ring-2 ring-sel-2' : 'border-black/30'}`}
         style={{ background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
         aria-label={`Video escena ${seg.index + 1}, ${formatDuration(seg.duration)}`}
@@ -199,6 +234,23 @@ export function Timeline() {
     void playback.seek(xToTime(x, segments, layout, pps))
   }
 
+  const cutVideo = () => {
+    const t = usePlayback.getState().time
+    const { index, offset } = locateTime(segments, t)
+    const seg = segments[index]
+    if (!seg) return
+    const id = useProject.getState().splitSceneAt(seg.scene.id, offset)
+    if (id) {
+      useProject.getState().select(id)
+      toast(`Escena ${index + 1} partida en dos ✂️`)
+    } else toast('Pon el cabezal dentro de la escena (no en la orilla) para cortarla', 'info')
+  }
+
+  const cutMusic = () => {
+    const n = useProject.getState().splitAudioAt(usePlayback.getState().time)
+    toast(n ? 'Música cortada ✂️' : 'El cabezal no está sobre ninguna música', n ? 'ok' : 'info')
+  }
+
   const onDragEnd = (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return
     moveScene(String(e.active.id), sceneIds.indexOf(String(e.over.id)))
@@ -225,6 +277,14 @@ export function Timeline() {
           {formatTime(time)} <span className="text-ink-3">/ {formatTime(total)}</span>
         </span>
         <span className="text-[11.5px] text-ink-3">{segments.length} escenas</span>
+        <div className="ml-2 flex items-center gap-1" role="group" aria-label="Cortar en el cabezal">
+          <button className="btn btn-sm" onClick={cutVideo} disabled={!segments.length} title="Parte en dos la escena donde está el cabezal">
+            <Scissors size={13} /> Cortar video
+          </button>
+          <button className="btn btn-sm" onClick={cutMusic} disabled={!tracks.some((t) => t.clips.length)} title="Corta la música donde está el cabezal (en las 2 pistas)">
+            <Scissors size={13} /> Cortar música
+          </button>
+        </div>
         <div className="ml-auto flex items-center gap-1">
           <span className="mr-1 text-[11.5px] text-ink-3">Zoom</span>
           <button className="icon-btn sm" onClick={() => setPps((p) => clamp(p / 1.4, 4, 200))} aria-label="Alejar">
@@ -305,7 +365,7 @@ export function Timeline() {
                 </div>
                 <div className="flex h-[52px] shrink-0 py-1.5" style={{ paddingLeft: TRACK_PAD }}>
                   {segments.map((s, i) => (
-                    <VideoBlock key={s.scene.id} seg={s} w={layout[i].w} selected={s.scene.id === selected} />
+                    <VideoBlock key={s.scene.id} seg={s} w={layout[i].w} selected={s.scene.id === selected} pps={pps} />
                   ))}
                 </div>
               </>
@@ -332,7 +392,7 @@ async function importMusic(trackId: string, files: File[], start: number) {
   const assets = await importFiles(files.slice(0, 1), 'audio')
   const a = assets[0]
   if (!a) return
-  useProject.getState().addAudioClip(trackId, { mediaId: a.id, name: a.name.replace(/\.[^.]+$/, ''), start, duration: a.duration ?? 0 })
+  useProject.getState().addAudioClip(trackId, { mediaId: a.id, name: a.name.replace(/\.[^.]+$/, ''), start, duration: a.duration ?? 0, sourceDuration: a.duration ?? 0 })
   toast(`Música agregada · ${formatDuration(a.duration ?? 0)}`)
 }
 
@@ -377,12 +437,26 @@ function TrackHeader({ track, color }: { track: AudioTrack; color: string }) {
 function MusicClip({ track, clip, color, toX, toTime }: { track: AudioTrack; clip: AudioClip; color: string; toX: (t: number) => number; toTime: (x: number) => number }) {
   const x = toX(clip.start)
   const w = Math.max(28, toX(clip.start + clip.duration) - x)
-  const { moveAudioClip, removeAudioClip } = useProject.getState()
+  const { moveAudioClip, removeAudioClip, trimAudioClip } = useProject.getState()
+  const startDrag = (edge: 'left' | 'right') => (e: React.PointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    const ox = e.clientX
+    const baseX = edge === 'left' ? x : x + w
+    const move = (ev: PointerEvent) => trimAudioClip(track.id, clip.id, edge, toTime(Math.max(0, baseX + ev.clientX - ox)))
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
   return (
     <div
       className="group/clip absolute top-1 bottom-1 flex cursor-grab touch-none items-center overflow-hidden rounded-md border border-black/30 pl-2 pr-6 text-[11px] font-medium text-white active:cursor-grabbing"
       style={{ left: TRACK_PAD + x, width: w, background: `repeating-linear-gradient(90deg, ${color} 0 3px, ${color}dd 3px 6px)` }}
-      title={`${clip.name} · ${formatTime(clip.start)} → ${formatTime(clip.start + clip.duration)} · arrastra para moverla`}
+      title={`${clip.name} · ${formatTime(clip.start)} → ${formatTime(clip.start + clip.duration)} · arrastra para moverla; jala las orillas para estirar o encoger`}
       role="slider"
       tabIndex={0}
       aria-label={`${clip.name}, empieza en ${formatTime(clip.start)}`}
@@ -410,10 +484,12 @@ function MusicClip({ track, clip, color, toX, toTime }: { track: AudioTrack; cli
         }
       }}
     >
+      <EdgeHandle side="left" label={`Estirar el inicio de ${clip.name}`} onPointerDown={startDrag('left')} />
+      <EdgeHandle side="right" label={`Estirar el final de ${clip.name}`} onPointerDown={startDrag('right')} />
       <Music size={11} className="mr-1 shrink-0" />
       <span className="truncate">{clip.name}</span>
       <button
-        className="absolute right-0.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded bg-black/40 opacity-0 hover:bg-black/70 group-hover/clip:opacity-100 focus-visible:opacity-100"
+        className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded bg-black/40 opacity-0 hover:bg-black/70 group-hover/clip:opacity-100 focus-visible:opacity-100"
         onClick={() => removeAudioClip(track.id, clip.id)}
         aria-label={`Quitar ${clip.name}`}
         title="Quitar de la pista"

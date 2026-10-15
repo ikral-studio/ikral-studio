@@ -1,7 +1,7 @@
 // Motor de reproducción centralizado: un solo <video> para toda la película.
 // Calcula qué escena toca en cada instante y salta entre clips sin solaparlos.
 import { create } from 'zustand'
-import { buildSegments, locateTime, orderedScenes, totalDuration, type Segment } from '../script-sync/derive'
+import { buildSegments, locateTime, orderedScenes, totalDuration, videoRange, type Segment } from '../script-sync/derive'
 import { useProject } from '../../stores/projectStore'
 import { getMediaUrl } from '../media-library/media'
 import type { AudioTrack } from '../../types'
@@ -189,7 +189,7 @@ class PlaybackController {
         const t = st.time
         const active = st.playing && t >= clip.start && t < clip.start + clip.duration && t < total && !!el.getAttribute('src')
         if (active) {
-          const want = t - clip.start
+          const want = (clip.offset ?? 0) + (t - clip.start)
           if (el.paused) {
             el.currentTime = want
             el.play().catch(() => {})
@@ -257,7 +257,8 @@ class PlaybackController {
         return
       }
     }
-    const target = Math.min(offset, Math.max(0, (video.duration || seg.duration) - 0.05))
+    const range = videoRange(seg.video)
+    const target = Math.min(range.from + offset, Math.max(range.from, range.to - 0.05))
     if (Math.abs(video.currentTime - target) > 0.05) {
       video.currentTime = target
     }
@@ -305,9 +306,10 @@ class PlaybackController {
     }
     if (st.mode === 'video' && this.video) {
       const v = this.video
-      const t = seg.start + Math.min(v.currentTime, seg.duration)
+      const range = seg.video ? videoRange(seg.video) : { from: 0, to: seg.duration }
+      const t = seg.start + Math.min(Math.max(0, v.currentTime - range.from), seg.duration)
       if (Math.abs(t - st.time) > 0.01) usePlayback.setState({ time: t })
-      if (v.ended || v.currentTime >= seg.duration - 0.02) this.next()
+      if (v.ended || v.currentTime >= range.to - 0.02) this.next()
     } else {
       const dt = (now - this.last) / 1000
       const t = st.time + dt

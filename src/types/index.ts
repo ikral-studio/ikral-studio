@@ -56,6 +56,9 @@ export interface VideoVersion {
   credits?: number
   generationTimeSeconds?: number
   notes?: string
+  /** Recorte sin tocar el archivo: segundo de entrada y de salida dentro del video. */
+  trimIn?: number
+  trimOut?: number
   createdAt: string
 }
 
@@ -87,7 +90,12 @@ export interface AudioClip {
   name: string
   /** Segundo global donde empieza a sonar. */
   start: number
+  /** Largo que suena (después de recortar). */
   duration: number
+  /** Desde qué segundo del archivo empieza a sonar. */
+  offset?: number
+  /** Largo total del archivo original. */
+  sourceDuration?: number
 }
 
 export interface AudioTrack {

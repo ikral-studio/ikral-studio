@@ -239,3 +239,38 @@ test('extra · dos pistas de música: importar, sonar al reproducir, quitar y re
   await page.getByRole('button', { name: 'Quitar musica' }).click({ force: true })
   await expect(page.getByLabel('Pista Música 2').getByRole('slider')).toHaveCount(0)
 })
+
+test('extra · cortar video y música, y estirar orillas', async ({ page }) => {
+  await freshProject(page, 'Cortes')
+  await addScenes(page, 1)
+  await importVideo(page, 1, 'clip2.mp4') // 4 s
+  await chooseFile(page, () => page.getByRole('button', { name: 'Agregar música a Música 1' }).click(), 'musica.mp3') // 6 s
+  // cabezal en 1.5 s: clic en la regla
+  const tl = page.locator('[aria-label="Línea de tiempo"]')
+  await page.evaluate(() => {})
+  const ruler = page.getByRole('slider', { name: 'Regla de tiempo' })
+  const box = (await ruler.boundingBox())!
+  const block = (await page.locator('[aria-label="Video escena 1, 4 s"]').boundingBox())!
+  await ruler.click({ position: { x: block.x - box.x + block.width * 0.375, y: 10 } })
+  await tl.getByRole('button', { name: 'Cortar video' }).click()
+  await expect(page.locator('article[data-scene-id]')).toHaveCount(2)
+  await expect(page.locator('[aria-label^="Video escena 1, 1.5 s"]')).toBeVisible()
+  await expect(page.locator('[aria-label^="Video escena 2, 2.5 s"]')).toBeVisible()
+  await expect(card(page, 2).getByLabel('Nombre de la escena')).toHaveValue(/parte 2/)
+  await tl.getByRole('button', { name: 'Cortar música' }).click()
+  await expect(page.getByLabel('Pista Música 1').getByRole('slider')).toHaveCount(2)
+  // estirar la orilla derecha del video 1 recupera hasta los 4 s originales
+  const edge = page.getByRole('separator', { name: 'Estirar el final del video de la escena 1' })
+  const eb = (await edge.boundingBox())!
+  await page.mouse.move(eb.x + eb.width / 2, eb.y + eb.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(eb.x + 600, eb.y + eb.height / 2, { steps: 8 })
+  await page.mouse.up()
+  await expect(page.locator('[aria-label^="Video escena 1, 4 s"]')).toBeVisible()
+  // reproducir: pasa de la escena 1 a la 2 sin trabarse
+  await page.locator('[aria-label="Vista previa"]').getByRole('button', { name: 'Reiniciar' }).click()
+  await page.locator('[aria-label="Vista previa"]').getByRole('button', { name: 'Reproducir' }).click()
+  await expect(page.locator('[aria-label="Vista previa"]').getByText('Escena 02 ·').first()).toBeVisible({ timeout: 8000 })
+  // deshacer
+  await page.keyboard.press('Meta+z')
+})

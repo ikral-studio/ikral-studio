@@ -14,10 +14,17 @@ export function activeVideo(scene: Scene): VideoVersion | undefined {
   return scene.videoVersions.find((v) => v.id === scene.activeVideoVersionId)
 }
 
+/** Tramo del archivo de video que se usa (recorte no destructivo). */
+export function videoRange(v: VideoVersion): { from: number; to: number; length: number } {
+  const from = Math.max(0, Math.min(v.trimIn ?? 0, v.duration))
+  const to = Math.max(from, Math.min(v.trimOut ?? v.duration, v.duration))
+  return { from, to, length: to - from }
+}
+
 /** Duración que ocupa la escena en timeline y reproducción. */
 export function effectiveDuration(scene: Scene): number {
   const v = activeVideo(scene)
-  if (v && v.duration > 0) return v.duration
+  if (v && v.duration > 0) return Math.max(0.1, videoRange(v).length)
   return Math.max(0.5, scene.plannedDuration)
 }
 
