@@ -544,7 +544,7 @@ test('extra · varios videos seguidos en una escena', async ({ page }) => {
   await importVideo(page, 1, 'clip1.mp4') // 3 s
   await chooseFile(page, () => card(page, 1).getByRole('button', { name: 'Otro video' }).click(), 'clip3.mp4') // 2 s
   await expect(page.locator('[aria-label="Video escena 1, 5 s"]')).toBeVisible()
-  await expect(card(page, 1).getByLabel('Videos de esta escena')).toContainText('2 · 2 s')
+  await expect(card(page, 1).getByText('Video 2 · 2 s')).toBeVisible()
   const preview = page.locator('[aria-label="Vista previa"]')
   await page.locator('[aria-label="Línea de tiempo"]').getByRole('switch').click() // loop off
   await preview.getByRole('button', { name: 'Reproducir' }).click()
