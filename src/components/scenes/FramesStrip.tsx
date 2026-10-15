@@ -3,7 +3,7 @@ import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
 import { importFiles } from '../../features/scene-management/actions'
-import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
+import { mediaDragProps, pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { IMAGE_ACCEPT } from './MediaSlot'
 import type { StoryboardFrame } from '../../types'
 
@@ -13,7 +13,7 @@ function Frame({ sceneId, frame, n, count }: { sceneId: string; frame: Storyboar
   return (
     <div className="group relative h-[64px] w-[96px] shrink-0 overflow-hidden rounded-lg bg-[#070c16]">
       {url && (
-        <button className="h-full w-full" onClick={() => useUI.setState({ lightbox: { mediaId: frame.mediaId, kind: 'image', title: `Fotograma ${n}`, target: { sceneId, frameId: frame.id } } })} aria-label={`Ampliar fotograma ${n}`}>
+        <button className="h-full w-full cursor-grab active:cursor-grabbing" {...mediaDragProps(frame.mediaId)} title="Clic para ampliar · arrástrala a «Imagen inicial» o «Imagen final»" onClick={() => useUI.setState({ lightbox: { mediaId: frame.mediaId, kind: 'image', title: `Fotograma ${n}`, target: { sceneId, frameId: frame.id } } })} aria-label={`Ampliar fotograma ${n}`}>
           <img src={url} alt="" className="h-full w-full object-cover" />
         </button>
       )}
@@ -43,7 +43,10 @@ export function FramesStrip({ sceneId }: { sceneId: string }) {
       toast(assets.length === 1 ? 'Fotograma agregado' : `${assets.length} fotogramas agregados`)
     }
   }
-  const drop = useFileDrop(accept)
+  const drop = useFileDrop(accept, (id) => {
+    addFrames(sceneId, [id])
+    toast('Fotograma agregado')
+  })
   const sorted = [...(frames ?? [])].sort((a, b) => a.order - b.order)
   return (
     <div>

@@ -3,7 +3,7 @@ import { CheckCheck, ChevronDown, ChevronUp, ClipboardPaste, Clock3, Copy, Film,
 import { useProject } from '../../stores/projectStore'
 import { openPasteScene, toast, useUI } from '../../stores/uiStore'
 import { importFiles } from '../../features/scene-management/actions'
-import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
+import { mediaDragProps, pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { IMAGE_ACCEPT } from './MediaSlot'
 import { useMediaUrl } from '../../features/media-library/media'
 import { activeVideo, effectiveDuration } from '../../features/script-sync/derive'
@@ -42,7 +42,15 @@ function CompactSlot({ sceneId, kind, mediaId, label, onOpen, children }: { scen
       toast(`${label} guardada`)
     }
   }
-  const drop = useFileDrop(accept)
+  const drop = useFileDrop(
+    accept,
+    kind === 'video'
+      ? undefined
+      : (mid) => {
+          useProject.getState().setImage(sceneId, kind, mid)
+          toast(`${label} actualizada`)
+        },
+  )
   const empty = !mediaId
   return (
     <div className="min-w-0">
@@ -59,8 +67,8 @@ function CompactSlot({ sceneId, kind, mediaId, label, onOpen, children }: { scen
           <Loader2 size={18} className="animate-spin text-ink-2" />
         ) : kind === 'video' ? (
           children
-        ) : url ? (
-          <img src={url} alt="" className="object-cover" />
+        ) : url && mediaId ? (
+          <img src={url} alt="" className="object-cover" {...mediaDragProps(mediaId)} />
         ) : (
           <span className="flex flex-col items-center gap-1 text-ink-3">
             <ImageIcon size={18} />

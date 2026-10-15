@@ -4,7 +4,7 @@ import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { getMediaBlob, useMediaMeta, useMediaUrl } from '../../features/media-library/media'
 import { importFiles } from '../../features/scene-management/actions'
-import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
+import { MEDIA_MIME, pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { downloadBlob, extFromMime, formatBytes, safeFilename } from '../../utils'
 import type { AspectRatio } from '../../types'
 
@@ -50,7 +50,10 @@ export function MediaSlot({
       toast(`${label} guardada`)
     }
   }
-  const drop = useFileDrop(accept)
+  const drop = useFileDrop(accept, (id) => {
+    setImage(sceneId, slot, id)
+    toast(`${label} actualizada`)
+  })
   const choose = async () => accept(await pickFiles(IMAGE_ACCEPT))
   const mismatch = orientationMismatch(meta?.width, meta?.height, aspect)
 
@@ -82,6 +85,8 @@ export function MediaSlot({
               style={{ objectFit: fit }}
               draggable
               onDragStart={(e) => {
+                e.dataTransfer.setData(MEDIA_MIME, mediaId)
+                e.dataTransfer.effectAllowed = 'copy'
                 // Chrome permite soltar el archivo en el escritorio con DownloadURL.
                 if (meta) e.dataTransfer.setData('DownloadURL', `${meta.mimeType}:${safeFilename(fileBase)}.${extFromMime(meta.mimeType)}:${url}`)
               }}

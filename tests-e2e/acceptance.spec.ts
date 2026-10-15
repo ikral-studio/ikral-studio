@@ -592,3 +592,20 @@ test('extra · recortar una imagen a 16:9 en la vista ampliada', async ({ page }
   await page.keyboard.press('Escape')
   await expect(c.getByText('405×720 · JPEG').or(c.getByText('405×720 · PNG'))).toBeVisible()
 })
+
+test('extra · arrastrar un fotograma a «Imagen final»', async ({ page }) => {
+  await freshProject(page, 'Arrastrar fotograma')
+  await addScenes(page, 1)
+  const c = card(page, 1)
+  await chooseFile(page, () => c.getByRole('button', { name: 'Agregar', exact: true }).click(), 'inicio.png')
+  const frame = c.getByRole('button', { name: 'Ampliar fotograma 1' })
+  await expect(frame).toBeVisible()
+  const dt = await page.evaluateHandle(() => new DataTransfer())
+  await frame.dispatchEvent('dragstart', { dataTransfer: dt })
+  const target = c.getByText('Arrastra o elige imagen').nth(1) // Imagen final
+  const zone = target.locator('xpath=ancestor::div[contains(@class,"media-frame")]')
+  await zone.dispatchEvent('dragenter', { dataTransfer: dt })
+  await zone.dispatchEvent('drop', { dataTransfer: dt })
+  await expect(page.getByText('Imagen final actualizada')).toBeVisible()
+  await expect(c.getByText('1280×720 · PNG')).toHaveCount(1)
+})
