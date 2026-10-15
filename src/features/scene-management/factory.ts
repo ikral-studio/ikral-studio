@@ -1,0 +1,65 @@
+import type { Project, Scene, SceneScript } from '../../types'
+import { nowIso, uid } from '../../utils'
+import { deriveStatus } from '../script-sync/derive'
+
+export const emptyScript = (): SceneScript => ({
+  action: '',
+  dialogue: '',
+  cameraDirection: '',
+  soundDirection: '',
+  generationPrompt: '',
+  pronunciations: [],
+})
+
+export function createScene(projectId: string, title: string, duration: number, patch: Partial<Scene> = {}): Scene {
+  const t = nowIso()
+  const scene: Scene = {
+    id: uid('sc_'),
+    projectId,
+    title,
+    order: 0,
+    plannedDuration: duration,
+    storyboardFrames: [],
+    script: emptyScript(),
+    videoVersions: [],
+    status: 'draft',
+    reviewed: false,
+    collapsed: false,
+    createdAt: t,
+    updatedAt: t,
+    ...patch,
+  }
+  scene.status = deriveStatus(scene)
+  return scene
+}
+
+/** Copia con IDs nuevos; los archivos se reutilizan por referencia (no se duplican). */
+export function cloneScene(src: Scene): Scene {
+  const t = nowIso()
+  const idMap = new Map<string, string>()
+  const versions = src.videoVersions.map((v) => {
+    const id = uid('vv_')
+    idMap.set(v.id, id)
+    return { ...v, id }
+  })
+  return {
+    ...structuredClone(src),
+    id: uid('sc_'),
+    title: `${src.title} (copia)`,
+    storyboardFrames: src.storyboardFrames.map((f) => ({ ...f, id: uid('fr_') })),
+    script: {
+      ...structuredClone(src.script),
+      pronunciations: src.script.pronunciations.map((p) => ({ ...p, id: uid('pr_') })),
+    },
+    videoVersions: versions,
+    activeVideoVersionId: src.activeVideoVersionId ? idMap.get(src.activeVideoVersionId) : undefined,
+    reviewed: false,
+    createdAt: t,
+    updatedAt: t,
+  }
+}
+
+export function createProjectData(title: string): Project {
+  const t = nowIso()
+  return { id: uid('pj_'), title, aspectRatio: '16:9', sceneIds: [], createdAt: t, updatedAt: t }
+}
