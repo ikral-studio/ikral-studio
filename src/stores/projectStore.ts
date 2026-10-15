@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, CameraSpec, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
@@ -54,6 +54,7 @@ interface State {
   updatePronunciation: (id: string, pid: string, patch: { written?: string; spoken?: string }) => void
   removePronunciation: (id: string, pid: string) => void
   setNumbersToWords: (id: string, on: boolean) => void
+  setCamera: (id: string, camera: CameraSpec | undefined) => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -400,6 +401,10 @@ export const useProject = create<State>()((set, get) => {
       }))
     },
 
+    setCamera(id, camera) {
+      patchScene(id, (s) => ({ ...s, script: { ...s.script, camera } }))
+    },
+
     setNumbersToWords(id, on) {
       patchScene(id, (s) => ({ ...s, script: { ...s.script, numbersToWords: on } }))
     },
@@ -579,6 +584,7 @@ export const useProject = create<State>()((set, get) => {
           generationPrompt: sc.script.generationPrompt,
           pronunciations: sc.script.pronunciations.map((p) => ({ id: uid('pr_'), written: p.written, spoken: p.spoken })),
           numbersToWords: sc.script.numbersToWords,
+          camera: sc.script.camera,
           extras,
         }
         s.status = deriveStatus(s)
@@ -632,6 +638,7 @@ export const useProject = create<State>()((set, get) => {
           generationPrompt: data.script.generationPrompt,
           pronunciations: data.script.pronunciations.map((p) => ({ id: uid('pr_'), written: p.written, spoken: p.spoken })),
           numbersToWords: data.script.numbersToWords,
+          camera: data.script.camera ?? scene.script.camera,
           extras,
         },
         updatedAt: nowIso(),

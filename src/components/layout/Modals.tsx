@@ -10,6 +10,7 @@ import { formatBytes } from '../../utils'
 import { Modal } from '../common/Overlays'
 import { ImportScriptModal } from './ImportScriptModal'
 import { PasteSceneModal } from './PasteSceneModal'
+import { CameraLibraryModal } from '../scenes/CameraLibrary'
 import type { Project } from '../../types'
 import { ACTIONS, DEFAULT_KEYS, RESERVED, assignKey, keyLabel, mergeKeys, normalizeKey, type ActionId, type KeyBindings } from '../../features/shortcuts/keys'
 import { shortcutCapture } from '../../hooks/useShortcuts'
@@ -297,5 +298,6 @@ export function Modals() {
   if (modal === 'help') return <HelpModal />
   if (modal === 'importScript') return <ImportScriptModal />
   if (modal === 'pasteScene') return <PasteSceneModal />
+  if (modal === 'camera') return <CameraLibraryModal />
   return null
 }

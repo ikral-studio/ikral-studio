@@ -1,6 +1,8 @@
 // Formato de intercambio de guiones con IA (ChatGPT, Claude…): "ikral-studio-script" v1.
 // Solo texto narrativo: nunca archivos, rutas ni IDs internos. No es el respaldo .zip.
 import { z } from 'zod'
+import { cameraIds, cameraIdsForAI } from '../camera/camera'
+import type { CameraCategoryId } from '../camera/library'
 
 export const SCRIPT_FORMAT = 'ikral-studio-script'
 export const SCRIPT_VERSION = 1
@@ -15,6 +17,22 @@ const pronunciation = z
   })
   .strict()
 
+const camEnum = (cat: CameraCategoryId) => z.enum(cameraIds(cat) as [string, ...string[]], { error: 'no es una toma de la biblioteca' })
+const cameraSchema = z
+  .object({
+    shot: camEnum('shot'),
+    angle: camEnum('angle'),
+    move: camEnum('move'),
+    lens: camEnum('lens'),
+    composition: camEnum('composition'),
+    light: camEnum('light'),
+    time: camEnum('time'),
+    transition: camEnum('transition'),
+    speed: z.enum(['slow', 'normal', 'fast']),
+  })
+  .partial()
+  .strict()
+
 const sceneScript = z
   .object({
     action: text.default(''),
@@ -25,6 +43,7 @@ const sceneScript = z
     pronunciations: z.array(pronunciation).max(LIMITS.maxPronunciations).default([]),
     numbersToWords: z.boolean().default(false),
     /** Campos extra: { "Vestuario": "…" } */
+    camera: cameraSchema.optional(),
     extras: z
       .record(z.string().trim().min(1).max(LIMITS.maxFieldName), text)
       .refine((r) => Object.keys(r).length <= LIMITS.maxFields, `máximo ${LIMITS.maxFields} campos extra`)
@@ -74,6 +93,7 @@ export const EXAMPLE: ScriptFile = {
         generationPrompt: 'Animación 2D cálida, continuidad estricta entre imagen inicial y final, gestos naturales.',
         pronunciations: [{ written: 'TuApp.digital', spoken: 'Tu Ap Dijital' }],
         numbersToWords: true,
+        camera: { shot: 'ms', angle: 'eye', move: 'orbit', speed: 'slow', lens: 'normal', light: 'golden' },
         extras: { Vestuario: 'Joven con camisa azul; abuelito con suéter café.', Emoción: 'Sorpresa que se vuelve alegría.' },
       },
     },
@@ -94,6 +114,16 @@ const FIELD_NAMES: Record<string, string> = {
   title: 'Título',
   aspectRatio: 'Orientación',
   extras: 'Campos extra',
+  camera: 'Cámara',
+  shot: 'Plano',
+  angle: 'Ángulo',
+  move: 'Movimiento',
+  lens: 'Lente',
+  composition: 'Composición',
+  light: 'Luz',
+  time: 'Tiempo',
+  transition: 'Transición',
+  speed: 'Velocidad',
   customFields: 'Campos extra del proyecto',
 }
 
@@ -199,6 +229,9 @@ Reglas del formato:
     - "generationPrompt": instrucciones específicas para el generador de video con IA (estilo, continuidad, gestos).
     - "pronunciations": lista de {"written": cómo se escribe, "spoken": cómo debe pronunciarse}. Agrégala para marcas, nombres comerciales, siglas o palabras difíciles. Si no hay, usa [].
     - "numbersToWords": true si la escena tiene números que la voz debe decir en palabras; si no, false.
+    - "camera" (opcional): la toma, eligiendo SOLO estos códigos (uno por categoría; un solo movimiento por escena):
+${cameraIdsForAI()}
+      - "speed": "slow", "normal" o "fast" (velocidad del movimiento).
     - "extras": objeto con los campos extra del proyecto, usando exactamente sus nombres como claves.
 - "project.customFields": lista de nombres de campos extra (ej. "Vestuario", "Emoción"). ${
     fields ? `Este proyecto usa: ${fields.map((f) => `"${f}"`).join(', ')}. Llénalos en "extras" de CADA escena.` : 'Si no hacen falta, usa [] y "extras": {}.'

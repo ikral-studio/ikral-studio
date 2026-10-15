@@ -3,6 +3,7 @@
 import type { CustomField, Project, Scene, SceneStatus, VideoVersion } from '../../types'
 import { formatDuration, pad2 } from '../../utils'
 import { numbersToWordsInText } from '../../utils/numberWords'
+import { cameraPrompt, cameraSpanish } from '../camera/camera'
 
 export function orderedScenes(project: Project | null, scenes: Record<string, Scene>): Scene[] {
   if (!project) return []
@@ -117,6 +118,8 @@ export function sceneScriptText(scene: Scene, n: number, fields: CustomField[] =
     const v = String(scene.script[key] ?? '').trim()
     if (v) lines.push(`${label}: ${v}`)
   }
+  const cam = cameraSpanish(scene.script.camera)
+  if (cam) lines.push(`Cámara: ${cam}`)
   for (const [name, v] of extraEntries(scene, fields)) lines.push(`${name}: ${v}`)
   return lines.join('\n')
 }
@@ -140,6 +143,8 @@ export function masterScriptMarkdown(project: Project, scenes: Scene[]): string 
       const v = String(s.script[key] ?? '').trim()
       if (v) out.push('', `**${label}:** ${v}`)
     }
+    const cam = cameraSpanish(s.script.camera)
+    if (cam) out.push('', `**Cámara:** ${cam}`)
     for (const [name, v] of extraEntries(s, project.customFields)) out.push('', `**${name}:** ${v}`)
   })
   return out.join('\n') + '\n'
@@ -159,7 +164,7 @@ export function applyPronunciations(text: string, scene: Scene): string {
 /** Texto limpio para pegar en Higgsfield, Kling, Wan… */
 export function generationPrompt(scene: Scene, fields: CustomField[] = []): string {
   const s = scene.script
-  const parts = [s.generationPrompt, s.action, s.cameraDirection]
+  const parts = [s.generationPrompt, s.action, s.cameraDirection, cameraPrompt(s.camera)]
     .map((x) => x.trim())
     .filter(Boolean)
   for (const [name, v] of extraEntries(scene, fields)) parts.push(`${name}: ${v}`)

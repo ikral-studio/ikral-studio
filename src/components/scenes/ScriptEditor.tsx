@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ClipboardCopy, Languages, ListPlus, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
+import { CameraSummary } from './CameraLibrary'
 import { generationPrompt, sceneScriptText } from '../../features/script-sync/derive'
 import { copyToClipboard } from '../../utils'
 import type { CustomField, ScriptField } from '../../types'
@@ -11,8 +12,8 @@ const NO_FIELDS: CustomField[] = []
 const FIELDS: { key: ScriptField; label: string; hint: string; rows: number }[] = [
   { key: 'action', label: 'Acción visual', hint: 'Qué ocurre físicamente en la escena.', rows: 3 },
   { key: 'dialogue', label: 'Diálogos', hint: 'Quién habla y qué dice. Ej.: Joven: —¡Mire!', rows: 2 },
-  { key: 'cameraDirection', label: 'Dirección de cámara', hint: 'Encuadre, movimiento, ángulo y continuidad.', rows: 2 },
   { key: 'soundDirection', label: 'Sonido y ambiente', hint: 'Ambiente, voces, silencios o música.', rows: 2 },
+  { key: 'cameraDirection', label: 'Dirección de cámara', hint: 'Encuadre, movimiento, ángulo y continuidad.', rows: 2 },
   { key: 'generationPrompt', label: 'Instrucciones para generación', hint: 'Prompt específico para Higgsfield, Kling, Wan…', rows: 3 },
 ]
 
@@ -52,16 +53,19 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
       </div>
       <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
         {FIELDS.map((f) => (
-          <label key={f.key} className={`flex flex-col gap-1 ${f.key === 'action' || f.key === 'generationPrompt' ? 'lg:col-span-2' : ''}`}>
-            <span className="label">{f.label}</span>
-            <textarea
-              className="field"
-              rows={f.rows}
-              placeholder={f.hint}
-              value={script[f.key]}
-              onChange={(e) => updateScript(sceneId, f.key, e.target.value)}
-            />
-          </label>
+          <div key={f.key} className={`flex flex-col gap-1 ${f.key === 'action' || f.key === 'generationPrompt' || f.key === 'cameraDirection' ? 'lg:col-span-2' : ''}`}>
+            <label className="flex flex-col gap-1">
+              <span className="label">{f.label}</span>
+              <textarea
+                className="field"
+                rows={f.rows}
+                placeholder={f.hint}
+                value={script[f.key]}
+                onChange={(e) => updateScript(sceneId, f.key, e.target.value)}
+              />
+            </label>
+            {f.key === 'cameraDirection' && <CameraSummary sceneId={sceneId} />}
+          </div>
         ))}
       </div>
 

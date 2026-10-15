@@ -53,6 +53,20 @@ export interface SceneScript {
   numbersToWords?: boolean
   /** Valores de los campos extra: id del campo → texto. */
   extras?: Record<string, string>
+  /** Toma elegida en la Biblioteca de cámara. */
+  camera?: CameraSpec
+}
+
+export interface CameraSpec {
+  shot?: string
+  angle?: string
+  move?: string
+  lens?: string
+  composition?: string
+  light?: string
+  time?: string
+  transition?: string
+  speed?: 'slow' | 'normal' | 'fast'
 }
 
 export interface VideoVersion {
@@ -140,4 +154,4 @@ export interface Settings {
   keys?: Partial<Record<string, string[]>>
 }
 
-export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes' | 'numbersToWords' | 'extras'>
+export type ScriptField = Exclude<keyof SceneScript, 'pronunciations' | 'pronunciationNotes' | 'numbersToWords' | 'extras' | 'camera'>

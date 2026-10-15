@@ -311,3 +311,21 @@ input[type='range'] {
   .print-only p { font-size: 10.5pt; line-height: 1.45; margin: 3pt 0; }
   .print-only section { break-inside: avoid; }
 }
+
+/* Dibujos de la Biblioteca de cámara */
+.camdiag svg { width: 100%; height: auto; display: block; }
+.camdiag {
+  --subj: #e8edf5; --camc: #38bdd8; --accc: #ff7a33; --ink3c: #6f819c; --dimc: #e8edf51f;
+}
+.camdiag .s { fill: var(--subj); }
+.camdiag .s2 { fill: none; stroke: var(--subj); stroke-width: 2; }
+.camdiag .c { fill: var(--camc); }
+.camdiag .cl { fill: none; stroke: var(--camc); stroke-width: 2.2; stroke-linecap: round; }
+.camdiag .cd { fill: none; stroke: var(--camc); stroke-width: 1.6; stroke-dasharray: 4 4; }
+.camdiag .a { fill: none; stroke: var(--accc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.camdiag .af { fill: var(--accc); }
+.camdiag .fov { fill: var(--camc); opacity: 0.18; }
+.camdiag .g { stroke: var(--ink3c); stroke-width: 1; fill: none; }
+.camdiag .gd { stroke: var(--ink3c); stroke-width: 1; stroke-dasharray: 3 4; fill: none; }
+.camdiag .t { fill: #9fb0c8; font: 500 9px ui-monospace, monospace; }
+.camdiag .frame { fill: none; stroke: var(--accc); stroke-width: 2.5; }

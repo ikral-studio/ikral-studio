@@ -16,7 +16,7 @@ interface ConfirmRequest {
 }
 
 export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: string }
-export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | null
+export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | null
 
 interface UIState {
   toasts: Toast[]
@@ -50,6 +50,10 @@ export const useUI = create<UIState>()(() => ({
   scriptDock: false,
   pasteSceneId: null,
 }))
+
+export function openCameraLibrary(sceneId: string) {
+  useUI.setState({ modal: 'camera', pasteSceneId: sceneId })
+}
 
 export function openPasteScene(sceneId: string) {
   useUI.setState({ modal: 'pasteScene', pasteSceneId: sceneId })

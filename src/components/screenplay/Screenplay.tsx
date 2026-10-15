@@ -4,6 +4,7 @@ import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { useOrderedScenes } from '../../stores/selectors'
 import { allPromptsText, effectiveDuration, extraEntries, masterScriptMarkdown, masterScriptText } from '../../features/script-sync/derive'
+import { cameraSpanish } from '../../features/camera/camera'
 import { selectScene } from '../../features/scene-management/actions'
 import { usePlayback } from '../../features/playback/engine'
 import { copyToClipboard, downloadText, formatDuration, pad2, safeFilename } from '../../utils'
@@ -111,7 +112,8 @@ export function Screenplay({ docked = false }: { docked?: boolean }) {
         {scenes.length === 0 && <p className="text-[12.5px] text-ink-3">El guion aparece aquí en cuanto agregues escenas.</p>}
         {scenes.map((s, i) => {
           const parts = PARTS.filter(([k]) => String(s.script[k] ?? '').trim())
-          const extras = extraEntries(s, fields)
+          const cam = cameraSpanish(s.script.camera)
+          const extras: [string, string][] = [...(cam ? ([['Cámara', cam]] as [string, string][]) : []), ...extraEntries(s, fields)]
           const active = s.id === selected
           return (
             <article
@@ -167,7 +169,7 @@ export function PrintScript() {
               <b>{label}:</b> {String(s.script[k])}
             </p>
           ))}
-          {extraEntries(s, project.customFields).map(([name, v]) => (
+          {[...(cameraSpanish(s.script.camera) ? ([['Cámara', cameraSpanish(s.script.camera)]] as [string, string][]) : []), ...extraEntries(s, project.customFields)].map(([name, v]) => (
             <p key={name}>
               <b>{name}:</b> {v}
             </p>
