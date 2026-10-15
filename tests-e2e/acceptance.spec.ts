@@ -8,7 +8,7 @@ const FX = path.join(import.meta.dirname, 'fixtures')
 const fx = (f: string) => path.join(FX, f)
 
 async function freshProject(page: Page, title = 'Proyecto de prueba') {
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('Promocional de TuApp.digital').first()).toBeVisible()
   await page.getByRole('button', { name: 'Nuevo proyecto' }).click()
   await page.getByRole('button', { name: 'Crear proyecto' }).click()

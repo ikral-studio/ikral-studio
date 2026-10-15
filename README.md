@@ -15,6 +15,7 @@ npm run build      # versión para subir al servidor (carpeta dist/)
 ```bash
 npm test           # lógica (Vitest)
 npm run test:e2e   # las 13 pruebas de aceptación en WebKit/Safari (Playwright)
+BASE_URL=https://ikral.com/studio/ npm run test:e2e   # lo mismo, en la página publicada
 ```
 
 Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg).
@@ -37,3 +38,7 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - shadcn/ui no se usó: los componentes son propios con Tailwind (menos peso).
 - Las pruebas automáticas corren en WebKit. Chromium headless no trae el códec H.264.
 - Videos muy grandes (cientos de MB) ocupan memoria al guardarse.
+
+## Publicado
+
+https://ikral.com/studio/ (sin contraseña). Subir: `npm run build` y luego `tar czf - -C dist . | ssh … tar xzf - -C domains/ikral.com/public_html/studio`.
