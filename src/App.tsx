@@ -18,8 +18,9 @@ interface Sizes {
   left: number
   right: number
   timeline: number
+  dock: number
 }
-const DEFAULT_SIZES: Sizes = { left: 240, right: 520, timeline: 312 }
+const DEFAULT_SIZES: Sizes = { left: 240, right: 520, timeline: 312, dock: 460 }
 
 function loadSizes(): Sizes {
   try {
@@ -56,6 +57,7 @@ export default function App() {
   const hasProject = useProject((s) => !!s.project)
   const leftCollapsed = useUI((s) => s.leftCollapsed)
   const rightCollapsed = useUI((s) => s.rightCollapsed)
+  const scriptDock = useUI((s) => s.scriptDock)
   const [sizes, setSizes] = useState<Sizes>(loadSizes)
   const start = useRef(sizes)
 
@@ -88,7 +90,7 @@ export default function App() {
 
   const style = {
     '--left-w': `${sizes.left}px`,
-    '--right-w': `${sizes.right}px`,
+    '--right-w': `${scriptDock ? Math.min(sizes.right, 400) : sizes.right}px`,
     '--timeline-h': `${sizes.timeline}px`,
     '--preview-vh': `${clamp(sizes.right * 0.75, 240, 420)}px`,
   } as CSSProperties
@@ -96,7 +98,8 @@ export default function App() {
   return (
     <>
       {hasProject ? (
-        <div className={`studio ${leftCollapsed ? 'left-collapsed' : ''} ${rightCollapsed ? 'right-collapsed' : ''}`} style={style}>
+        <div className="flex h-screen">
+        <div className={`min-w-0 flex-1 overflow-hidden studio ${leftCollapsed ? 'left-collapsed' : ''} ${rightCollapsed ? 'right-collapsed' : ''}`} style={style}>
           <TopBar />
           <Sidebar />
           <Splitter
@@ -137,7 +140,7 @@ export default function App() {
             onEnd={saveSizes}
           />
           <aside className="area-right no-print flex flex-col gap-3 overflow-y-auto py-3 pr-3">
-            <Screenplay />
+            {!scriptDock && <Screenplay />}
             <Preview />
           </aside>
           <Splitter
@@ -149,6 +152,22 @@ export default function App() {
             onEnd={saveSizes}
           />
           <Timeline />
+        </div>
+        {scriptDock && (
+          <>
+            <Splitter
+              dir="v"
+              className="!w-1.5 shrink-0"
+              label="Ancho del panel del guion"
+              onStart={() => (start.current = sizes)}
+              onDelta={(d) => setSizes((s) => ({ ...s, dock: clamp(start.current.dock - d, 320, 900) }))}
+              onEnd={saveSizes}
+            />
+            <aside className="no-print h-screen shrink-0" style={{ width: sizes.dock }}>
+              <Screenplay docked />
+            </aside>
+          </>
+        )}
         </div>
       ) : (
         <NoProject />

@@ -16,6 +16,7 @@ import {
   Undo2,
   Archive,
   Film,
+  BookOpenText,
 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
@@ -102,6 +103,7 @@ export function TopBar() {
   const canUndo = useProject((s) => s.past.length > 0)
   const canRedo = useProject((s) => s.future.length > 0)
   const [exporting, setExporting] = useState(false)
+  const scriptDock = useUI((s) => s.scriptDock)
 
   const exportBackup = async () => {
     const { project, scenes, flushSave } = useProject.getState()
@@ -165,7 +167,7 @@ export function TopBar() {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-sel to-acc-purple">
           <Clapperboard size={19} className="text-white" />
         </div>
-        <span className="hidden text-[14px] font-semibold tracking-tight text-ink-2 xl:inline">IKRAL Studio</span>
+        <span className={`hidden text-[14px] font-semibold tracking-tight text-ink-2 ${scriptDock ? "" : "xl:inline"}`}>IKRAL Studio</span>
       </div>
       <div className="h-6 w-px shrink-0 bg-line" />
       <div className="min-w-0 flex-1">
@@ -188,10 +190,10 @@ export function TopBar() {
 
       <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label="Formato">
         <button className={seg(aspect === '16:9')} onClick={() => setAspect('16:9')} aria-pressed={aspect === '16:9'}>
-          <Monitor size={16} /> <span className="hidden lg:inline">Horizontal</span> 16:9
+          <Monitor size={16} /> <span className={scriptDock ? 'hidden' : 'hidden lg:inline'}>Horizontal</span> 16:9
         </button>
         <button className={seg(aspect === '9:16')} onClick={() => setAspect('9:16')} aria-pressed={aspect === '9:16'}>
-          <Smartphone size={16} /> <span className="hidden lg:inline">Vertical</span> 9:16
+          <Smartphone size={16} /> <span className={scriptDock ? 'hidden' : 'hidden lg:inline'}>Vertical</span> 9:16
         </button>
       </div>
 
@@ -203,6 +205,15 @@ export function TopBar() {
         </button>
         <button className="icon-btn" onClick={() => useUI.setState({ modal: 'projects' })} title="Abrir proyecto" aria-label="Abrir proyecto">
           <FolderOpen size={17} />
+        </button>
+        <button
+          className={`icon-btn ${scriptDock ? '!bg-sel/20 !text-white' : ''}`}
+          onClick={() => useUI.setState({ scriptDock: !scriptDock })}
+          aria-pressed={scriptDock}
+          title="Guion en columna alta (para leer)"
+          aria-label="Guion en panel lateral"
+        >
+          <BookOpenText size={17} />
         </button>
         <button className="icon-btn" onClick={exportNle} disabled={exporting} title="Exportar edición para Premiere, Final Cut o DaVinci" aria-label="Exportar edición para editor de video">
           <Film size={17} />
@@ -217,9 +228,9 @@ export function TopBar() {
           <Settings size={17} />
         </button>
       </div>
-      <button className="btn btn-primary !h-9 shrink-0" onClick={exportBackup} disabled={exporting} title="Descarga un .zip con el proyecto y todos sus archivos">
+      <button className="btn btn-primary !h-9 shrink-0" onClick={exportBackup} disabled={exporting} title="Descarga un .zip con el proyecto y todos sus archivos" aria-label="Exportar proyecto">
         {exporting ? <Loader2 size={16} className="animate-spin" /> : <Archive size={16} />}
-        Exportar proyecto
+        <span className={scriptDock ? 'hidden' : ''}>Exportar proyecto</span>
       </button>
     </header>
   )

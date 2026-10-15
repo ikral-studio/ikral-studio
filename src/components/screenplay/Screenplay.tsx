@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ClipboardCopy, FileText, MoreHorizontal, Printer, FileCode2, Sparkles, PanelRightClose } from 'lucide-react'
+import { ClipboardCopy, FileText, MoreHorizontal, Printer, FileCode2, Sparkles, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { useOrderedScenes } from '../../stores/selectors'
@@ -61,7 +61,7 @@ function ExportMenu() {
   )
 }
 
-export function Screenplay() {
+export function Screenplay({ docked = false }: { docked?: boolean }) {
   const scenes = useOrderedScenes()
   const selected = useProject((s) => s.selectedSceneId)
   const playingIndex = usePlayback((s) => (s.playing ? s.index : -1))
@@ -81,7 +81,10 @@ export function Screenplay() {
   }
 
   return (
-    <section className="panel flex min-h-[150px] flex-1 flex-col" aria-label="Guion completo">
+    <section
+      className={docked ? 'flex h-full min-h-0 flex-col border-l border-line bg-panel' : 'panel flex min-h-[150px] flex-1 flex-col'}
+      aria-label={docked ? 'Guion completo en panel' : 'Guion completo'}
+    >
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <FileText size={17} className="text-ink-2" />
         <h2 className="flex-1 text-[13px] font-semibold tracking-wide">GUION COMPLETO</h2>
@@ -89,11 +92,22 @@ export function Screenplay() {
           <ClipboardCopy size={13} /> Copiar guion completo
         </button>
         <ExportMenu />
-        <button className="icon-btn" onClick={() => useUI.setState({ rightCollapsed: true })} title="Ocultar columna" aria-label="Ocultar columna derecha">
-          <PanelRightClose size={16} />
-        </button>
+        {docked ? (
+          <button className="icon-btn" onClick={() => useUI.setState({ scriptDock: false })} title="Cerrar panel del guion" aria-label="Cerrar panel del guion">
+            <X size={17} />
+          </button>
+        ) : (
+          <>
+            <button className="icon-btn" onClick={() => useUI.setState({ scriptDock: true })} title="Abrir el guion en una columna alta" aria-label="Abrir guion en panel lateral">
+              <PanelRightOpen size={16} />
+            </button>
+            <button className="icon-btn" onClick={() => useUI.setState({ rightCollapsed: true })} title="Ocultar columna" aria-label="Ocultar columna derecha">
+              <PanelRightClose size={16} />
+            </button>
+          </>
+        )}
       </div>
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div ref={listRef} className={`min-h-0 flex-1 overflow-y-auto ${docked ? 'px-6 py-5 [&_article]:mb-3 [&_button]:text-[15px] [&_p]:text-[14px] [&_p]:leading-[1.7]' : 'px-4 py-3'}`}>
         {scenes.length === 0 && <p className="text-[12.5px] text-ink-3">El guion aparece aquí en cuanto agregues escenas.</p>}
         {scenes.map((s, i) => {
           const parts = PARTS.filter(([k]) => String(s.script[k] ?? '').trim())

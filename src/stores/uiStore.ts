@@ -31,6 +31,8 @@ interface UIState {
   tool: 'select' | 'razor'
   /** Zoom del timeline en píxeles por segundo. */
   zoom: number
+  /** Guion completo abierto en la columna alta de la derecha. */
+  scriptDock: boolean
 }
 
 export const useUI = create<UIState>()(() => ({
@@ -43,6 +45,7 @@ export const useUI = create<UIState>()(() => ({
   scrollRequest: null,
   tool: 'select',
   zoom: 24,
+  scriptDock: false,
 }))
 
 export function zoomBy(f: number) {

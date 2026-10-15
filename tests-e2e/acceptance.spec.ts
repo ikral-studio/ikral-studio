@@ -406,3 +406,16 @@ test('extra · guion con IA: copiar formato, pegar, subir archivo, inválido, ag
   await expect(page.locator('article[data-scene-id]')).toHaveCount(2)
   await expect(page.getByRole('button', { name: /Vertical/ })).toHaveAttribute('aria-pressed', 'true')
 })
+
+test('extra · guion en columna alta', async ({ page }) => {
+  await page.goto('./')
+  await page.getByRole('button', { name: 'Guion en panel lateral', exact: true }).click()
+  const dock = page.getByLabel('Guion completo en panel')
+  await expect(dock).toBeVisible()
+  const box = (await dock.boundingBox())!
+  expect(box.height).toBeGreaterThan(850)
+  await expect(dock.locator('[data-script-id]')).toHaveCount(10)
+  await page.getByLabel('Abrir guion en panel lateral').count().then((n) => expect(n).toBe(0))
+  await page.getByLabel('Cerrar panel del guion').click()
+  await expect(dock).toHaveCount(0)
+})

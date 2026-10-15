@@ -122,7 +122,7 @@ export function Preview() {
             {formatTime(time)} / {formatTime(total)}
           </span>
           <div
-            className="group relative mx-1 h-5 flex-1 cursor-pointer touch-none"
+            className="group relative mx-1 h-5 min-w-[60px] flex-1 cursor-pointer touch-none"
             role="slider"
             aria-label="Progreso"
             aria-valuemin={0}
@@ -166,7 +166,7 @@ export function Preview() {
             step={0.05}
             value={muted ? 0 : volume}
             onChange={(e) => playback.setVolume(Number(e.target.value))}
-            className="w-16"
+            className="w-14 min-w-0 shrink"
             aria-label="Volumen"
           />
           <button className="icon-btn" onClick={fullscreen} aria-label="Pantalla completa" title="Pantalla completa">

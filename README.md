@@ -33,6 +33,7 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Cortar video (parte la escena en 2) y cortar música en el cabezal; orillas para estirar o encoger clips sin dañar el archivo.
 - Exportar edición: .zip con media + FCP7 XML (Premiere, DaVinci) + FCPXML (Final Cut). Aún sin probar dentro de esos editores.
 - Atajos configurables: A atrás, D adelante (otra vez = 2×, 4×, 8×), C tijera, V selección, W/S zoom, Espacio, flechas, Supr.
+- Guion en columna alta: botón del libro (arriba) abre el guion completo de arriba a abajo para leerlo cómodo.
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
 
 ## Limitaciones de esta versión
