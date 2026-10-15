@@ -13,6 +13,8 @@ import { Modals } from './components/layout/Modals'
 import { ConfirmDialog, Lightbox, Toasts } from './components/common/Overlays'
 import { useShortcuts } from './hooks/useShortcuts'
 import { PausedOverlay } from './components/layout/PausedOverlay'
+import { ClaudeChat } from './components/chat/ClaudeChat'
+import { isDesktop } from './database/db'
 import { startTabGuard } from './features/session/tabGuard'
 import { clamp } from './utils'
 
@@ -145,6 +147,7 @@ export default function App() {
           <aside className="area-right no-print flex flex-col gap-3 overflow-y-auto py-3 pr-3">
             {!scriptDock && <Screenplay />}
             <Preview />
+            {isDesktop() && <ClaudeChat />}
           </aside>
           <Splitter
             dir="h"

@@ -278,10 +278,59 @@ export async function watchProject(projectId: string, onChange: () => void) {
         lastWritten.set(path, now)
         onChange()
       }
+      // Chat con Claude: avisar si cambió su archivo.
+      const claude = await readTextFile(`${dir}/${CHAT_CLAUDE}`, BASE).catch(() => null)
+      if (claude !== null && claude !== lastClaudeChat) {
+        lastClaudeChat = claude
+        chatListeners.forEach((l) => l())
+      }
     },
     { ...BASE, delayMs: 400 },
   )
   unwatch = stop
+}
+
+// ---- Chat con Claude ----
+// Dos archivos para que nunca se pisen: la app solo escribe el del usuario, Claude solo el suyo.
+export const CHAT_USER = 'chat-usuario.json'
+export const CHAT_CLAUDE = 'chat-claude.json'
+let lastClaudeChat: string | null = null
+const chatListeners = new Set<() => void>()
+export function onChatChange(cb: () => void) {
+  chatListeners.add(cb)
+  return () => chatListeners.delete(cb)
+}
+
+export interface ChatMessage {
+  id: string
+  from: 'user' | 'claude'
+  text: string
+  at: string
+  sceneId?: string
+  sceneLabel?: string
+}
+interface ClaudeChatFile {
+  messages: ChatMessage[]
+  /** Último mensaje del usuario que Claude ya leyó. */
+  readUpTo?: string
+  /** Claude está escuchando si esto es reciente. */
+  lastSeen?: string
+  /** Lo que Claude está haciendo ahora (ej. «Escribiendo la escena 3…»). */
+  working?: string
+}
+
+export async function readChat(projectId: string) {
+  const dir = folders.get(projectId)
+  if (!dir) return { user: [] as ChatMessage[], claude: { messages: [] } as ClaudeChatFile }
+  const user = (await readJson<{ messages: ChatMessage[] }>(`${dir}/${CHAT_USER}`))?.messages ?? []
+  const claude = (await readJson<ClaudeChatFile>(`${dir}/${CHAT_CLAUDE}`)) ?? { messages: [] }
+  return { user, claude }
+}
+
+export async function sendChat(projectId: string, msg: ChatMessage) {
+  const dir = await dirFor({ id: projectId, title: 'Proyecto' })
+  const cur = (await readJson<{ messages: ChatMessage[] }>(`${dir}/${CHAT_USER}`))?.messages ?? []
+  await writeJson(`${dir}/${CHAT_USER}`, { messages: [...cur, msg] })
 }
 
 export async function projectFolderPath(projectId: string): Promise<string | null> {

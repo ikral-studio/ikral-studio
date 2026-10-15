@@ -11,6 +11,18 @@ type Backend = typeof idb & {
   mediaFileUrl?: (id: string, thumb?: boolean) => Promise<string | null>
   watchProject?: (projectId: string, onChange: () => void) => Promise<void>
   projectFolderPath?: (projectId: string) => Promise<string | null>
+  readChat?: (projectId: string) => Promise<{ user: ChatMessage[]; claude: { messages: ChatMessage[]; readUpTo?: string; lastSeen?: string; working?: string } }>
+  sendChat?: (projectId: string, msg: ChatMessage) => Promise<void>
+  onChatChange?: (cb: () => void) => () => void
+}
+
+export interface ChatMessage {
+  id: string
+  from: 'user' | 'claude'
+  text: string
+  at: string
+  sceneId?: string
+  sceneLabel?: string
 }
 
 let backendPromise: Promise<Backend> | null = null
@@ -39,4 +51,7 @@ export const setKV = async (key: string, value: unknown) => (await backend()).se
 export const mediaFileUrl = async (id: string, thumb = false) => (await backend()).mediaFileUrl?.(id, thumb) ?? null
 /** Solo escritorio: avisa cuando proyecto.json cambia por fuera (por ejemplo, lo editó Claude). */
 export const watchProject = async (pid: string, cb: () => void) => (await backend()).watchProject?.(pid, cb)
+export const readChat = async (pid: string) => (await backend()).readChat?.(pid) ?? null
+export const sendChat = async (pid: string, msg: ChatMessage) => (await backend()).sendChat?.(pid, msg)
+export const onChatChange = async (cb: () => void) => (await backend()).onChatChange?.(cb) ?? (() => {})
 export const projectFolderPath = async (pid: string) => (await backend()).projectFolderPath?.(pid) ?? null
