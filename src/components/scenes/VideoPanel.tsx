@@ -7,7 +7,7 @@ import { importFiles } from '../../features/scene-management/actions'
 import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { formatDuration } from '../../utils'
 import { downloadMedia, orientationMismatch } from './MediaSlot'
-import { placedClips, versionLength } from '../../features/script-sync/derive'
+import { placedClips, versionLength, type PlacedClip } from '../../features/script-sync/derive'
 import type { MediaAsset, VideoVersion } from '../../types'
 
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov'
@@ -36,6 +36,35 @@ function VersionMeta({ sceneId, v }: { sceneId: string; v: VideoVersion }) {
         <textarea className="field" rows={2} value={v.notes ?? ''} onChange={(e) => update(sceneId, v.id, { notes: e.target.value })} placeholder="Qué salió bien o mal en esta versión" />
       </label>
       <div className="col-span-2 text-[11px] text-ink-3 lg:col-span-3">Importado {new Date(v.createdAt).toLocaleString('es-MX')}</div>
+    </div>
+  )
+}
+
+/** Un video de la escena, en su propia caja (cuando hay varios, van lado a lado). */
+function ClipTile({ sceneId, placed, i, count, aspect, onFocus, selected }: { sceneId: string; placed: PlacedClip; i: number; count: number; aspect: string; onFocus: () => void; selected: boolean }) {
+  const url = useMediaUrl(placed.clip.mediaId)
+  const { moveClip, removeClip } = useProject.getState()
+  return (
+    <div className="min-w-0" onMouseDown={onFocus}>
+      <div className="mb-1.5 flex items-center gap-1">
+        <span className={`label ${selected ? '!text-ink' : ''}`}>
+          Video {i + 1} · <span className="tabular-nums">{formatDuration(placed.length)}</span>
+        </span>
+        <span className="ml-auto flex">
+          <button className="icon-btn sm !h-6 !w-6" disabled={i === 0} onClick={() => moveClip(sceneId, placed.clip.id, -1)} aria-label={`Mover video ${i + 1} antes`} title="Mover antes">
+            <ChevronLeft size={13} />
+          </button>
+          <button className="icon-btn sm !h-6 !w-6" disabled={i === count - 1} onClick={() => moveClip(sceneId, placed.clip.id, 1)} aria-label={`Mover video ${i + 1} después`} title="Mover después">
+            <ChevronRight size={13} />
+          </button>
+          <button className="icon-btn sm !h-6 !w-6 hover:!text-bad" onClick={() => removeClip(sceneId, placed.clip.id)} aria-label={`Quitar video ${i + 1} de la escena`} title="Quitar de la escena">
+            <X size={13} />
+          </button>
+        </span>
+      </div>
+      <div className={`media-frame ${selected ? 'ring-1 ring-sel' : ''}`} style={{ aspectRatio: aspect === '16:9' ? '16 / 9' : '9 / 16', maxHeight: aspect === '9:16' ? 360 : undefined, marginInline: 'auto' }}>
+        {url && <video key={url} src={url} controls preload="metadata" className="object-contain" playsInline />}
+      </div>
     </div>
   )
 }
@@ -119,33 +148,21 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
 
       {active && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-[#0f1828] p-1.5" aria-label="Videos de esta escena">
-          <span className="label px-1">Videos de la escena:</span>
-          {clips.map((c, i) => (
-            <span key={c.clip.id} className={`flex items-center rounded-lg border ${i === clipIdx ? 'border-sel bg-sel/15' : 'border-line'}`}>
-              <button className="px-2 py-1 text-[11.5px] tabular-nums" onClick={() => setClipIdx(i)} aria-pressed={i === clipIdx} title="Ver este video">
-                {i + 1} · {formatDuration(c.length)}
-              </button>
-              {clips.length > 1 && (
-                <>
-                  <button className="icon-btn sm !h-6 !w-5" disabled={i === 0} onClick={() => { useProject.getState().moveClip(sceneId, c.clip.id, -1); setClipIdx(i - 1) }} aria-label={`Mover video ${i + 1} antes`}>
-                    <ChevronLeft size={12} />
-                  </button>
-                  <button className="icon-btn sm !h-6 !w-5" disabled={i === clips.length - 1} onClick={() => { useProject.getState().moveClip(sceneId, c.clip.id, 1); setClipIdx(i + 1) }} aria-label={`Mover video ${i + 1} después`}>
-                    <ChevronRight size={12} />
-                  </button>
-                  <button className="icon-btn sm !h-6 !w-5 hover:!text-bad" onClick={() => { useProject.getState().removeClip(sceneId, c.clip.id); setClipIdx(0) }} aria-label={`Quitar video ${i + 1} de la escena`}>
-                    <X size={12} />
-                  </button>
-                </>
-              )}
-            </span>
-          ))}
-          <button className="btn btn-sm !border-[#38bdd8]/50 !text-[#cdeff7]" onClick={async () => importAs(await pickFiles(VIDEO_ACCEPT), 'clip')} title="Agrega otro video que sigue al anterior en esta misma escena">
+          <span className="label px-1">{clips.length > 1 ? `${clips.length} videos seguidos en esta escena` : 'Videos de la escena:'}</span>
+          {clips.length === 1 && <span className="rounded-lg border border-sel bg-sel/15 px-2 py-1 text-[11.5px] tabular-nums">1 · {formatDuration(clips[0].length)}</span>}
+          <button className="btn btn-sm ml-auto !border-[#38bdd8]/50 !text-[#cdeff7]" onClick={async () => importAs(await pickFiles(VIDEO_ACCEPT), 'clip')} title="Agrega otro video que sigue al anterior en esta misma escena">
             <Plus size={13} /> Otro video
           </button>
         </div>
       )}
 
+      {active && clips.length > 1 ? (
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(clips.length, 3)}, minmax(0, 1fr))` }}>
+          {clips.map((c, i) => (
+            <ClipTile key={c.clip.id} sceneId={sceneId} placed={c} i={i} count={clips.length} aspect={aspect} onFocus={() => setClipIdx(i)} selected={i === clipIdx} />
+          ))}
+        </div>
+      ) : (
       <div
         {...drop.props}
         className={`media-frame ${!active ? 'dropzone' : ''} ${drop.over ? 'dropzone over' : ''}`}
@@ -166,6 +183,7 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
           </button>
         )}
       </div>
+      )}
 
       {active && (
         <>

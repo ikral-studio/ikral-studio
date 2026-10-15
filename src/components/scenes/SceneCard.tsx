@@ -1,9 +1,12 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { CheckCheck, ChevronDown, ChevronUp, ClipboardPaste, Clock3, Copy, Film, ImageIcon, Play, Timer, Trash2 } from 'lucide-react'
+import { CheckCheck, ChevronDown, ChevronUp, ClipboardPaste, Clock3, Copy, Film, ImageIcon, Loader2, Play, Timer, Trash2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { openPasteScene, useUI } from '../../stores/uiStore'
+import { openPasteScene, toast, useUI } from '../../stores/uiStore'
+import { importFiles } from '../../features/scene-management/actions'
+import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
+import { IMAGE_ACCEPT } from './MediaSlot'
 import { useMediaUrl } from '../../features/media-library/media'
-import { activeVideo } from '../../features/script-sync/derive'
+import { activeVideo, effectiveDuration } from '../../features/script-sync/derive'
 import { confirmDeleteScene, duplicateAndFocus, selectScene } from '../../features/scene-management/actions'
 import { usePlayback } from '../../features/playback/engine'
 import { formatTime, pad2 } from '../../utils'
@@ -17,14 +20,54 @@ import { VideoPanel } from './VideoPanel'
 /** Alto fijo de las cajas en la tarjeta cerrada: todas las escenas miden lo mismo. */
 const COMPACT_H = 112
 
-function Thumb({ mediaId, label, aspect }: { mediaId?: string; label: string; aspect: string }) {
-  const url = useMediaUrl(mediaId, true)
+const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov'
+
+/** Caja de la tarjeta cerrada: se puede soltar un archivo o dar clic para elegirlo. */
+function CompactSlot({ sceneId, kind, mediaId, label, onOpen, children }: { sceneId: string; kind: 'start' | 'end' | 'video'; mediaId?: string; label: string; onOpen: () => void; children?: React.ReactNode }) {
+  const url = useMediaUrl(kind === 'video' ? undefined : mediaId, true)
+  const [busy, setBusy] = useState(false)
+  const accept = async (files: File[]) => {
+    if (!files[0]) return
+    setBusy(true)
+    const [a] = await importFiles([files[0]], kind === 'video' ? 'video' : 'image')
+    setBusy(false)
+    if (!a) return
+    const st = useProject.getState()
+    if (kind === 'video') {
+      const hasVideo = st.scenes[sceneId]?.videoVersions.length
+      st.addVideoVersion(sceneId, { mediaId: a.id, duration: a.duration ?? 0, width: a.width, height: a.height })
+      toast(hasVideo ? 'Video guardado como nueva versión' : 'Video guardado')
+    } else {
+      st.setImage(sceneId, kind, a.id)
+      toast(`${label} guardada`)
+    }
+  }
+  const drop = useFileDrop(accept)
+  const empty = !mediaId
   return (
     <div className="min-w-0">
       <div className="label mb-1 truncate">{label}</div>
-      <div className="media-frame flex w-full items-center justify-center" style={{ height: COMPACT_H }} data-aspect={aspect}>
-        {url ? <img src={url} alt="" className="object-cover" /> : <ImageIcon size={18} className="text-ink-3" />}
-      </div>
+      <button
+        {...drop.props}
+        className={`media-frame flex w-full items-center justify-center ${empty ? 'dropzone hover:border-sel-2' : ''} ${drop.over ? 'dropzone over' : ''}`}
+        style={{ height: COMPACT_H }}
+        onClick={async () => (empty ? accept(await pickFiles(kind === 'video' ? VIDEO_ACCEPT : IMAGE_ACCEPT)) : onOpen())}
+        title={empty ? 'Arrastra aquí o haz clic para elegir' : 'Clic para abrir la escena · suelta otro archivo para cambiarlo'}
+        aria-label={empty ? `Agregar ${label.toLowerCase()}` : `Abrir ${label.toLowerCase()}`}
+      >
+        {busy ? (
+          <Loader2 size={18} className="animate-spin text-ink-2" />
+        ) : kind === 'video' ? (
+          children
+        ) : url ? (
+          <img src={url} alt="" className="object-cover" />
+        ) : (
+          <span className="flex flex-col items-center gap-1 text-ink-3">
+            <ImageIcon size={18} />
+            <span className="text-[10.5px]">Arrastra o elige</span>
+          </span>
+        )}
+      </button>
     </div>
   )
 }
@@ -95,7 +138,6 @@ export function SuggestChip({ sceneId, full = false }: { sceneId: string; full?:
 export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: number }) {
   const scene = useProject((s) => s.scenes[id])
   const selected = useProject((s) => s.selectedSceneId === id)
-  const aspect = useProject((s) => s.project?.aspectRatio ?? '16:9')
   const isPlayingHere = usePlayback((s) => s.playing && s.index === n - 1)
   const scrollReq = useUI((s) => s.scrollRequest)
   const ref = useRef<HTMLElement>(null)
@@ -174,8 +216,8 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
 
       {scene.collapsed ? (
         <div className="grid grid-cols-[1fr_1fr_1.35fr_1fr] items-start gap-2.5 px-3 pb-3">
-          <Thumb mediaId={scene.startImageId} label="Imagen inicial" aspect={aspect} />
-          <Thumb mediaId={scene.endImageId} label="Imagen final" aspect={aspect} />
+          <CompactSlot sceneId={id} kind="start" mediaId={scene.startImageId} label="Imagen inicial" onOpen={toggle} />
+          <CompactSlot sceneId={id} kind="end" mediaId={scene.endImageId} label="Imagen final" onOpen={toggle} />
           <div className="min-w-0">
             <div className="label mb-1">Guion y dirección</div>
             <button
@@ -187,22 +229,22 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
               {scene.script.action || scene.script.generationPrompt || <span className="text-ink-3">Sin guion todavía. Clic para escribir.</span>}
             </button>
           </div>
-          <div className="min-w-0">
-            <div className="label mb-1">Video generado</div>
-            <div className="media-frame flex w-full items-center justify-center" style={{ height: COMPACT_H }}>
-              {videoThumb ? (
-                <>
-                  <img src={videoThumb} alt="" className="object-cover" />
-                  <span className="absolute inset-0 m-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/60">
-                    <Play size={14} fill="white" className="text-white" />
-                  </span>
-                  <span className="chip absolute bottom-1 right-1 bg-black/70 tabular-nums text-white">{formatTime(video?.duration ?? 0)}</span>
-                </>
-              ) : (
-                <Film size={18} className="text-ink-3" />
-              )}
-            </div>
-          </div>
+          <CompactSlot sceneId={id} kind="video" mediaId={video?.mediaId} label="Video generado" onOpen={toggle}>
+            {videoThumb ? (
+              <>
+                <img src={videoThumb} alt="" className="object-cover" />
+                <span className="absolute inset-0 m-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/60">
+                  <Play size={14} fill="white" className="text-white" />
+                </span>
+                <span className="chip absolute bottom-1 right-1 bg-black/70 tabular-nums text-white">{formatTime(effectiveDuration(scene))}</span>
+              </>
+            ) : (
+              <span className="flex flex-col items-center gap-1 text-ink-3">
+                <Film size={18} />
+                <span className="text-[10.5px]">Arrastra o elige</span>
+              </span>
+            )}
+          </CompactSlot>
         </div>
       ) : (
         <div className="flex flex-col gap-4 border-t border-line px-3 pb-4 pt-3">
