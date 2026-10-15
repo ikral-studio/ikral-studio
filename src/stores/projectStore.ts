@@ -82,6 +82,13 @@ interface State {
   undo: () => void
   redo: () => void
   flushSave: () => Promise<void>
+  /** Esta ventana está en pausa porque el proyecto se abrió en otra. */
+  paused: boolean
+  setPaused: (paused: boolean) => void
+  /** Vuelve a leer el proyecto abierto desde el disco (al retomar esta ventana). */
+  reloadCurrent: () => Promise<void>
+  backupNow: (reason?: 'auto' | 'before-restore' | 'before-import') => Promise<void>
+  restoreSnapshot: (snapshotId: string) => Promise<void>
 }
 
 const DEFAULT_SETTINGS: Settings = { defaultDuration: 8, fit: 'contain' }
@@ -93,6 +100,9 @@ let dirtyVersion = 0
 let savedVersion = 0
 let saving: Promise<void> | null = null
 let lastCoalesce: { key: string; at: number } | null = null
+/** updatedAt del proyecto en el último respaldo automático. */
+let lastBackupAt: string | null = null
+export const BACKUP_EVERY_MS = 15 * 60 * 1000
 
 export const useProject = create<State>()((set, get) => {
   /** Guarda un cambio: historial (deshacer), estado y guardado programado. */
@@ -109,6 +119,7 @@ export const useProject = create<State>()((set, get) => {
   }
 
   function scheduleSave(delay: number) {
+    if (get().paused) return
     dirtyVersion++
     set({ saveState: 'saving' })
     if (saveTimer) clearTimeout(saveTimer)
@@ -183,6 +194,41 @@ export const useProject = create<State>()((set, get) => {
     settings: DEFAULT_SETTINGS,
     past: [],
     future: [],
+
+    paused: false,
+    setPaused(paused) {
+      set({ paused })
+    },
+
+    async reloadCurrent() {
+      const id = get().project?.id
+      if (!id) return
+      const loaded = await store.loadProject(id)
+      if (loaded) {
+        const sel = get().selectedSceneId
+        await loadInto(loaded.project, loaded.scenes)
+        if (sel && loaded.scenes.some((s) => s.id === sel)) set({ selectedSceneId: sel })
+      }
+    },
+
+    async backupNow(reason = 'auto') {
+      const { project, scenes } = get()
+      if (!project) return
+      await get().flushSave()
+      const ordered = project.sceneIds.map((id) => scenes[id]).filter(Boolean)
+      await store.addSnapshot(project, ordered, reason)
+      lastBackupAt = project.updatedAt
+    },
+
+    async restoreSnapshot(snapshotId) {
+      const snap = await store.db.snapshots.get(snapshotId)
+      const cur = get().project
+      if (!snap || !cur || snap.projectId !== cur.id) return
+      await get().backupNow('before-restore')
+      const project = { ...snap.project, updatedAt: nowIso() }
+      await store.saveProject(project, snap.scenes)
+      await loadInto(project, snap.scenes)
+    },
 
     async init() {
       const settings = { ...DEFAULT_SETTINGS, ...((await store.getKV<Settings>('settings')) ?? {}) }
@@ -627,6 +673,7 @@ export const useProject = create<State>()((set, get) => {
         s.status = deriveStatus(s)
         return s
       })
+      if (mode === 'append') await get().backupNow('before-import')
       if (mode === 'new') {
         const project: Project = { ...base, aspectRatio: data.project.aspectRatio, customFields: fields, characters, style, sceneIds: newScenes.map((s) => s.id) }
         await get().flushSave()
@@ -726,4 +773,13 @@ if (typeof window !== 'undefined') {
       e.preventDefault()
     }
   })
+}
+
+// Respaldo automático cada 15 minutos, solo si hubo cambios desde el último.
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    const { project, paused, backupNow } = useProject.getState()
+    if (!project || paused || project.updatedAt === lastBackupAt) return
+    backupNow('auto').catch((e) => console.error('Respaldo automático falló', e))
+  }, BACKUP_EVERY_MS)
 }

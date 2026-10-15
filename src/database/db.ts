@@ -8,11 +8,22 @@ export interface StoredMedia extends MediaAsset {
   thumbType?: string
 }
 
+/** Respaldo automático: copia del proyecto y sus escenas (los archivos se comparten, no se duplican). */
+export interface Snapshot {
+  id: string
+  projectId: string
+  createdAt: string
+  reason: 'auto' | 'before-restore' | 'before-import'
+  project: Project
+  scenes: Scene[]
+}
+
 class StudioDB extends Dexie {
   projects!: Table<Project, string>
   scenes!: Table<Scene, string>
   media!: Table<StoredMedia, string>
   kv!: Table<{ key: string; value: unknown }, string>
+  snapshots!: Table<Snapshot, string>
 
   constructor() {
     super('ikral-studio')
@@ -21,6 +32,9 @@ class StudioDB extends Dexie {
       scenes: 'id, projectId',
       media: 'id, projectId',
       kv: 'key',
+    })
+    this.version(2).stores({
+      snapshots: 'id, projectId, createdAt',
     })
   }
 }
@@ -96,6 +110,7 @@ export async function deleteProject(id: string) {
     await db.scenes.where('projectId').equals(id).delete()
     await db.media.where('projectId').equals(id).delete()
   })
+  await db.snapshots.where('projectId').equals(id).delete()
 }
 
 /** Borra los archivos del proyecto que ya ninguna escena usa. */
@@ -108,10 +123,47 @@ export async function collectGarbage(projectId: string, scenes: Scene[], extraUs
     s.videoVersions.forEach((v) => used.add(v.mediaId))
   }
   extraUsed?.forEach((id) => used.add(id))
+  // Los respaldos automáticos también cuentan: si se restaura uno, sus archivos deben seguir ahí.
+  const snaps = await db.snapshots.where('projectId').equals(projectId).toArray()
+  for (const sn of snaps) mediaIdsOf(sn.project, sn.scenes).forEach((id) => used.add(id))
   const ids = await db.media.where('projectId').equals(projectId).primaryKeys()
   const orphan = ids.filter((id) => !used.has(id))
   if (orphan.length) await db.media.bulkDelete(orphan)
   return orphan.length
+}
+
+export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
+  const used: string[] = []
+  for (const s of scenes) {
+    if (s.startImageId) used.push(s.startImageId)
+    if (s.endImageId) used.push(s.endImageId)
+    s.storyboardFrames.forEach((f) => used.push(f.mediaId))
+    s.videoVersions.forEach((v) => used.push(v.mediaId))
+  }
+  project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
+  return used
+}
+
+export const SNAPSHOT_KEEP = 30
+
+export async function addSnapshot(project: Project, scenes: Scene[], reason: Snapshot['reason']) {
+  const snap: Snapshot = {
+    id: `sn_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    projectId: project.id,
+    createdAt: new Date().toISOString(),
+    reason,
+    project: structuredClone(project),
+    scenes: structuredClone(scenes),
+  }
+  await db.snapshots.put(snap)
+  const all = await db.snapshots.where('projectId').equals(project.id).sortBy('createdAt')
+  const extra = all.slice(0, Math.max(0, all.length - SNAPSHOT_KEEP))
+  if (extra.length) await db.snapshots.bulkDelete(extra.map((s) => s.id))
+  return snap
+}
+
+export async function listSnapshots(projectId: string): Promise<Snapshot[]> {
+  return (await db.snapshots.where('projectId').equals(projectId).sortBy('createdAt')).reverse()
 }
 
 export async function getKV<T>(key: string): Promise<T | undefined> {

@@ -12,6 +12,8 @@ import { Splitter } from './components/layout/Splitter'
 import { Modals } from './components/layout/Modals'
 import { ConfirmDialog, Lightbox, Toasts } from './components/common/Overlays'
 import { useShortcuts } from './hooks/useShortcuts'
+import { PausedOverlay } from './components/layout/PausedOverlay'
+import { startTabGuard } from './features/session/tabGuard'
 import { clamp } from './utils'
 
 interface Sizes {
@@ -65,6 +67,7 @@ export default function App() {
     useProject
       .getState()
       .init()
+      .then(() => startTabGuard())
       .catch((e) => {
         console.error(e)
         toast('No se pudo abrir el almacenamiento del navegador', 'error')
@@ -177,6 +180,7 @@ export default function App() {
       <ConfirmDialog />
       <Lightbox />
       <Toasts />
+      <PausedOverlay />
     </>
   )
 }
