@@ -13,7 +13,7 @@ function Frame({ sceneId, frame, n, count }: { sceneId: string; frame: Storyboar
   return (
     <div className="group relative h-[64px] w-[96px] shrink-0 overflow-hidden rounded-lg bg-[#070c16]">
       {url && (
-        <button className="h-full w-full" onClick={() => useUI.setState({ lightbox: { mediaId: frame.mediaId, kind: 'image', title: `Fotograma ${n}` } })} aria-label={`Ampliar fotograma ${n}`}>
+        <button className="h-full w-full" onClick={() => useUI.setState({ lightbox: { mediaId: frame.mediaId, kind: 'image', title: `Fotograma ${n}`, target: { sceneId, frameId: frame.id } } })} aria-label={`Ampliar fotograma ${n}`}>
           <img src={url} alt="" className="h-full w-full object-cover" />
         </button>
       )}

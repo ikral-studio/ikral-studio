@@ -53,6 +53,7 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Respaldos automáticos cada 15 min (últimos 30) en «Abrir proyecto», con «Restaurar» y «Respaldar ahora».
 - Una sola ventana edita: si abres IKRAL Studio en otra ventana, la anterior se pone en pausa (sin perder nada) y puedes retomarla con «Usar esta ventana».
 - Varios videos seguidos en una escena: «+ Otro video» en «Video generado» (se reproducen uno tras otro, se ordenan y se exportan como clips seguidos).
+- Recortar imagen al formato del proyecto (16:9 o 9:16) desde «Ampliar», con cuadrícula de tercios; guarda una imagen nueva.
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
 
 ## Limitaciones de esta versión

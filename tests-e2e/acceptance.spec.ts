@@ -576,3 +576,19 @@ test('extra · subir desde la tarjeta cerrada y videos lado a lado', async ({ pa
   await expect(c.getByText(/^Video 2 ·/)).toBeVisible()
   await expect(c.locator('video')).toHaveCount(2)
 })
+
+test('extra · recortar una imagen a 16:9 en la vista ampliada', async ({ page }) => {
+  await freshProject(page, 'Recorte')
+  await addScenes(page, 1)
+  await page.getByRole('button', { name: /Vertical/ }).click()
+  const c = card(page, 1)
+  await chooseFile(page, () => c.getByText('Arrastra o elige imagen').first().click(), 'inicio.png') // 1280×720
+  await page.getByRole('button', { name: 'Ampliar Imagen inicial' }).click({ force: true })
+  await page.getByRole('button', { name: 'Recortar a 9:16' }).click()
+  await expect(page.getByLabel('Área de recorte')).toBeVisible()
+  await expect(page.getByRole('dialog')).toContainText('Resultado: 405×720 (9:16)')
+  await page.getByRole('button', { name: 'Recortar a 9:16' }).click()
+  await expect(page.getByText(/Recortada a 9:16 · 405×720/)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(c.getByText('405×720 · JPEG').or(c.getByText('405×720 · PNG'))).toBeVisible()
+})

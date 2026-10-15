@@ -44,6 +44,7 @@ interface State {
   setImage: (id: string, slot: 'start' | 'end', mediaId: string | undefined) => void
   addFrames: (id: string, mediaIds: string[]) => void
   removeFrame: (id: string, frameId: string) => void
+  setFrameMedia: (id: string, frameId: string, mediaId: string) => void
   moveFrame: (id: string, frameId: string, dir: -1 | 1) => void
   addVideoVersion: (id: string, v: Omit<VideoVersion, 'id' | 'createdAt'>) => void
   replaceActiveVideo: (id: string, v: Omit<VideoVersion, 'id' | 'createdAt'>) => void
@@ -366,6 +367,10 @@ export const useProject = create<State>()((set, get) => {
         const frames = mediaIds.map((mediaId, i) => ({ id: uid('fr_'), mediaId, order: base + i }))
         return { ...s, storyboardFrames: [...s.storyboardFrames, ...frames] }
       })
+    },
+
+    setFrameMedia(id, frameId, mediaId) {
+      patchScene(id, (s) => ({ ...s, storyboardFrames: s.storyboardFrames.map((f) => (f.id === frameId ? { ...f, mediaId } : f)) }))
     },
 
     removeFrame(id, frameId) {

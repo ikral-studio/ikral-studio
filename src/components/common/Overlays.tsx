@@ -1,5 +1,11 @@
 import { useEffect, type ReactNode } from 'react'
-import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
+import { useState as useStateL } from 'react'
+import { AlertTriangle, CheckCircle2, Crop, Info, X } from 'lucide-react'
+import { CropEditor } from './CropEditor'
+import { useProject } from '../../stores/projectStore'
+import { importFiles } from '../../features/scene-management/actions'
+import { getMediaBlob, useMediaMeta } from '../../features/media-library/media'
+import { toast } from '../../stores/uiStore'
 import { useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
 
@@ -101,10 +107,58 @@ export function Toasts() {
 export function Lightbox() {
   const item = useUI((s) => s.lightbox)
   const url = useMediaUrl(item?.mediaId)
+  const meta = useMediaMeta(item?.mediaId)
+  const aspect = useProject((s) => s.project?.aspectRatio ?? '16:9')
+  const [cropping, setCropping] = useStateL(false)
+  // El recorte usa una copia local (blob:) para que el lienzo pueda exportar la imagen.
+  const [cropUrl, setCropUrl] = useStateL<string | null>(null)
+  const startCrop = async () => {
+    const rec = item && (await getMediaBlob(item.mediaId))
+    if (!rec) return toast('No se encontró la imagen', 'error')
+    setCropUrl(URL.createObjectURL(rec.blob))
+    setCropping(true)
+  }
+  const stopCrop = () => {
+    if (cropUrl) URL.revokeObjectURL(cropUrl)
+    setCropUrl(null)
+    setCropping(false)
+  }
   if (!item) return null
-  const close = () => useUI.setState({ lightbox: null })
+  const close = () => {
+    stopCrop()
+    useUI.setState({ lightbox: null })
+  }
+  const canCrop = item.kind === 'image' && !!item.target && !!url
+  const ratio = aspect === '16:9' ? 16 / 9 : 9 / 16
+
+  const saveCrop = async (blob: Blob, w: number, h: number) => {
+    const t = item.target!
+    const base = (meta?.name ?? 'imagen').replace(/\.[^.]+$/, '')
+    const ext = blob.type === 'image/png' ? 'png' : 'jpg'
+    const [asset] = await importFiles([new File([blob], `${base}-recorte-${aspect.replace(':', 'x')}.${ext}`, { type: blob.type })], 'image')
+    if (!asset) return
+    const st = useProject.getState()
+    if (t.slot) st.setImage(t.sceneId, t.slot, asset.id)
+    else if (t.frameId) st.setFrameMedia(t.sceneId, t.frameId, asset.id)
+    toast(`Recortada a ${aspect} · ${w}×${h}`)
+    stopCrop()
+    useUI.setState({ lightbox: { ...item, mediaId: asset.id } })
+  }
+
   return (
     <Modal title={item.title ?? 'Vista ampliada'} onClose={close} width={1100}>
+      {cropping && cropUrl ? (
+        <CropEditor url={cropUrl} ratio={ratio} ratioLabel={aspect} mimeType={meta?.mimeType ?? 'image/jpeg'} onCancel={stopCrop} onDone={saveCrop} />
+      ) : (
+      <>
+      {canCrop && (
+        <div className="mb-2 flex items-center gap-2">
+          {meta?.width && <span className="text-[12px] tabular-nums text-ink-3">{meta.width}×{meta.height}</span>}
+          <button className="btn btn-sm ml-auto" onClick={() => void startCrop()}>
+            <Crop size={13} /> Recortar a {aspect}
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-center rounded-lg bg-black">
         {url &&
           (item.kind === 'image' ? (
@@ -113,6 +167,8 @@ export function Lightbox() {
             <video src={url} controls autoPlay className="max-h-[72vh] w-auto" />
           ))}
       </div>
+      </>
+      )}
     </Modal>
   )
 }

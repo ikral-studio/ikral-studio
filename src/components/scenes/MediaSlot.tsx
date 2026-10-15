@@ -87,7 +87,7 @@ export function MediaSlot({
               }}
             />
             <div className="absolute inset-x-0 top-0 flex justify-end gap-1 bg-gradient-to-b from-black/70 to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => useUI.setState({ lightbox: { mediaId, kind: 'image', title: `${fileBase} · ${label}` } })} title="Ampliar" aria-label={`Ampliar ${label}`}>
+              <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => useUI.setState({ lightbox: { mediaId, kind: 'image', title: `${fileBase} · ${label}`, target: { sceneId, slot } } })} title="Ampliar" aria-label={`Ampliar ${label}`}>
                 <Maximize2 size={14} />
               </button>
               <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => downloadMedia(mediaId, `${fileBase}-${slot === 'start' ? 'inicial' : 'final'}`)} title="Descargar (para subirla al generador)" aria-label={`Descargar ${label}`}>
