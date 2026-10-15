@@ -1,11 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageCircle, Send, Sparkles } from 'lucide-react'
+import { MessageCircle, Mic, MicOff, Send, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { toast } from '../../stores/uiStore'
 import { useProject } from '../../stores/projectStore'
 import { isDesktop, onChatChange, readChat, sendChat, type ChatMessage } from '../../database/db'
 import { selectScene } from '../../features/scene-management/actions'
 import { pad2, uid } from '../../utils'
 
 const ONLINE_MS = 90_000
+const VOICE_KEY = 'ikral-studio:chat-voz'
+
+function loadVoice() {
+  try {
+    return localStorage.getItem(VOICE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Lee en voz alta con la voz del sistema (español de México si existe). */
+function speak(text: string) {
+  if (!('speechSynthesis' in window)) return
+  const clean = text.replace(/[*_`#>]/g, '').replace(/\p{Extended_Pictographic}/gu, '')
+  const u = new SpeechSynthesisUtterance(clean)
+  const voices = speechSynthesis.getVoices()
+  u.voice = voices.find((v) => v.name.includes('Paulina')) ?? voices.find((v) => v.lang === 'es-MX') ?? voices.find((v) => v.lang.startsWith('es')) ?? null
+  u.lang = u.voice?.lang ?? 'es-MX'
+  speechSynthesis.speak(u)
+}
+
+type Recognition = { lang: string; interimResults: boolean; continuous: boolean; start(): void; stop(): void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null }
+const RecognitionCtor = (window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }).SpeechRecognition ??
+  (window as unknown as { webkitSpeechRecognition?: new () => Recognition }).webkitSpeechRecognition
 
 interface ChatState {
   messages: ChatMessage[]
@@ -29,6 +54,50 @@ export function ClaudeChat() {
   const [now, setNow] = useState(Date.now())
   const listRef = useRef<HTMLDivElement>(null)
   const desktop = isDesktop()
+  const [voice, setVoice] = useState(loadVoice)
+  const voiceRef = useRef(voice)
+  voiceRef.current = voice
+  const seen = useRef<Set<string> | null>(null)
+  const [recording, setRecording] = useState(false)
+  const rec = useRef<Recognition | null>(null)
+
+  const toggleVoice = () => {
+    const v = !voice
+    setVoice(v)
+    try {
+      localStorage.setItem(VOICE_KEY, v ? '1' : '0')
+    } catch {
+      /* sin almacenamiento: solo dura esta sesión */
+    }
+    if (v) speak('Listo, te leo mis respuestas.')
+    else window.speechSynthesis?.cancel()
+  }
+
+  const toggleMic = () => {
+    if (recording) {
+      rec.current?.stop()
+      return
+    }
+    if (!RecognitionCtor) {
+      toast('Usa el dictado de tu Mac: toca dos veces la tecla 🎤 (o Fn) y habla.', 'info')
+      document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Mensaje para Claude"]')?.focus()
+      return
+    }
+    const r = new RecognitionCtor()
+    r.lang = 'es-MX'
+    r.interimResults = true
+    r.continuous = false
+    const base = text ? text + ' ' : ''
+    r.onresult = (e) => setText(base + Array.from(e.results).map((x) => x[0].transcript).join(''))
+    r.onend = () => setRecording(false)
+    r.onerror = () => {
+      setRecording(false)
+      toast('No pude usar el micrófono. Prueba el dictado de tu Mac (tecla 🎤).', 'info')
+    }
+    rec.current = r
+    setRecording(true)
+    r.start()
+  }
 
   useEffect(() => {
     if (!desktop || !projectId) return
@@ -37,6 +106,14 @@ export function ClaudeChat() {
       const c = await readChat(projectId)
       if (!alive || !c) return
       const messages = [...c.user, ...c.claude.messages].sort((a, b) => a.at.localeCompare(b.at))
+      // Leer en voz alta solo las respuestas nuevas de Claude.
+      if (!seen.current) seen.current = new Set(messages.map((m) => m.id))
+      else
+        for (const m of messages)
+          if (!seen.current.has(m.id)) {
+            seen.current.add(m.id)
+            if (m.from === 'claude' && voiceRef.current) speak(m.text)
+          }
       setChat({ messages, readUpTo: c.claude.readUpTo, lastSeen: c.claude.lastSeen, working: c.claude.working })
       setNow(Date.now())
     }
@@ -79,6 +156,17 @@ export function ClaudeChat() {
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <Sparkles size={16} className="text-[#c4b5fd]" />
         <h2 className="flex-1 text-[13px] font-semibold tracking-wide">CLAUDE</h2>
+        {desktop && (
+          <button
+            className={`icon-btn sm ${voice ? '!text-[#c4b5fd]' : ''}`}
+            onClick={toggleVoice}
+            aria-pressed={voice}
+            aria-label={voice ? 'Dejar de leer en voz alta' : 'Leer en voz alta las respuestas'}
+            title={voice ? 'Leyendo en voz alta (clic para apagar)' : 'Leer en voz alta las respuestas'}
+          >
+            {voice ? <Volume2 size={15} /> : <VolumeX size={15} />}
+          </button>
+        )}
         {desktop && (
           <span className={`chip ${online ? 'bg-ok/15 text-[#86efac]' : 'bg-white/5 text-ink-3'}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${online ? 'bg-ok' : 'bg-ink-3'}`} />
@@ -151,6 +239,15 @@ export function ClaudeChat() {
                   }
                 }}
               />
+              <button
+                className={`btn !h-10 !px-3 ${recording ? '!border-bad !bg-bad/20 !text-white' : ''}`}
+                onClick={toggleMic}
+                aria-pressed={recording}
+                aria-label={recording ? 'Dejar de escuchar' : 'Hablarle a Claude'}
+                title={recording ? 'Escuchando… clic para terminar' : 'Hablar en vez de escribir'}
+              >
+                {recording ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
               <button className="btn btn-primary !h-10 !px-3" onClick={() => void send()} disabled={!text.trim()} aria-label="Enviar a Claude">
                 <Send size={16} />
               </button>

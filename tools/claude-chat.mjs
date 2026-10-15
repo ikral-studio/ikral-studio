@@ -91,7 +91,6 @@ if (cmd === 'escuchar') {
   const c = claude()
   const msg = { id: 'msg_' + Date.now().toString(36), from: 'claude', text: arg1 || '', at: new Date().toISOString() }
   write(claudeFile, { ...c, messages: [...c.messages, msg], working: undefined, lastSeen: new Date().toISOString() })
-  speak(msg.text)
   console.log('respondido')
 } else {
   console.log('Uso: escuchar | trabajando "texto" | responder "texto"  [carpeta]')
