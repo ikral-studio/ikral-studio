@@ -14,12 +14,15 @@ import { FramesStrip } from './FramesStrip'
 import { ScriptEditor } from './ScriptEditor'
 import { VideoPanel } from './VideoPanel'
 
+/** Alto fijo de las cajas en la tarjeta cerrada: todas las escenas miden lo mismo. */
+const COMPACT_H = 112
+
 function Thumb({ mediaId, label, aspect }: { mediaId?: string; label: string; aspect: string }) {
   const url = useMediaUrl(mediaId, true)
   return (
     <div className="min-w-0">
       <div className="label mb-1 truncate">{label}</div>
-      <div className="media-frame flex items-center justify-center" style={{ aspectRatio: aspect === '16:9' ? '16/9' : '9/16', maxHeight: 120 }}>
+      <div className="media-frame flex w-full items-center justify-center" style={{ height: COMPACT_H }} data-aspect={aspect}>
         {url ? <img src={url} alt="" className="object-cover" /> : <ImageIcon size={18} className="text-ink-3" />}
       </div>
     </div>
@@ -170,13 +173,14 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
       </header>
 
       {scene.collapsed ? (
-        <div className="grid grid-cols-[1fr_1fr_1.35fr_1fr] gap-2.5 px-3 pb-3">
+        <div className="grid grid-cols-[1fr_1fr_1.35fr_1fr] items-start gap-2.5 px-3 pb-3">
           <Thumb mediaId={scene.startImageId} label="Imagen inicial" aspect={aspect} />
           <Thumb mediaId={scene.endImageId} label="Imagen final" aspect={aspect} />
           <div className="min-w-0">
             <div className="label mb-1">Guion y dirección</div>
             <button
-              className="field h-[calc(100%-20px)] max-h-[120px] min-h-[64px] overflow-hidden text-left text-[11.5px] leading-snug text-ink-2"
+              className="field block w-full resize-none overflow-hidden text-left text-[11.5px] leading-snug text-ink-2"
+              style={{ height: COMPACT_H, resize: 'none' }}
               onClick={toggle}
               title="Clic para editar"
             >
@@ -185,7 +189,7 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
           </div>
           <div className="min-w-0">
             <div className="label mb-1">Video generado</div>
-            <div className="media-frame flex items-center justify-center" style={{ aspectRatio: aspect === '16:9' ? '16/9' : '9/16', maxHeight: 120 }}>
+            <div className="media-frame flex w-full items-center justify-center" style={{ height: COMPACT_H }}>
               {videoThumb ? (
                 <>
                   <img src={videoThumb} alt="" className="object-cover" />
