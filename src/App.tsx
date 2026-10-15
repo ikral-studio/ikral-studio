@@ -19,11 +19,11 @@ interface Sizes {
   right: number
   timeline: number
 }
-const DEFAULT_SIZES: Sizes = { left: 240, right: 520, timeline: 236 }
+const DEFAULT_SIZES: Sizes = { left: 240, right: 520, timeline: 312 }
 
 function loadSizes(): Sizes {
   try {
-    return { ...DEFAULT_SIZES, ...JSON.parse(localStorage.getItem('ikral-studio:sizes') ?? '{}') }
+    return { ...DEFAULT_SIZES, ...JSON.parse(localStorage.getItem('ikral-studio:sizes2') ?? '{}') }
   } catch {
     return DEFAULT_SIZES
   }
@@ -72,7 +72,7 @@ export default function App() {
 
   const saveSizes = () => {
     try {
-      localStorage.setItem('ikral-studio:sizes', JSON.stringify(sizes))
+      localStorage.setItem('ikral-studio:sizes2', JSON.stringify(sizes))
     } catch {
       /* sin almacenamiento local: no pasa nada */
     }
@@ -136,7 +136,7 @@ export default function App() {
             onDelta={(d) => setSizes((s) => ({ ...s, right: clamp(start.current.right - d, 340, 820) }))}
             onEnd={saveSizes}
           />
-          <aside className="area-right no-print flex flex-col gap-3 py-3 pr-3">
+          <aside className="area-right no-print flex flex-col gap-3 overflow-y-auto py-3 pr-3">
             <Screenplay />
             <Preview />
           </aside>
@@ -145,7 +145,7 @@ export default function App() {
             className="split-h"
             label="Alto del timeline"
             onStart={() => (start.current = sizes)}
-            onDelta={(d) => setSizes((s) => ({ ...s, timeline: clamp(start.current.timeline - d, 170, 420) }))}
+            onDelta={(d) => setSizes((s) => ({ ...s, timeline: clamp(start.current.timeline - d, 200, 520) }))}
             onEnd={saveSizes}
           />
           <Timeline />

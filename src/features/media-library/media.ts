@@ -6,11 +6,13 @@ import { nowIso, uid } from '../../utils'
 
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 export const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
+export const AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/ogg', 'audio/webm']
 
 export function kindOf(file: File): MediaKind | null {
   const type = file.type || guessType(file.name)
   if (IMAGE_TYPES.includes(type)) return 'image'
   if (VIDEO_TYPES.includes(type)) return 'video'
+  if (AUDIO_TYPES.includes(type)) return 'audio'
   return null
 }
 
@@ -25,6 +27,11 @@ function guessType(name: string): string {
     m4v: 'video/mp4',
     webm: 'video/webm',
     mov: 'video/quicktime',
+    mp3: 'audio/mpeg',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
   }
   return map[ext ?? ''] ?? ''
 }
@@ -100,13 +107,34 @@ export async function readVideo(file: Blob): Promise<{ width: number; height: nu
   }
 }
 
+async function readAudio(file: Blob): Promise<{ duration: number }> {
+  const url = URL.createObjectURL(file)
+  const audio = document.createElement('audio')
+  audio.preload = 'metadata'
+  audio.src = url
+  try {
+    await new Promise<void>((res, rej) => {
+      audio.onloadedmetadata = () => res()
+      audio.onerror = () => rej(new MediaError('El navegador no puede abrir este audio (usa MP3, M4A o WAV).'))
+      setTimeout(() => rej(new MediaError('El audio tardó demasiado en abrir.')), 20000)
+    })
+    return { duration: Number.isFinite(audio.duration) ? audio.duration : 0 }
+  } finally {
+    audio.removeAttribute('src')
+    URL.revokeObjectURL(url)
+  }
+}
+
 /** Valida, lee metadatos y guarda el archivo en IndexedDB antes de devolverlo. */
 export async function importFile(file: File, projectId: string, expect?: MediaKind): Promise<MediaAsset> {
   const kind = kindOf(file)
-  if (!kind) throw new MediaError(`«${file.name}» no es un formato aceptado (PNG, JPG, WebP, MP4, WebM).`)
+  if (!kind) throw new MediaError(`«${file.name}» no es un formato aceptado (PNG, JPG, WebP, MP4, WebM, MP3, M4A, WAV).`)
   if (expect && kind !== expect)
-    throw new MediaError(expect === 'image' ? 'Aquí va una imagen (PNG, JPG o WebP).' : 'Aquí va un video (MP4 o WebM).')
-  const meta = kind === 'image' ? await readImage(file) : await readVideo(file)
+    throw new MediaError(
+      expect === 'image' ? 'Aquí va una imagen (PNG, JPG o WebP).' : expect === 'video' ? 'Aquí va un video (MP4 o WebM).' : 'Aquí va música (MP3, M4A o WAV).',
+    )
+  const meta: { width?: number; height?: number; duration?: number; thumb?: Blob } =
+    kind === 'image' ? await readImage(file) : kind === 'video' ? await readVideo(file) : await readAudio(file)
   const record: MediaRecord = {
     id: uid('md_'),
     projectId,
@@ -116,7 +144,7 @@ export async function importFile(file: File, projectId: string, expect?: MediaKi
     kind,
     width: meta.width || undefined,
     height: meta.height || undefined,
-    duration: 'duration' in meta ? (meta.duration as number) : undefined,
+    duration: meta.duration,
     createdAt: nowIso(),
     blob: file,
     thumb: meta.thumb,

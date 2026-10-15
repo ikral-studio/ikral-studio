@@ -6,6 +6,8 @@ export interface Project {
   description?: string
   aspectRatio: AspectRatio
   sceneIds: string[]
+  /** Pistas de música (2). Opcional para proyectos viejos. */
+  audioTracks?: AudioTrack[]
   createdAt: string
   updatedAt: string
 }
@@ -77,7 +79,24 @@ export interface Scene {
   updatedAt: string
 }
 
-export type MediaKind = 'image' | 'video'
+export type MediaKind = 'image' | 'video' | 'audio'
+
+export interface AudioClip {
+  id: string
+  mediaId: string
+  name: string
+  /** Segundo global donde empieza a sonar. */
+  start: number
+  duration: number
+}
+
+export interface AudioTrack {
+  id: string
+  name: string
+  volume: number
+  muted: boolean
+  clips: AudioClip[]
+}
 
 export interface MediaAsset {
   id: string

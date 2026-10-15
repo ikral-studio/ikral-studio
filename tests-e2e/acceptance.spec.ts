@@ -130,7 +130,7 @@ test('6, 7, 8 y 9 · videos, reproducción seguida, loop y storyboard provisiona
   await expect(preview.getByText('Escena 02 ·').first()).toBeVisible({ timeout: 6000 })
   await expect(preview.getByText('Escena 03 ·').first()).toBeVisible({ timeout: 7000 })
   await expect(preview.getByText('Escena 04 ·').first()).toBeVisible({ timeout: 5000 })
-  await expect(preview.getByText('Storyboard provisional')).toBeVisible()
+  await expect(preview.getByText('Provisional', { exact: true })).toBeVisible()
   await expect(preview.getByRole('button', { name: 'Reproducir' })).toBeVisible({ timeout: 5000 })
   expect(await seconds(page)).toBe(11)
 
@@ -199,4 +199,43 @@ test('extra · insertar escena entre dos (tarjetas y timeline)', async ({ page }
   await expect(page.locator('[data-script-id]')).toHaveCount(4)
   await expect(card(page, 4).getByLabel('Nombre de la escena')).toHaveValue('Segunda')
   await expect(card(page, 1).getByLabel('Nombre de la escena')).toHaveValue('Primera')
+})
+
+test('extra · dos pistas de música: importar, sonar al reproducir, quitar y respaldar', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __plays: string[] }
+    w.__plays = []
+    const orig = HTMLMediaElement.prototype.play
+    HTMLMediaElement.prototype.play = function () {
+      w.__plays.push(this.tagName)
+      return orig.call(this)
+    }
+  })
+  await freshProject(page, 'Con música')
+  await addScenes(page, 2)
+  await expect(page.getByLabel('Pista Música 1')).toBeVisible()
+  await expect(page.getByLabel('Pista Música 2')).toBeVisible()
+  await chooseFile(page, () => page.getByRole('button', { name: 'Agregar música a Música 2' }).click(), 'musica.mp3')
+  const clip = page.getByLabel('Pista Música 2').getByRole('slider', { name: /musica, empieza en 00:00/ })
+  await expect(clip).toBeVisible()
+  // mover con el teclado 1 s a la derecha
+  await clip.focus()
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect(page.getByLabel('Pista Música 2').getByRole('slider', { name: /empieza en 00:01/ })).toBeVisible()
+  await page.locator('[aria-label="Vista previa"]').getByRole('button', { name: 'Reproducir' }).click()
+  await page.waitForTimeout(2500)
+  expect(await page.evaluate(() => (window as unknown as { __plays: string[] }).__plays)).toContain('AUDIO')
+  await page.locator('[aria-label="Vista previa"]').getByRole('button', { name: 'Pausar' }).click()
+  // persiste
+  await page.keyboard.press('Meta+s')
+  await page.reload()
+  await expect(page.getByLabel('Pista Música 2').getByRole('slider', { name: /empieza en 00:01/ })).toBeVisible()
+  // respaldo lleva el mp3
+  const dl = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Exportar proyecto' }).click()
+  const zip = await JSZip.loadAsync(await readFile(await (await dl).path()))
+  expect(Object.keys(zip.files).some((f) => f.endsWith('.mp3'))).toBe(true)
+  // quitar
+  await page.getByRole('button', { name: 'Quitar musica' }).click({ force: true })
+  await expect(page.getByLabel('Pista Música 2').getByRole('slider')).toHaveCount(0)
 })

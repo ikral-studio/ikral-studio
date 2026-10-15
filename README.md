@@ -28,7 +28,9 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Reproducción: un solo `<video>` controlado por `src/features/playback/engine.ts` (tiempo global → escena + segundo interno).
 - Persistencia: IndexedDB con Dexie (`src/database/db.ts`). Los archivos se guardan como ArrayBuffer (Safari falla a veces con Blob/File). Las URLs `blob:` solo se usan para mostrar.
 - Respaldo: `.zip` con `project.json` + archivos reales (`src/features/projects/backup.ts`).
-- Reordenar: dnd-kit (ratón y teclado).
+- Reordenar: dnd-kit (ratón y teclado). Insertar escena entre dos.
+- Música: 2 pistas (MP3, M4A, WAV), clips que se mueven en el tiempo, volumen y silencio por pista; suenan sincronizadas en la vista previa.
+- Prompt: pronunciación por palabra e interruptor «Números en letras».
 
 ## Limitaciones de esta versión
 

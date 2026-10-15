@@ -1,9 +1,9 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
-import { cloneScene, createProjectData, createScene } from '../features/scene-management/factory'
+import { cloneScene, createProjectData, createScene, defaultTracks } from '../features/scene-management/factory'
 import { deriveStatus } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
 
@@ -53,6 +53,11 @@ interface State {
   updatePronunciation: (id: string, pid: string, patch: { written?: string; spoken?: string }) => void
   removePronunciation: (id: string, pid: string) => void
   setNumbersToWords: (id: string, on: boolean) => void
+
+  addAudioClip: (trackId: string, clip: { mediaId: string; name: string; start: number; duration: number }) => void
+  moveAudioClip: (trackId: string, clipId: string, start: number) => void
+  removeAudioClip: (trackId: string, clipId: string) => void
+  updateTrack: (trackId: string, patch: Partial<Pick<AudioTrack, 'volume' | 'muted'>>) => void
 
   undo: () => void
   redo: () => void
@@ -113,6 +118,13 @@ export const useProject = create<State>()((set, get) => {
     await saving
   }
 
+  function patchTracks(trackId: string, fn: (t: AudioTrack) => AudioTrack, coalesce?: string) {
+    const cur = snap()
+    if (!cur) return
+    const audioTracks = (cur.project.audioTracks ?? []).map((t) => (t.id === trackId ? fn(t) : t))
+    commit({ ...cur, project: { ...cur.project, audioTracks } }, coalesce, coalesce ? 400 : 0)
+  }
+
   function snap(): Snapshot | null {
     const { project, scenes } = get()
     return project ? { project, scenes } : null
@@ -134,10 +146,12 @@ export const useProject = create<State>()((set, get) => {
     // Reparar: escenas huérfanas o IDs sin escena
     const ids = project.sceneIds.filter((id) => map[id])
     scenes.forEach((s) => !ids.includes(s.id) && ids.push(s.id))
-    project = { ...project, sceneIds: ids }
+    project = { ...project, sceneIds: ids, audioTracks: project.audioTracks?.length ? project.audioTracks : defaultTracks() }
     set({ project, scenes: map, selectedSceneId: ids[0] ?? null, past: [], future: [], saveState: 'saved' })
     await store.setKV('lastProjectId', project.id)
-    store.collectGarbage(project.id, Object.values(map)).catch(() => {})
+    store
+      .collectGarbage(project.id, Object.values(map), project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)))
+      .catch(() => {})
   }
 
   return {
@@ -373,6 +387,26 @@ export const useProject = create<State>()((set, get) => {
 
     setNumbersToWords(id, on) {
       patchScene(id, (s) => ({ ...s, script: { ...s.script, numbersToWords: on } }))
+    },
+
+    addAudioClip(trackId, clip) {
+      patchTracks(trackId, (t) => ({ ...t, clips: [...t.clips, { ...clip, id: uid('ac_'), start: Math.max(0, clip.start) }] }))
+    },
+
+    moveAudioClip(trackId, clipId, start) {
+      patchTracks(
+        trackId,
+        (t) => ({ ...t, clips: t.clips.map((c) => (c.id === clipId ? { ...c, start: Math.max(0, Math.round(start * 10) / 10) } : c)) }),
+        `clip:${clipId}`,
+      )
+    },
+
+    removeAudioClip(trackId, clipId) {
+      patchTracks(trackId, (t) => ({ ...t, clips: t.clips.filter((c) => c.id !== clipId) }))
+    },
+
+    updateTrack(trackId, patch) {
+      patchTracks(trackId, (t) => ({ ...t, ...patch }), 'volume' in patch ? `vol:${trackId}` : undefined)
     },
 
     undo() {

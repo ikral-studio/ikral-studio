@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Film, ImageIcon, Maximize2, Minus, Pause, Play, Plus, Repeat } from 'lucide-react'
+import { Film, ImageIcon, Maximize2, Minus, Music, Pause, Play, Plus, Repeat, Volume2, VolumeX, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
@@ -10,10 +10,18 @@ import { useMediaUrl } from '../../features/media-library/media'
 import { storyboardMediaIds, totalDuration, type Segment } from '../../features/script-sync/derive'
 import { addSceneAndFocus, selectScene } from '../../features/scene-management/actions'
 import { clamp, formatDuration, formatTime } from '../../utils'
+import { importFiles } from '../../features/scene-management/actions'
+import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
+import { toast } from '../../stores/uiStore'
+import type { AudioClip, AudioTrack } from '../../types'
 import { accentFor } from '../common/StatusChip'
 
 const MIN_W = 76
-const LABEL_W = 116
+const LABEL_W = 184
+const MUSIC_H = 40
+const AUDIO_ACCEPT = 'audio/*,.mp3,.m4a,.wav,.aac,.ogg'
+const MUSIC_COLORS = ['#0d9488', '#db2777']
+const EMPTY_TRACKS: AudioTrack[] = []
 const TRACK_PAD = 12
 
 interface Layout {
@@ -31,8 +39,11 @@ function layoutFor(segments: Segment[], pps: number): Layout[] {
   })
 }
 
-function timeToX(t: number, segments: Segment[], layout: Layout[]): number {
-  if (!segments.length) return 0
+function timeToX(t: number, segments: Segment[], layout: Layout[], pps = 24): number {
+  if (!segments.length) return Math.max(0, t) * pps
+  const last = segments[segments.length - 1]
+  const ll = layout[layout.length - 1]
+  if (t > last.end) return ll.x + ll.w + (t - last.end) * pps
   for (let i = 0; i < segments.length; i++) {
     const s = segments[i]
     if (t <= s.end || i === segments.length - 1) {
@@ -43,7 +54,10 @@ function timeToX(t: number, segments: Segment[], layout: Layout[]): number {
   return 0
 }
 
-function xToTime(x: number, segments: Segment[], layout: Layout[]): number {
+function xToTime(x: number, segments: Segment[], layout: Layout[], pps = 24): number {
+  if (!segments.length) return Math.max(0, x) / pps
+  const ll = layout[layout.length - 1]
+  if (x > ll.x + ll.w) return segments[segments.length - 1].end + (x - ll.x - ll.w) / pps
   for (let i = 0; i < segments.length; i++) {
     const l = layout[i]
     if (x <= l.x + l.w || i === segments.length - 1) {
@@ -124,9 +138,9 @@ const VideoBlock = memo(function VideoBlock({ seg, w, selected }: { seg: Segment
   )
 })
 
-function Playhead({ segments, layout }: { segments: Segment[]; layout: Layout[] }) {
+function Playhead({ segments, layout, pps }: { segments: Segment[]; layout: Layout[]; pps: number }) {
   const time = usePlayback((s) => s.time)
-  const x = timeToX(time, segments, layout)
+  const x = timeToX(time, segments, layout, pps)
   return (
     <div className="pointer-events-none absolute bottom-0 top-0 z-30" style={{ left: TRACK_PAD + x }} data-playhead>
       <div className="absolute -left-[6px] top-0 h-0 w-0 border-x-[6px] border-t-[8px] border-x-transparent border-t-sel-2" />
@@ -146,7 +160,9 @@ export function Timeline() {
   const total = totalDuration(segments)
   const [pps, setPps] = useState(24)
   const layout = useMemo(() => layoutFor(segments, pps), [segments, pps])
-  const width = layout.length ? layout[layout.length - 1].x + layout[layout.length - 1].w : 0
+  const tracks = useProject((s) => s.project?.audioTracks ?? EMPTY_TRACKS)
+  const musicEnd = Math.max(0, ...tracks.flatMap((t) => t.clips.map((c) => c.start + c.duration)))
+  const width = Math.max(layout.length ? layout[layout.length - 1].x + layout[layout.length - 1].w : 0, timeToX(musicEnd, segments, layout, pps))
   const scrollRef = useRef<HTMLDivElement>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -163,9 +179,9 @@ export function Timeline() {
   useEffect(() => {
     const el = scrollRef.current
     if (!el || !playing) return
-    const x = TRACK_PAD + timeToX(time, segments, layout)
+    const x = TRACK_PAD + timeToX(time, segments, layout, pps)
     if (x < el.scrollLeft + 40 || x > el.scrollLeft + el.clientWidth - 60) el.scrollLeft = x - 80
-  }, [time, playing, segments, layout])
+  }, [time, playing, segments, layout, pps])
 
   const ticks = useMemo(() => {
     const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300]
@@ -180,7 +196,7 @@ export function Timeline() {
     if (!el) return
     const rect = el.getBoundingClientRect()
     const x = clientX - rect.left + el.scrollLeft - TRACK_PAD
-    void playback.seek(xToTime(x, segments, layout))
+    void playback.seek(xToTime(x, segments, layout, pps))
   }
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -233,6 +249,9 @@ export function Timeline() {
           <div className="flex h-[52px] items-center gap-2 px-3 text-[12.5px] font-medium text-ink-2">
             <Film size={16} /> Videos
           </div>
+          {tracks.map((t, i) => (
+            <TrackHeader key={t.id} track={t} color={MUSIC_COLORS[i % 2]} />
+          ))}
         </div>
         <div ref={scrollRef} className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
           <div className="relative flex h-full flex-col" style={{ width: width + TRACK_PAD * 2 + 40, minWidth: '100%' }}>
@@ -291,10 +310,156 @@ export function Timeline() {
                 </div>
               </>
             )}
-            <Playhead segments={segments} layout={layout} />
+            {tracks.map((t, i) => (
+              <MusicRow
+                key={t.id}
+                track={t}
+                color={MUSIC_COLORS[i % 2]}
+                toX={(sec) => timeToX(sec, segments, layout, pps)}
+                toTime={(x) => xToTime(x, segments, layout, pps)}
+                scrollRef={scrollRef}
+              />
+            ))}
+            <Playhead segments={segments} layout={layout} pps={pps} />
           </div>
         </div>
       </div>
     </section>
+  )
+}
+
+async function importMusic(trackId: string, files: File[], start: number) {
+  const assets = await importFiles(files.slice(0, 1), 'audio')
+  const a = assets[0]
+  if (!a) return
+  useProject.getState().addAudioClip(trackId, { mediaId: a.id, name: a.name.replace(/\.[^.]+$/, ''), start, duration: a.duration ?? 0 })
+  toast(`Música agregada · ${formatDuration(a.duration ?? 0)}`)
+}
+
+function TrackHeader({ track, color }: { track: AudioTrack; color: string }) {
+  const update = useProject((s) => s.updateTrack)
+  return (
+    <div className="flex shrink-0 items-center gap-1 border-t border-line pl-3 pr-1.5" style={{ height: MUSIC_H }}>
+      <Music size={14} style={{ color }} className="shrink-0" />
+      <span className="min-w-0 shrink-0 text-[12px] font-medium text-ink-2">{track.name}</span>
+      <button
+        className={`icon-btn sm ml-auto ${track.muted ? '!text-bad' : ''}`}
+        onClick={() => update(track.id, { muted: !track.muted })}
+        aria-pressed={track.muted}
+        aria-label={track.muted ? `Activar ${track.name}` : `Silenciar ${track.name}`}
+        title={track.muted ? 'Silenciada' : 'Silenciar'}
+      >
+        {track.muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={track.volume}
+        onChange={(e) => update(track.id, { volume: Number(e.target.value) })}
+        className="w-11 min-w-0"
+        aria-label={`Volumen de ${track.name}`}
+        title={`Volumen ${Math.round(track.volume * 100)}%`}
+      />
+      <button
+        className="icon-btn sm"
+        onClick={async () => importMusic(track.id, await pickFiles(AUDIO_ACCEPT), usePlayback.getState().time)}
+        aria-label={`Agregar música a ${track.name}`}
+        title="Agregar MP3 donde está el cabezal"
+      >
+        <Plus size={13} />
+      </button>
+    </div>
+  )
+}
+
+function MusicClip({ track, clip, color, toX, toTime }: { track: AudioTrack; clip: AudioClip; color: string; toX: (t: number) => number; toTime: (x: number) => number }) {
+  const x = toX(clip.start)
+  const w = Math.max(28, toX(clip.start + clip.duration) - x)
+  const { moveAudioClip, removeAudioClip } = useProject.getState()
+  return (
+    <div
+      className="group/clip absolute top-1 bottom-1 flex cursor-grab touch-none items-center overflow-hidden rounded-md border border-black/30 pl-2 pr-6 text-[11px] font-medium text-white active:cursor-grabbing"
+      style={{ left: TRACK_PAD + x, width: w, background: `repeating-linear-gradient(90deg, ${color} 0 3px, ${color}dd 3px 6px)` }}
+      title={`${clip.name} · ${formatTime(clip.start)} → ${formatTime(clip.start + clip.duration)} · arrastra para moverla`}
+      role="slider"
+      tabIndex={0}
+      aria-label={`${clip.name}, empieza en ${formatTime(clip.start)}`}
+      aria-valuenow={Math.round(clip.start)}
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest('button')) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        const ox = e.clientX
+        const startX = x
+        const move = (ev: PointerEvent) => moveAudioClip(track.id, clip.id, toTime(Math.max(0, startX + ev.clientX - ox)))
+        const up = () => {
+          window.removeEventListener('pointermove', move)
+          window.removeEventListener('pointerup', up)
+        }
+        window.addEventListener('pointermove', move)
+        window.addEventListener('pointerup', up)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowRight') moveAudioClip(track.id, clip.id, clip.start + (e.shiftKey ? 1 : 0.1))
+        if (e.key === 'ArrowLeft') moveAudioClip(track.id, clip.id, clip.start - (e.shiftKey ? 1 : 0.1))
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.stopPropagation()
+          e.preventDefault()
+          removeAudioClip(track.id, clip.id)
+        }
+      }}
+    >
+      <Music size={11} className="mr-1 shrink-0" />
+      <span className="truncate">{clip.name}</span>
+      <button
+        className="absolute right-0.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded bg-black/40 opacity-0 hover:bg-black/70 group-hover/clip:opacity-100 focus-visible:opacity-100"
+        onClick={() => removeAudioClip(track.id, clip.id)}
+        aria-label={`Quitar ${clip.name}`}
+        title="Quitar de la pista"
+      >
+        <X size={11} />
+      </button>
+    </div>
+  )
+}
+
+function MusicRow({
+  track,
+  color,
+  toX,
+  toTime,
+  scrollRef,
+}: {
+  track: AudioTrack
+  color: string
+  toX: (t: number) => number
+  toTime: (x: number) => number
+  scrollRef: React.RefObject<HTMLDivElement | null>
+}) {
+  const [dropX, setDropX] = useState(0)
+  const drop = useFileDrop((files) => importMusic(track.id, files, toTime(Math.max(0, dropX))))
+  return (
+    <div
+      {...drop.props}
+      onDragOver={(e) => {
+        drop.props.onDragOver(e)
+        const el = scrollRef.current
+        if (el) setDropX(e.clientX - el.getBoundingClientRect().left + el.scrollLeft - TRACK_PAD)
+      }}
+      className={`relative shrink-0 border-t border-line ${drop.over ? 'bg-sel/10' : ''}`}
+      style={{ height: MUSIC_H }}
+      aria-label={`Pista ${track.name}`}
+    >
+      {track.clips.length === 0 && (
+        <div className="pointer-events-none absolute inset-y-1 flex items-center rounded-md border border-dashed border-line-2 px-2 text-[11px] text-ink-3" style={{ left: TRACK_PAD, right: 8, maxWidth: 360 }}>
+          <Music size={12} className="mr-1.5" /> Arrastra aquí un MP3 o usa el «+»
+        </div>
+      )}
+      {drop.over && <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-sel-2" style={{ left: TRACK_PAD + dropX }} />}
+      {track.clips.map((c) => (
+        <MusicClip key={c.id} track={track} clip={c} color={color} toX={toX} toTime={toTime} />
+      ))}
+    </div>
   )
 }

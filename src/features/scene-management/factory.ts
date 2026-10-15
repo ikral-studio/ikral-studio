@@ -1,4 +1,4 @@
-import type { Project, Scene, SceneScript } from '../../types'
+import type { AudioTrack, Project, Scene, SceneScript } from '../../types'
 import { nowIso, uid } from '../../utils'
 import { deriveStatus } from '../script-sync/derive'
 
@@ -61,5 +61,9 @@ export function cloneScene(src: Scene): Scene {
 
 export function createProjectData(title: string): Project {
   const t = nowIso()
-  return { id: uid('pj_'), title, aspectRatio: '16:9', sceneIds: [], createdAt: t, updatedAt: t }
+  return { id: uid('pj_'), title, aspectRatio: '16:9', sceneIds: [], audioTracks: defaultTracks(), createdAt: t, updatedAt: t }
+}
+
+export function defaultTracks(): AudioTrack[] {
+  return [1, 2].map((n) => ({ id: uid('at_'), name: `Música ${n}`, volume: 0.8, muted: false, clips: [] }))
 }

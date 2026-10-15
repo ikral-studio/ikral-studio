@@ -67,18 +67,18 @@ export function Preview() {
     <section className="panel flex shrink-0 flex-col" aria-label="Vista previa">
       <div className="flex items-center gap-2 px-3.5 py-2.5">
         <Play size={16} className="text-ink-2" />
-        <h2 className="flex-1 text-[13px] font-semibold tracking-wide">VISTA PREVIA</h2>
+        <h2 className="shrink-0 whitespace-nowrap text-[13px] font-semibold tracking-wide">VISTA PREVIA</h2>
         {seg && (
-          <span className="truncate text-[11.5px] text-ink-2">
+          <span className="ml-auto min-w-0 truncate text-[11.5px] text-ink-2">
             Escena {pad2(index + 1)} · {seg.scene.title}
           </span>
         )}
         {provisional && (
-          <span className="chip bg-warn/15 text-[#fcd34d]" title="Esta escena aún no tiene video: se muestra su storyboard">
-            Storyboard provisional
+          <span className="chip shrink-0 bg-warn/15 text-[#fcd34d]" title="Esta escena aún no tiene video: se muestra su storyboard">
+            Provisional
           </span>
         )}
-        <span className="chip bg-white/5 text-ink-2">{aspect}</span>
+        <span className={`chip shrink-0 bg-white/5 text-ink-2 ${seg ? '' : 'ml-auto'}`}>{aspect}</span>
       </div>
       <div ref={boxRef} className={`flex flex-col bg-black ${isFull ? 'h-screen' : ''}`}>
         <div className={`relative flex items-center justify-center bg-black ${isFull ? 'min-h-0 flex-1' : ''}`}>
@@ -86,8 +86,8 @@ export function Preview() {
             className="relative bg-black"
             style={{
               aspectRatio: aspect === '16:9' ? '16 / 9' : '9 / 16',
-              width: aspect === '16:9' ? (isFull ? '100%' : 'min(100%, calc(33vh * 16 / 9))') : 'auto',
-              height: isFull ? '100%' : aspect === '9:16' ? 'min(var(--preview-vh, 340px), 40vh)' : 'auto',
+              width: aspect === '16:9' ? (isFull ? '100%' : 'min(100%, calc(27vh * 16 / 9))') : 'auto',
+              height: isFull ? '100%' : aspect === '9:16' ? 'min(var(--preview-vh, 340px), 34vh)' : 'auto',
               maxWidth: '100%',
               maxHeight: isFull ? '100%' : undefined,
             }}

@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { buildSegments, locateTime, orderedScenes, totalDuration, type Segment } from '../script-sync/derive'
 import { useProject } from '../../stores/projectStore'
 import { getMediaUrl } from '../media-library/media'
+import type { AudioTrack } from '../../types'
 
 interface PlaybackState {
   time: number
@@ -36,16 +37,22 @@ class PlaybackController {
   private currentUrl: string | null = null
   /** True mientras se carga o se coloca un clip: evita saltos dobles. */
   private busy = false
+  /** Un <audio> por cada clip de música. */
+  private audios = new Map<string, { el: HTMLAudioElement; mediaId: string }>()
+  private tracks: AudioTrack[] = []
 
   constructor() {
     const sync = () => {
       const { project, scenes } = useProject.getState()
       this.segments = buildSegments(orderedScenes(project, scenes))
+      this.tracks = project?.audioTracks ?? []
+      this.pruneAudio()
       const st = usePlayback.getState()
       const total = totalDuration(this.segments)
       if (st.time > total) usePlayback.setState({ time: total })
       // Si cambió el contenido del segmento actual (p. ej. se importó un video), recargar.
       if (!st.playing) void this.enter(Math.min(st.time, total), false)
+      this.syncAudio()
     }
     useProject.subscribe((s, prev) => {
       if (s.project !== prev.project || s.scenes !== prev.scenes) sync()
@@ -97,6 +104,7 @@ class PlaybackController {
     usePlayback.setState({ playing: false })
     cancelAnimationFrame(this.raf)
     this.video?.pause()
+    this.syncAudio()
   }
 
   toggle() {
@@ -112,6 +120,7 @@ class PlaybackController {
     const playing = usePlayback.getState().playing
     const clamped = Math.max(0, Math.min(t, this.total))
     usePlayback.setState({ time: clamped })
+    this.syncAudio(true)
     await this.enter(clamped, playing)
     this.last = performance.now()
   }
@@ -132,12 +141,64 @@ class PlaybackController {
       this.video.volume = volume
       this.video.muted = volume === 0
     }
+    this.syncAudio()
   }
 
   toggleMute() {
     const muted = !usePlayback.getState().muted
     usePlayback.setState({ muted })
     if (this.video) this.video.muted = muted
+    this.syncAudio()
+  }
+
+  private pruneAudio() {
+    const alive = new Set(this.tracks.flatMap((t) => t.clips.map((c) => c.id)))
+    for (const [id, a] of this.audios) {
+      if (!alive.has(id)) {
+        a.el.pause()
+        a.el.removeAttribute('src')
+        this.audios.delete(id)
+      }
+    }
+  }
+
+  /** Pone cada clip de música a sonar (o callar) según el tiempo global. */
+  syncAudio(force = false) {
+    const st = usePlayback.getState()
+    const total = this.total
+    const master = st.muted ? 0 : st.volume
+    for (const track of this.tracks) {
+      for (const clip of track.clips) {
+        let entry = this.audios.get(clip.id)
+        if (!entry || entry.mediaId !== clip.mediaId) {
+          entry?.el.pause()
+          const el = new Audio()
+          el.preload = 'auto'
+          entry = { el, mediaId: clip.mediaId }
+          this.audios.set(clip.id, entry)
+          const target = entry
+          void getMediaUrl(clip.mediaId).then((url) => {
+            if (url && this.audios.get(clip.id) === target) {
+              target.el.src = url
+              this.syncAudio(true)
+            }
+          })
+        }
+        const el = entry.el
+        el.volume = track.muted ? 0 : Math.min(1, track.volume * master)
+        const t = st.time
+        const active = st.playing && t >= clip.start && t < clip.start + clip.duration && t < total && !!el.getAttribute('src')
+        if (active) {
+          const want = t - clip.start
+          if (el.paused) {
+            el.currentTime = want
+            el.play().catch(() => {})
+          } else if (force || Math.abs(el.currentTime - want) > 0.35) {
+            el.currentTime = want
+          }
+        } else if (!el.paused) el.pause()
+      }
+    }
   }
 
   /** Coloca el reproductor en el instante t (carga el clip si hace falta). */
@@ -254,6 +315,7 @@ class PlaybackController {
       else usePlayback.setState({ time: t })
     }
     this.last = now
+    this.syncAudio()
     this.raf = requestAnimationFrame(this.tick)
   }
 }

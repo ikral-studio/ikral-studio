@@ -24,6 +24,7 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
     s.videoVersions.forEach((v) => used.add(v.mediaId))
   })
+  project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
   const records = await bulkGetMedia([...used])
   const media: Manifest['media'] = []
   for (const rec of records) {
@@ -107,6 +108,11 @@ export async function importProjectZip(file: Blob): Promise<string> {
     ...m.project,
     id: projectId,
     sceneIds: m.project.sceneIds.map((id) => sceneMap.get(id)).filter((x): x is string => !!x),
+    audioTracks: m.project.audioTracks?.map((t) => ({
+      ...t,
+      id: uid('at_'),
+      clips: t.clips.filter((c) => mediaMap.has(c.mediaId)).map((c) => ({ ...c, id: uid('ac_'), mediaId: mediaMap.get(c.mediaId)! })),
+    })),
     updatedAt: nowIso(),
   }
   for (const r of records) await putMedia(r)

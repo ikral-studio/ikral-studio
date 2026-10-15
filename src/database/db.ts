@@ -99,7 +99,7 @@ export async function deleteProject(id: string) {
 }
 
 /** Borra los archivos del proyecto que ya ninguna escena usa. */
-export async function collectGarbage(projectId: string, scenes: Scene[]) {
+export async function collectGarbage(projectId: string, scenes: Scene[], extraUsed?: string[]) {
   const used = new Set<string>()
   for (const s of scenes) {
     if (s.startImageId) used.add(s.startImageId)
@@ -107,6 +107,7 @@ export async function collectGarbage(projectId: string, scenes: Scene[]) {
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
     s.videoVersions.forEach((v) => used.add(v.mediaId))
   }
+  extraUsed?.forEach((id) => used.add(id))
   const ids = await db.media.where('projectId').equals(projectId).primaryKeys()
   const orphan = ids.filter((id) => !used.has(id))
   if (orphan.length) await db.media.bulkDelete(orphan)
