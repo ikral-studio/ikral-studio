@@ -77,6 +77,27 @@ export default function App() {
   }, [])
   useShortcuts()
 
+  // Soltar un archivo fuera de una zona no debe abrirlo en la ventana (perdería la app).
+  // Si es un .json, se abre «Importar guion» con él.
+  useEffect(() => {
+    const over = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault()
+    }
+    const drop = async (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      e.preventDefault()
+      const f = Array.from(e.dataTransfer.files).find((x) => x.name.toLowerCase().endsWith('.json'))
+      if (f && f.size <= 1_000_000) useUI.setState({ importText: await f.text(), modal: 'importScript' })
+      else if (e.dataTransfer.files.length) toast('Suelta las imágenes o videos sobre su escena', 'info')
+    }
+    window.addEventListener('dragover', over)
+    window.addEventListener('drop', drop)
+    return () => {
+      window.removeEventListener('dragover', over)
+      window.removeEventListener('drop', drop)
+    }
+  }, [])
+
   const saveSizes = () => {
     try {
       localStorage.setItem('ikral-studio:sizes2', JSON.stringify(sizes))
