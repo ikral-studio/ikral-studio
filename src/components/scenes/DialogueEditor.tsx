@@ -52,7 +52,7 @@ function EmotionPicker({
       ref={ref}
       role="dialog"
       aria-label={`Emoción al ${moment}`}
-      className="absolute left-0 top-full z-30 mt-1 w-[312px] rounded-xl border border-line-2 bg-[#0f1828] p-2 shadow-2xl"
+      className="absolute left-0 top-full z-30 mt-1 w-[290px] rounded-xl border border-line-2 bg-[#0f1828] p-2 shadow-2xl"
     >
       <div className="mb-1.5 flex items-center justify-between px-0.5 text-[11px] text-ink-3">
         <span>Emoción al {moment}</span>
@@ -65,7 +65,7 @@ function EmotionPicker({
           </button>
         )}
       </div>
-      <div className="grid grid-cols-6 gap-1">
+      <div className="grid grid-cols-5 gap-1">
         {EMOTIONS.map((e) => (
           <button
             key={e.label}
