@@ -113,8 +113,7 @@ export function TopBar() {
     try {
       await flushSave()
       const blob = await exportProjectZip(project, orderedScenes(project, scenes))
-      downloadBlob(blob, `${safeFilename(project.title)}.ikral.zip`)
-      toast('Respaldo descargado (.zip con todos los archivos)')
+      if (await downloadBlob(blob, `${safeFilename(project.title)}.ikral.zip`)) toast('Respaldo guardado (.zip con todos los archivos)')
     } catch (e) {
       console.error(e)
       toast('No se pudo crear el respaldo', 'error')
@@ -130,8 +129,7 @@ export function TopBar() {
     try {
       await flushSave()
       const blob = await exportNleZip(project, orderedScenes(project, scenes))
-      downloadBlob(blob, `${safeFilename(project.title)}-para-editor.zip`)
-      toast('Listo: abre el .zip y lee LEEME.txt')
+      if (await downloadBlob(blob, `${safeFilename(project.title)}-para-editor.zip`)) toast('Listo: abre el .zip y lee LEEME.txt')
     } catch (e) {
       console.error(e)
       toast('No se pudo exportar la edición', 'error')
@@ -140,11 +138,11 @@ export function TopBar() {
     }
   }
 
-  const exportScript = () => {
+  const exportScript = async () => {
     const { project, scenes } = useProject.getState()
     if (!project) return
-    downloadText(masterScriptMarkdown(project, orderedScenes(project, scenes)), `${safeFilename(project.title)}-guion.md`, 'text/markdown')
-    toast('Guion exportado (Markdown)')
+    if (await downloadText(masterScriptMarkdown(project, orderedScenes(project, scenes)), `${safeFilename(project.title)}-guion.md`, 'text/markdown'))
+      toast('Guion exportado (Markdown)')
   }
 
   const createNew = async () => {

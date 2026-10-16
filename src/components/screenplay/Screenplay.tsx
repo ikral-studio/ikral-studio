@@ -43,10 +43,10 @@ function ExportMenu() {
       </button>
       {open && (
         <div role="menu" className="panel absolute right-0 top-9 z-30 w-56 p-1 shadow-xl shadow-black/50">
-          <button role="menuitem" className={item} onClick={run(() => { const d = data(); downloadText(masterScriptText(d.project, d.ordered), `${d.name}-guion.txt`); toast('Guion exportado (TXT)') })}>
+          <button role="menuitem" className={item} onClick={run(() => { const d = data(); void downloadText(masterScriptText(d.project, d.ordered), `${d.name}-guion.txt`).then((ok) => ok && toast('Guion exportado (TXT)')) })}>
             <FileText size={15} /> Exportar TXT
           </button>
-          <button role="menuitem" className={item} onClick={run(() => { const d = data(); downloadText(masterScriptMarkdown(d.project, d.ordered), `${d.name}-guion.md`, 'text/markdown'); toast('Guion exportado (Markdown)') })}>
+          <button role="menuitem" className={item} onClick={run(() => { const d = data(); void downloadText(masterScriptMarkdown(d.project, d.ordered), `${d.name}-guion.md`, 'text/markdown').then((ok) => ok && toast('Guion exportado (Markdown)')) })}>
             <FileCode2 size={15} /> Exportar Markdown
           </button>
           <button role="menuitem" className={item} onClick={run(() => window.print())}>
@@ -56,7 +56,7 @@ function ExportMenu() {
             <Table2 size={15} /> Lista de tomas
           </button>
           <div className="my-1 h-px bg-line" />
-          <button role="menuitem" className={item} onClick={run(() => { const d = data(); downloadText(allPromptsText(d.project, d.ordered), `${d.name}-prompts.txt`); toast('Prompts exportados') })}>
+          <button role="menuitem" className={item} onClick={run(() => { const d = data(); void downloadText(allPromptsText(d.project, d.ordered), `${d.name}-prompts.txt`).then((ok) => ok && toast('Prompts exportados')) })}>
             <Sparkles size={15} /> Exportar prompts (todas)
           </button>
         </div>

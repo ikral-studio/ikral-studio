@@ -36,7 +36,20 @@ export function formatBytes(bytes: number): string {
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`
 }
 
-export function downloadBlob(blob: Blob, filename: string) {
+/** Guarda un archivo. En la app de escritorio pregunta dónde; devuelve false si se cancela. */
+export async function downloadBlob(blob: Blob, filename: string): Promise<boolean> {
+  if ('__TAURI_INTERNALS__' in window) {
+    // La ventana de la app no descarga archivos: se usa «Guardar como…» del Mac.
+    const [{ save }, { writeFile }, { downloadDir, join }] = await Promise.all([
+      import('@tauri-apps/plugin-dialog'),
+      import('@tauri-apps/plugin-fs'),
+      import('@tauri-apps/api/path'),
+    ])
+    const path = await save({ defaultPath: await join(await downloadDir(), filename) })
+    if (!path) return false
+    await writeFile(path, new Uint8Array(await blob.arrayBuffer()))
+    return true
+  }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -45,10 +58,11 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 2000)
+  return true
 }
 
 export function downloadText(text: string, filename: string, mime = 'text/plain') {
-  downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename)
+  return downloadBlob(new Blob([text], { type: `${mime};charset=utf-8` }), filename)
 }
 
 export function safeFilename(name: string): string {
