@@ -22,7 +22,8 @@ import {
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { exportProjectZip } from '../../features/projects/backup'
-import { exportNleZip } from '../../features/projects/nleExport'
+import { isDesktop } from '../../database/db'
+import { exportNleFolder, exportNleZip } from '../../features/projects/nleExport'
 import { masterScriptMarkdown, orderedScenes } from '../../features/script-sync/derive'
 import { downloadBlob, downloadText, safeFilename } from '../../utils'
 
@@ -128,8 +129,13 @@ export function TopBar() {
     setExporting(true)
     try {
       await flushSave()
-      const blob = await exportNleZip(project, orderedScenes(project, scenes))
-      if (await downloadBlob(blob, `${safeFilename(project.title)}-para-editor.zip`)) toast('Listo: abre el .zip y lee LEEME.txt')
+      if (isDesktop()) {
+        const dir = await exportNleFolder(project, orderedScenes(project, scenes))
+        if (dir) toast(`Listo: carpeta «${dir.split('/').pop()}». En Final Cut: Archivo > Importar > XML > FinalCut.fcpxml`)
+      } else {
+        const blob = await exportNleZip(project, orderedScenes(project, scenes))
+        if (await downloadBlob(blob, `${safeFilename(project.title)}-para-editor.zip`)) toast('Listo: abre el .zip y lee LEEME.txt')
+      }
     } catch (e) {
       console.error(e)
       toast('No se pudo exportar la edición', 'error')

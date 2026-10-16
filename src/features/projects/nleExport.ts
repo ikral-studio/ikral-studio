@@ -157,16 +157,19 @@ ${rate}
 
 // ---------- FCPXML (Final Cut Pro) ----------
 
-export function toFcpxml(tl: NleTimeline, title: string): string {
+/** base: carpeta absoluta donde quedan los archivos (Final Cut pide rutas completas). Sin base, rutas relativas. */
+export function toFcpxml(tl: NleTimeline, title: string, base?: string): string {
+  const src = (path: string) => (base ? `file://${encodeURI(`${base.replace(/\/+$/, '')}/${path}`)}` : path)
   const assets = tl.files
     .map((f, i) => {
       const id = `r${i + 2}`
       const hasVideo = f.kind !== 'audio' ? '1' : '0'
       const hasAudio = f.kind !== 'image' ? '1' : '0'
-      const fmt = f.kind === 'audio' ? '' : ` format="r1"`
+      // Solo las imágenes llevan el formato del proyecto; los videos traen el suyo (2K, 1088…) y Final Cut lo lee.
+      const fmt = f.kind === 'image' ? ` format="r1"` : ''
       const audio = f.kind !== 'image' ? ` audioSources="1" audioChannels="2" audioRate="48000"` : ''
       return `    <asset id="${id}" name="${esc(f.path.split('/').pop()!)}" start="0s" duration="${rt(f.frames)}" hasVideo="${hasVideo}" hasAudio="${hasAudio}"${fmt}${audio}>
-      <media-rep kind="original-media" src="${esc(f.path)}"/>
+      <media-rep kind="original-media" src="${esc(src(f.path))}"/>
     </asset>`
     })
     .join('\n')
@@ -182,7 +185,7 @@ export function toFcpxml(tl: NleTimeline, title: string): string {
     if (v.file.kind === 'image')
       spine.push({ offset: v.start, len: v.len, localStart: 0, xmlOpen: `<video ref="${r}" name="${esc(v.name)}" offset="${rt(v.start)}" start="0s" duration="${rt(v.len)}">`, xmlClose: '</video>' })
     else
-      spine.push({ offset: v.start, len: v.len, localStart: v.srcIn, xmlOpen: `<asset-clip ref="${r}" name="${esc(v.name)}" offset="${rt(v.start)}" start="${rt(v.srcIn)}" duration="${rt(v.len)}" format="r1" tcFormat="NDF">`, xmlClose: '</asset-clip>' })
+      spine.push({ offset: v.start, len: v.len, localStart: v.srcIn, xmlOpen: `<asset-clip ref="${r}" name="${esc(v.name)}" offset="${rt(v.start)}" start="${rt(v.srcIn)}" duration="${rt(v.len)}" tcFormat="NDF">`, xmlClose: '</asset-clip>' })
     cursor = v.start + v.len
   }
   if (cursor < tl.duration) spine.push({ offset: cursor, len: tl.duration - cursor, localStart: 0, xmlOpen: `<gap name="Hueco" offset="${rt(cursor)}" start="0s" duration="${rt(tl.duration - cursor)}">`, xmlClose: '</gap>' })
@@ -203,7 +206,7 @@ export function toFcpxml(tl: NleTimeline, title: string): string {
 <!DOCTYPE fcpxml>
 <fcpxml version="1.10">
   <resources>
-    <format id="r1" name="IKRAL ${tl.width}x${tl.height} ${FPS}p" frameDuration="1/${FPS}s" width="${tl.width}" height="${tl.height}"/>
+    <format id="r1"${tl.width === 1920 && tl.height === 1080 ? ' name="FFVideoFormat1080p30"' : ''} frameDuration="1/${FPS}s" width="${tl.width}" height="${tl.height}"/>
 ${assets}
   </resources>
   <library>
@@ -244,4 +247,25 @@ export async function exportNleZip(project: Project, scenes: Scene[]): Promise<B
   zip.file('FinalCut.fcpxml', toFcpxml(tl, project.title))
   zip.file('LEEME.txt', README(project.title))
   return zip.generateAsync({ type: 'blob', compression: 'STORE' })
+}
+
+/** App de escritorio: escribe una carpeta lista (sin .zip) con rutas completas para Final Cut. Devuelve la carpeta o null si se cancela. */
+export async function exportNleFolder(project: Project, scenes: Scene[]): Promise<string | null> {
+  const [{ open }, fs, { downloadDir, join }] = await Promise.all([
+    import('@tauri-apps/plugin-dialog'),
+    import('@tauri-apps/plugin-fs'),
+    import('@tauri-apps/api/path'),
+  ])
+  const parent = await open({ directory: true, recursive: true, defaultPath: await downloadDir(), title: 'Escoge dónde crear la carpeta para el editor' })
+  if (!parent || Array.isArray(parent)) return null
+  const name = `${safeFilename(project.title)}-para-editor`
+  let dir = await join(parent, name)
+  for (let n = 2; await fs.exists(dir); n++) dir = await join(parent, `${name}-${n}`)
+  const tl = await buildNleTimeline(project, scenes)
+  await fs.mkdir(await join(dir, 'media'), { recursive: true })
+  for (const f of tl.files) await fs.writeFile(await join(dir, f.path), new Uint8Array(await f.rec.blob.arrayBuffer()))
+  await fs.writeTextFile(await join(dir, 'Premiere-DaVinci.xml'), toXmeml(tl, project.title))
+  await fs.writeTextFile(await join(dir, 'FinalCut.fcpxml'), toFcpxml(tl, project.title, dir))
+  await fs.writeTextFile(await join(dir, 'LEEME.txt'), README(project.title).replace('1. Descomprime este .zip en una carpeta (no muevas la carpeta «media»).', '1. No muevas ni cambies de nombre esta carpeta (Final Cut busca los videos aquí).'))
+  return dir
 }
