@@ -657,3 +657,17 @@ test('extra · lupita: buscar en el guion completo', async ({ page }) => {
   await panel.getByLabel('Texto a buscar en el guion').press('Escape')
   await expect(panel.locator('mark')).toHaveCount(0)
 })
+
+test('extra · portafolio PDF con storyboard', async ({ page }) => {
+  await freshProject(page, 'Portafolio')
+  await addScenes(page, 2)
+  await chooseFile(page, () => card(page, 1).getByText('Arrastra o elige imagen').first().click(), 'inicio.png')
+  await addLine(card(page, 1), 'Beto', '—¡Sin cebolla!')
+  const dl = page.waitForEvent('download', { timeout: 60000 })
+  await page.getByRole('button', { name: 'Exportar portafolio PDF' }).click()
+  const d = await dl
+  expect(d.suggestedFilename()).toBe('Portafolio-portafolio.pdf')
+  const pdf = await readFile(await d.path())
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
+  expect(pdf.byteLength).toBeGreaterThan(50_000)
+})

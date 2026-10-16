@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  BookImage,
   AlertCircle,
   CheckCircle2,
   Clapperboard,
@@ -24,6 +25,7 @@ import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { exportProjectZip } from '../../features/projects/backup'
 import { isDesktop } from '../../database/db'
 import { exportNleFolder, exportNleZip } from '../../features/projects/nleExport'
+import { exportPortfolioPdf } from '../../features/projects/portfolio'
 import { masterScriptMarkdown, orderedScenes } from '../../features/script-sync/derive'
 import { downloadBlob, downloadText, safeFilename } from '../../utils'
 
@@ -144,6 +146,22 @@ export function TopBar() {
     }
   }
 
+  const exportPortfolio = async () => {
+    const { project, scenes } = useProject.getState()
+    if (!project) return
+    setExporting(true)
+    try {
+      toast('Armando el portafolio… (unos segundos)', 'info')
+      const blob = await exportPortfolioPdf(project, orderedScenes(project, scenes))
+      if (await downloadBlob(blob, `${safeFilename(project.title)}-portafolio.pdf`)) toast('Portafolio listo (PDF con storyboard y guion)')
+    } catch (e) {
+      console.error(e)
+      toast('No se pudo crear el portafolio', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const exportScript = async () => {
     const { project, scenes } = useProject.getState()
     if (!project) return
@@ -225,6 +243,9 @@ export function TopBar() {
         </button>
         <button className="icon-btn" onClick={exportNle} disabled={exporting} title="Exportar edición para Premiere, Final Cut o DaVinci" aria-label="Exportar edición para editor de video">
           <Film size={17} />
+        </button>
+        <button className="icon-btn" onClick={exportPortfolio} disabled={exporting} title="Portafolio PDF: storyboard, guion, diálogos y tomas" aria-label="Exportar portafolio PDF">
+          <BookImage size={17} />
         </button>
         <button className="icon-btn" onClick={exportScript} title="Exportar guion (Markdown)" aria-label="Exportar guion">
           <FileDown size={17} />
