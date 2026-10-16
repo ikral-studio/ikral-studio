@@ -26,6 +26,14 @@ async function addScenes(page: Page, n: number) {
 
 const card = (page: Page, n: number) => page.locator('article[data-scene-id]').nth(n - 1)
 
+/** Escribe una línea de diálogo con el editor de caritas. */
+async function addLine(c: ReturnType<typeof card>, speaker: string, text: string) {
+  await c.getByRole('button', { name: 'Agregar línea' }).click()
+  const n = await c.getByLabel(/^Personaje de la línea/).count()
+  await c.getByLabel(`Personaje de la línea ${n}`).fill(speaker)
+  await c.getByLabel(`Texto de la línea ${n}`).fill(text)
+}
+
 async function chooseFile(page: Page, trigger: () => Promise<void>, file: string) {
   const chooser = page.waitForEvent('filechooser')
   await trigger()
@@ -92,7 +100,7 @@ test('4 y 5 · guion sincronizado y reordenar escenas', async ({ page }) => {
     await t.fill(`Titulo ${i}`)
   }
   const c4 = card(page, 4)
-  await c4.getByPlaceholder('Quién habla y qué dice. Ej.: Joven: —¡Mire!').fill('Joven: —¡Mire esto!')
+  await addLine(c4, 'Joven', '—¡Mire esto!')
   await expect(page.locator('[data-script-id]').nth(3)).toContainText('Joven: —¡Mire esto!')
   // Mover la escena 4 antes de la 3 con el teclado (alternativa accesible al arrastre)
   const handle = page.getByRole('button', { name: /Mover escena 4/ })
@@ -491,7 +499,7 @@ test('extra · duración sugerida según el guion', async ({ page }) => {
   await freshProject(page, 'Tiempos')
   await addScenes(page, 1)
   const c = card(page, 1)
-  await c.getByPlaceholder('Quién habla y qué dice. Ej.: Joven: —¡Mire!').fill('Joven: ¡Mire! Con esta aplicación pueden organizar todos sus pedidos y cobrar sin filas.')
+  await addLine(c, 'Joven', '¡Mire! Con esta aplicación pueden organizar todos sus pedidos y cobrar sin filas.')
   await expect(c.getByText('Duración sugerida:')).toBeVisible()
   await c.getByRole('button', { name: /^Usar \d+ s$/ }).click()
   await expect(c.getByLabel('Duración planificada en segundos')).toHaveValue('7')
@@ -608,4 +616,21 @@ test('extra · arrastrar un fotograma a «Imagen final»', async ({ page }) => {
   await zone.dispatchEvent('drop', { dataTransfer: dt })
   await expect(page.getByText('Imagen final actualizada')).toBeVisible()
   await expect(c.getByText('1280×720 · PNG')).toHaveCount(1)
+})
+
+test('extra · diálogos con caritas: inicio → mitad → final', async ({ page }) => {
+  await freshProject(page, 'Caritas')
+  await addScenes(page, 1)
+  const c = card(page, 1)
+  if (await c.getByRole('button', { name: 'Expandir escena' }).isVisible()) await c.getByRole('button', { name: 'Expandir escena' }).click()
+  await c.getByRole('button', { name: 'Agregar línea' }).click()
+  await c.getByLabel('Personaje de la línea 1').fill('Beto')
+  await c.getByLabel('Texto de la línea 1').fill('—¡Ya me acordé!')
+  await c.getByRole('button', { name: 'Emoción al inicio: sin emoción' }).click()
+  await page.getByRole('dialog', { name: 'Emoción al inicio' }).getByRole('button', { name: 'nervioso' }).click()
+  await c.getByRole('button', { name: 'Emoción al final: sin emoción' }).click()
+  await page.getByRole('dialog', { name: 'Emoción al final' }).getByRole('button', { name: 'aliviado' }).click()
+  await expect(c.getByRole('button', { name: 'Emoción al final: aliviado' })).toHaveText('😮‍💨')
+  await c.getByRole('button', { name: 'Como texto' }).click()
+  await expect(c.getByRole('textbox', { name: 'Diálogos' })).toHaveValue('Beto (nervioso → neutral → aliviado): —¡Ya me acordé!')
 })
