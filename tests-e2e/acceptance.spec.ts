@@ -634,3 +634,26 @@ test('extra · diálogos con caritas: inicio → mitad → final', async ({ page
   await c.getByRole('button', { name: 'Como texto' }).click()
   await expect(c.getByRole('textbox', { name: 'Diálogos' })).toHaveValue('Beto (nervioso → neutral → aliviado): —¡Ya me acordé!')
 })
+
+test('extra · lupita: buscar en el guion completo', async ({ page }) => {
+  await freshProject(page, 'Lupita')
+  await addScenes(page, 2)
+  for (const n of [1, 2]) {
+    const c = card(page, n)
+    if (await c.getByRole('button', { name: 'Expandir escena' }).isVisible()) await c.getByRole('button', { name: 'Expandir escena' }).click()
+  }
+  await addLine(card(page, 1), 'Beto', '—Dos al pastor, sin cebolla.')
+  await addLine(card(page, 2), 'Doña Chuy', '—¿Sin cebolla? ¡Sí, mi hijo! Sin Cebolla.')
+  const panel = page.getByRole('region', { name: 'Guion completo' })
+  await panel.getByRole('button', { name: 'Buscar en el guion' }).click()
+  await panel.getByLabel('Texto a buscar en el guion').fill('CEBOLLA')
+  await expect(panel.getByText('1 de 3')).toBeVisible()
+  await expect(panel.locator('mark')).toHaveCount(3)
+  await panel.getByLabel('Texto a buscar en el guion').press('Enter')
+  await expect(panel.getByText('2 de 3')).toBeVisible()
+  await expect(page.locator('[data-script-id]').nth(1)).toHaveClass(/bg-sel/)
+  await panel.getByLabel('Texto a buscar en el guion').fill('pizza')
+  await expect(panel.getByText('Sin resultados')).toBeVisible()
+  await panel.getByLabel('Texto a buscar en el guion').press('Escape')
+  await expect(panel.locator('mark')).toHaveCount(0)
+})
