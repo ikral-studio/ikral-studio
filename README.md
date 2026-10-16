@@ -26,11 +26,11 @@ Hecha con [Tauri](https://tauri.app). La versión web sigue funcionando igual (g
 
 ```bash
 npm test           # lógica (Vitest)
-npm run test:e2e   # las 13 pruebas de aceptación en WebKit/Safari (Playwright)
+npm run test:e2e   # las 24 pruebas de aceptación en WebKit/Safari (Playwright)
 BASE_URL=https://ikral.com/studio/ npm run test:e2e   # lo mismo, en la página publicada
 ```
 
-Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg).
+Los videos y la música de prueba no se guardan en el repositorio: `tests-e2e/global-setup.ts` los crea al momento con ffmpeg (cuadros de color y un pitido). Necesitas [ffmpeg](https://ffmpeg.org) instalado.
 
 ## Cómo está hecho
 
@@ -55,6 +55,18 @@ Las pruebas usan videos e imágenes de `tests-e2e/fixtures/` (hechos con ffmpeg)
 - Varios videos seguidos en una escena: «+ Otro video» en «Video generado» (se reproducen uno tras otro, se ordenan y se exportan como clips seguidos).
 - Recortar imagen al formato del proyecto (16:9 o 9:16) desde «Ampliar», con cuadrícula de tercios; guarda una imagen nueva.
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
+- Subir desde la tarjeta cerrada (arrastrar o clic) y ver varios videos de una escena lado a lado.
+- Arrastrar imágenes del proyecto entre fotogramas, imagen inicial e imagen final.
+- Copia ligera para la vista previa: si un video es muy pesado (por ejemplo 2K), la vista previa usa una copia ligera y al exportar se usa el original.
+
+## Claude dentro de la app de escritorio
+
+Si usas [Claude Code](https://claude.com/claude-code), puede ayudarte desde la app:
+
+- **Chat «CLAUDE»** (panel derecho): escribe o dicta con el micrófono; la bocina lee las respuestas en voz alta. Los mensajes viajan por dos archivos en la carpeta del proyecto (`chat-usuario.json` y `chat-claude.json`).
+- En tu terminal, Claude escucha con `node tools/claude-chat.mjs escuchar` y responde con `node tools/claude-chat.mjs responder "…"`.
+- Botones **«Generar imágenes»** (por escena o las que falten del proyecto) y **«Volver a generar»** (varita, con una nota de qué salió mal): mandan el pedido a Claude por el chat.
+- Si Claude cambia `proyecto.json` mientras la app está abierta, la app une los cambios en vez de pisarlos.
 
 ## Limitaciones de esta versión
 
