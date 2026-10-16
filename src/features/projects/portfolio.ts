@@ -404,6 +404,40 @@ export async function exportPortfolioPdf(project: Project, scenes: Scene[], onPr
     }
     const fs = [9.5, 9, 8.5, 8].find((f) => !layout(false, f)) ?? 8
     layout(true, fs)
+
+    // Prompt de generación de la escena, en la página siguiente y a todo lo ancho.
+    const prompt = clean(generationPrompt(s, project.customFields, project))
+    if (prompt) {
+      const head = () => {
+        newPage()
+        label(`Escena ${pad2(i + 1)} · Prompt de generación`, M, 60)
+        font('Display', 'normal', 24)
+        color(INK)
+        doc.text(clean(s.title) || 'Sin título', M, 88)
+        rule(M, 100, W - M)
+        return 128
+      }
+      let py = head()
+      let top = py - 10
+      const plh = 13.5
+      const bar = (from: number, to: number) => {
+        doc.setFillColor(ACCENT[0], ACCENT[1], ACCENT[2])
+        doc.rect(M, from, 2, to - from, 'F')
+      }
+      font('Body', 'normal', 10)
+      for (const ln of doc.splitTextToSize(prompt, W - 2 * M - 18) as string[]) {
+        if (py > H - 50) {
+          bar(top, py - plh + 4)
+          py = head()
+          top = py - 10
+        }
+        font('Body', 'normal', 10)
+        color(INK)
+        doc.text(ln, M + 16, py)
+        py += plh
+      }
+      bar(top, py - plh + 4)
+    }
   }
 
   // ---------- Storyboard completo: 3 × 3 por página ----------
@@ -436,52 +470,6 @@ export async function exportPortfolioPdf(project: Project, scenes: Scene[], onPr
         color(MUTED)
         doc.text(formatDuration(effectiveDuration(s)), cx + cw, cy + ch + 13, { align: 'right' })
       }
-    }
-  }
-
-  // ---------- Prompts de generación: todos seguidos, a todo lo ancho ----------
-  const prompts = scenes.map((s, i) => [i, generationPrompt(s, project.customFields, project)] as const).filter(([, p]) => clean(p))
-  if (prompts.length) {
-    onProgress?.('Prompts')
-    const startPrompts = () => {
-      newPage()
-      label('Para generar', M, 54)
-      font('Display', 'normal', 20)
-      color(INK)
-      doc.text('Prompts de generación', M, 78)
-      rule(M, 90, W - M)
-      return 112
-    }
-    let y = startPrompts()
-    const lh = 11
-    for (const [i, p] of prompts) {
-      font('Body', 'normal', 8.5)
-      const rows: string[] = doc.splitTextToSize(clean(p), W - 2 * M - 16)
-      if (y + 18 + Math.min(rows.length, 4) * lh > H - 46) y = startPrompts()
-      font('Body', 'bold', 8)
-      color(ACCENT)
-      doc.text(`ESCENA ${pad2(i + 1)}`, M, y, { charSpace: 1.2 })
-      font('Display', 'normal', 11)
-      color(INK)
-      doc.text(clean(scenes[i].title), M + 66, y)
-      y += 6
-      const top = y
-      let boxStart = y
-      for (const ln of rows) {
-        if (y + lh > H - 46) {
-          doc.setFillColor(ACCENT[0], ACCENT[1], ACCENT[2])
-          doc.rect(M, boxStart, 1.6, y - boxStart, 'F')
-          y = startPrompts()
-          boxStart = y - 8
-        }
-        y += lh
-        font('Body', 'normal', 8.5)
-        color(INK)
-        doc.text(ln, M + 12, y)
-      }
-      doc.setFillColor(ACCENT[0], ACCENT[1], ACCENT[2])
-      doc.rect(M, boxStart === top ? top + 2 : boxStart, 1.6, y - (boxStart === top ? top + 2 : boxStart) + 3, 'F')
-      y += 22
     }
   }
 
