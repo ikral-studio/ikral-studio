@@ -24,7 +24,11 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
     s.videoVersions.forEach((v) => {
       used.add(v.mediaId)
-      v.clips?.forEach((c) => used.add(c.mediaId))
+      if (v.previewMediaId) used.add(v.previewMediaId)
+      v.clips?.forEach((c) => {
+        used.add(c.mediaId)
+        if (c.previewMediaId) used.add(c.previewMediaId)
+      })
     })
   })
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
@@ -91,8 +95,10 @@ export async function importProjectZip(file: Blob): Promise<string> {
       .map((v) => {
         const nid = uid('vv_')
         vmap.set(v.id, nid)
-        const clips = v.clips?.filter((c) => mediaMap.has(c.mediaId)).map((c) => ({ ...c, id: uid('vc_'), mediaId: mediaMap.get(c.mediaId)! }))
-        return { ...v, id: nid, mediaId: mediaMap.get(v.mediaId)!, clips: clips?.length ? clips : undefined }
+        const clips = v.clips
+          ?.filter((c) => mediaMap.has(c.mediaId))
+          .map((c) => ({ ...c, id: uid('vc_'), mediaId: mediaMap.get(c.mediaId)!, previewMediaId: mapMedia(c.previewMediaId) }))
+        return { ...v, id: nid, mediaId: mediaMap.get(v.mediaId)!, previewMediaId: mapMedia(v.previewMediaId), clips: clips?.length ? clips : undefined }
       })
     return {
       ...s,

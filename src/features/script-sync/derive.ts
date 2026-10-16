@@ -18,7 +18,7 @@ export function activeVideo(scene: Scene): VideoVersion | undefined {
 
 /** Todos los videos de una versión, en orden (el primero es la versión misma). */
 export function versionClips(v: VideoVersion): VideoClip[] {
-  return [{ id: v.id, mediaId: v.mediaId, duration: v.duration, width: v.width, height: v.height, trimIn: v.trimIn, trimOut: v.trimOut }, ...(v.clips ?? [])]
+  return [{ id: v.id, mediaId: v.mediaId, previewMediaId: v.previewMediaId, duration: v.duration, width: v.width, height: v.height, trimIn: v.trimIn, trimOut: v.trimOut }, ...(v.clips ?? [])]
 }
 
 /** Vuelve a armar la versión a partir de su lista de videos. */
@@ -26,7 +26,7 @@ export function withClips(v: VideoVersion, clips: VideoClip[]): VideoVersion {
   const [first, ...rest] = clips
   // El id de la versión es del primer video; si otro lo traía (por reordenar), recibe uno nuevo.
   const others = rest.map((c) => (c.id === v.id ? { ...c, id: `vc_${Math.random().toString(36).slice(2, 10)}` } : c))
-  return { ...v, mediaId: first.mediaId, duration: first.duration, width: first.width, height: first.height, trimIn: first.trimIn, trimOut: first.trimOut, clips: others.length ? others : undefined }
+  return { ...v, mediaId: first.mediaId, previewMediaId: first.previewMediaId, duration: first.duration, width: first.width, height: first.height, trimIn: first.trimIn, trimOut: first.trimOut, clips: others.length ? others : undefined }
 }
 
 export interface PlacedClip {

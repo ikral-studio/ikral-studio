@@ -122,7 +122,11 @@ export async function collectGarbage(projectId: string, scenes: Scene[], extraUs
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
     s.videoVersions.forEach((v) => {
       used.add(v.mediaId)
-      v.clips?.forEach((c) => used.add(c.mediaId))
+      if (v.previewMediaId) used.add(v.previewMediaId)
+      v.clips?.forEach((c) => {
+        used.add(c.mediaId)
+        if (c.previewMediaId) used.add(c.previewMediaId)
+      })
     })
   }
   extraUsed?.forEach((id) => used.add(id))
@@ -143,7 +147,11 @@ export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
     s.storyboardFrames.forEach((f) => used.push(f.mediaId))
     s.videoVersions.forEach((v) => {
       used.push(v.mediaId)
-      v.clips?.forEach((c) => used.push(c.mediaId))
+      if (v.previewMediaId) used.push(v.previewMediaId)
+      v.clips?.forEach((c) => {
+        used.push(c.mediaId)
+        if (c.previewMediaId) used.push(c.previewMediaId)
+      })
     })
   }
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))

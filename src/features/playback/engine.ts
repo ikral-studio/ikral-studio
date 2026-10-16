@@ -281,7 +281,7 @@ class PlaybackController {
     }
     const placed = clipAt(seg.video, offset)
     this.clip = placed
-    const url = await getMediaUrl(placed.clip.mediaId)
+    const url = await getMediaUrl(placed.clip.previewMediaId ?? placed.clip.mediaId)
     if (token !== this.token) return
     if (!url) {
       video.pause()

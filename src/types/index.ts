@@ -82,6 +82,8 @@ export interface CameraSpec {
 export interface VideoVersion {
   id: string
   mediaId: string
+  /** Copia ligera solo para la vista previa (videos muy pesados). Exportar usa el original. */
+  previewMediaId?: string
   duration: number
   width?: number
   height?: number
@@ -101,6 +103,7 @@ export interface VideoVersion {
 export interface VideoClip {
   id: string
   mediaId: string
+  previewMediaId?: string
   duration: number
   width?: number
   height?: number
