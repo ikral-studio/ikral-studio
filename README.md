@@ -26,7 +26,7 @@ Hecha con [Tauri](https://tauri.app). La versión web sigue funcionando igual (g
 
 ```bash
 npm test           # lógica (Vitest)
-npm run test:e2e   # las 24 pruebas de aceptación en WebKit/Safari (Playwright)
+npm run test:e2e   # las 26 pruebas de aceptación en WebKit/Safari (Playwright)
 BASE_URL=https://ikral.com/studio/ npm run test:e2e   # lo mismo, en la página publicada
 ```
 
@@ -57,6 +57,9 @@ Los videos y la música de prueba no se guardan en el repositorio: `tests-e2e/gl
 - Prompt: pronunciación por palabra e interruptor «Números en letras».
 - Subir desde la tarjeta cerrada (arrastrar o clic) y ver varios videos de una escena lado a lado.
 - Arrastrar imágenes del proyecto entre fotogramas, imagen inicial e imagen final.
+- Diálogos con caritas: cada línea con su personaje, 3 emociones (inicio → mitad → final, 20 caritas) y segundos aproximados. Se guarda como texto («Beto (nervioso → aliviado): —…») y entra solo al prompt.
+- Lupita 🔍 en «Guion completo»: busca una palabra o parte de un diálogo (sin importar acentos), brinca con Enter y lleva a la escena.
+- App de escritorio: «Guardar como…» al exportar; «Exportar edición» crea una carpeta lista para Final Cut (rutas completas); botón ✋ para arrastrar la imagen fuera de la app como archivo.
 - Copia ligera para la vista previa: si un video es muy pesado (por ejemplo 2K), la vista previa usa una copia ligera y al exportar se usa el original.
 
 ## Claude dentro de la app de escritorio
