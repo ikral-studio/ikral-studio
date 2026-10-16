@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "dialog:default",
+    "drag:default",
     {
       "identifier": "fs:scope",
       "allow": [

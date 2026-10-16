@@ -217,6 +217,16 @@ export async function mediaFileUrl(id: string, thumb = false): Promise<string | 
   return convertFileSrc(await join(await documentDir(), rel))
 }
 
+/** Ruta completa del archivo en el disco y de su miniatura (para arrastrarlo fuera de la app). */
+export async function mediaDiskPath(id: string): Promise<{ file: string; icon: string } | null> {
+  const m = await findMedia(id)
+  if (!m) return null
+  const docs = await documentDir()
+  const file = await join(docs, mediaPath(m.dir, m.asset))
+  const icon = (await exists(thumbPath(m.dir, id), BASE)) ? await join(docs, thumbPath(m.dir, id)) : file
+  return { file, icon }
+}
+
 export async function collectGarbage(projectId: string, scenes: Scene[], extraUsed?: string[]) {
   const dir = folders.get(projectId)
   if (!dir) return 0

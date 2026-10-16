@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { AlertTriangle, Download, ImagePlus, Loader2, Maximize2, RefreshCw, Wand2, X } from 'lucide-react'
-import { isDesktop } from '../../database/db'
+import { useEffect, useState } from 'react'
+import { AlertTriangle, Download, Hand, ImagePlus, Loader2, Maximize2, RefreshCw, Wand2, X } from 'lucide-react'
+import { isDesktop, mediaDiskPath } from '../../database/db'
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { getMediaBlob, useMediaMeta, useMediaUrl } from '../../features/media-library/media'
@@ -14,6 +14,32 @@ export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp'
 export function orientationMismatch(w: number | undefined, h: number | undefined, aspect: AspectRatio) {
   if (!w || !h || w === h) return false
   return aspect === '16:9' ? h > w : w > h
+}
+
+/** App de escritorio: botón para arrastrar el archivo real fuera de la app (Finder, Final Cut, navegador…). */
+export function DragOutButton({ mediaId, label }: { mediaId: string; label: string }) {
+  const [path, setPath] = useState<{ file: string; icon: string } | null>(null)
+  useEffect(() => {
+    let alive = true
+    void mediaDiskPath(mediaId).then((p) => alive && setPath(p))
+    return () => {
+      alive = false
+    }
+  }, [mediaId])
+  if (!isDesktop() || !path) return null
+  return (
+    <button
+      className="icon-btn sm !cursor-grab !bg-black/50 !text-white"
+      onMouseDown={(e) => {
+        e.preventDefault()
+        void import('@crabnebula/tauri-plugin-drag').then(({ startDrag }) => startDrag({ item: [path.file], icon: path.icon, mode: 'copy' }))
+      }}
+      title="Arrastrar fuera de la app (Finder, Final Cut, navegador…)"
+      aria-label={`Arrastrar ${label} fuera de la app`}
+    >
+      <Hand size={14} />
+    </button>
+  )
 }
 
 export async function downloadMedia(mediaId: string, baseName: string) {
@@ -96,6 +122,7 @@ export function MediaSlot({
               <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => useUI.setState({ lightbox: { mediaId, kind: 'image', title: `${fileBase} · ${label}`, target: { sceneId, slot } } })} title="Ampliar" aria-label={`Ampliar ${label}`}>
                 <Maximize2 size={14} />
               </button>
+              <DragOutButton mediaId={mediaId} label={label} />
               <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => downloadMedia(mediaId, `${fileBase}-${slot === 'start' ? 'inicial' : 'final'}`)} title="Descargar (para subirla al generador)" aria-label={`Descargar ${label}`}>
                 <Download size={14} />
               </button>

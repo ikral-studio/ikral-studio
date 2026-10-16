@@ -9,6 +9,7 @@ export const isDesktop = () => typeof window !== 'undefined' && '__TAURI_INTERNA
 
 type Backend = typeof idb & {
   mediaFileUrl?: (id: string, thumb?: boolean) => Promise<string | null>
+  mediaDiskPath?: (id: string) => Promise<{ file: string; icon: string } | null>
   watchProject?: (projectId: string, onChange: () => void) => Promise<void>
   onMerged?: (cb: () => void) => void
   projectFolderPath?: (projectId: string) => Promise<string | null>
@@ -53,6 +54,7 @@ export const setKV = async (key: string, value: unknown) => (await backend()).se
 /** Solo escritorio: URL directa al archivo en disco. En el navegador devuelve null. */
 export const mediaFileUrl = async (id: string, thumb = false) => (await backend()).mediaFileUrl?.(id, thumb) ?? null
 /** Solo escritorio: avisa cuando proyecto.json cambia por fuera (por ejemplo, lo editó Claude). */
+export const mediaDiskPath = async (id: string) => (await backend()).mediaDiskPath?.(id) ?? null
 export const watchProject = async (pid: string, cb: () => void) => (await backend()).watchProject?.(pid, cb)
 export const readChat = async (pid: string) => (await backend()).readChat?.(pid) ?? null
 export const sendChat = async (pid: string, msg: ChatMessage) => (await backend()).sendChat?.(pid, msg)
