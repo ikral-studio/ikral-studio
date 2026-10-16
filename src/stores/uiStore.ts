@@ -17,7 +17,7 @@ interface ConfirmRequest {
 
 /** target: a dónde va la imagen recortada (imagen inicial/final o un fotograma). */
 export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: string; target?: { sceneId: string; slot?: 'start' | 'end'; frameId?: string } }
-export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | null
+export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | 'regenerate' | null
 
 interface UIState {
   toasts: Toast[]
@@ -38,6 +38,8 @@ interface UIState {
   pasteSceneId: string | null
   /** Texto de un .json soltado sobre «Importar guion». */
   importText: string | null
+  /** Imagen que se va a volver a generar. */
+  regenerate: { sceneId: string; slot: 'start' | 'end' } | null
 }
 
 export const useUI = create<UIState>()(() => ({
@@ -53,6 +55,7 @@ export const useUI = create<UIState>()(() => ({
   scriptDock: false,
   pasteSceneId: null,
   importText: null,
+  regenerate: null,
 }))
 
 export function openCameraLibrary(sceneId: string) {

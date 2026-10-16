@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { AlertTriangle, Download, ImagePlus, Loader2, Maximize2, RefreshCw, X } from 'lucide-react'
+import { AlertTriangle, Download, ImagePlus, Loader2, Maximize2, RefreshCw, Wand2, X } from 'lucide-react'
+import { isDesktop } from '../../database/db'
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { getMediaBlob, useMediaMeta, useMediaUrl } from '../../features/media-library/media'
@@ -98,6 +99,11 @@ export function MediaSlot({
               <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => downloadMedia(mediaId, `${fileBase}-${slot === 'start' ? 'inicial' : 'final'}`)} title="Descargar (para subirla al generador)" aria-label={`Descargar ${label}`}>
                 <Download size={14} />
               </button>
+              {isDesktop() && (
+                <button className="icon-btn sm !bg-black/50 !text-white" onClick={() => useUI.setState({ modal: 'regenerate', regenerate: { sceneId, slot } })} title="Volver a generar con IA" aria-label={`Volver a generar ${label}`}>
+                  <Wand2 size={14} />
+                </button>
+              )}
               <button className="icon-btn sm !bg-black/50 !text-white" onClick={choose} title="Reemplazar" aria-label={`Reemplazar ${label}`}>
                 <RefreshCw size={14} />
               </button>

@@ -12,6 +12,7 @@ import { ImportScriptModal } from './ImportScriptModal'
 import { PasteSceneModal } from './PasteSceneModal'
 import { CameraLibraryModal } from '../scenes/CameraLibrary'
 import { ShotListModal } from './ShotListModal'
+import { RegenerateModal } from './RegenerateModal'
 import type { Project } from '../../types'
 import { ACTIONS, DEFAULT_KEYS, RESERVED, assignKey, keyLabel, mergeKeys, normalizeKey, type ActionId, type KeyBindings } from '../../features/shortcuts/keys'
 import { shortcutCapture } from '../../hooks/useShortcuts'
@@ -380,5 +381,6 @@ export function Modals() {
   if (modal === 'pasteScene') return <PasteSceneModal />
   if (modal === 'camera') return <CameraLibraryModal />
   if (modal === 'shotlist') return <ShotListModal />
+  if (modal === 'regenerate') return <RegenerateModal />
   return null
 }

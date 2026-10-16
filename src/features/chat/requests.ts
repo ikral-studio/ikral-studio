@@ -14,6 +14,24 @@ export function scenesMissingImages(): string[] {
   })
 }
 
+/** Pedir que se vuelva a generar la imagen inicial o final de una escena. */
+export async function requestRegenerate(sceneId: string, slot: 'start' | 'end', note: string) {
+  const { project, scenes } = useProject.getState()
+  if (!project || !isDesktop()) return
+  const label = `Escena ${pad2(project.sceneIds.indexOf(sceneId) + 1)} · ${scenes[sceneId]?.title ?? ''}`
+  const which = slot === 'start' ? 'imagen inicial' : 'imagen final'
+  await sendChat(project.id, {
+    id: uid('msg_'),
+    from: 'user',
+    at: new Date().toISOString(),
+    text: `🔄 Vuelve a generar la ${which} de la ${label}.${note.trim() ? ` Qué salió mal: ${note.trim()}` : ''}`,
+    sceneId,
+    sceneLabel: label,
+    request: { type: 'regenerate-image', sceneIds: [sceneId], slot, note: note.trim() || undefined },
+  })
+  toast('Pedido enviado a Claude por el chat 🔄')
+}
+
 export async function requestImages(sceneIds: string[]) {
   const { project, scenes } = useProject.getState()
   if (!project || !isDesktop()) return
