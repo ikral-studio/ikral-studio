@@ -1,4 +1,4 @@
-import { Check, Lightbulb, RefreshCw, X } from 'lucide-react'
+import { Check, RefreshCw, Sparkles, X } from 'lucide-react'
 import { isDesktop } from '../../database/db'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
@@ -30,19 +30,36 @@ function SuggestionCard({ s }: { s: CharacterSuggestion }) {
   )
 }
 
+/** Cajita con la idea general de los personajes y botón Generar. */
+function IdeaBox({ names }: { names: string[] }) {
+  const idea = useProject((s) => s.project?.bible?.castIdea ?? '')
+  return (
+    <div className="flex flex-col gap-2">
+      <textarea
+        className="field !text-[14px]"
+        rows={2}
+        aria-label="Idea de los personajes"
+        placeholder="Ej.: familia típica de Los Ángeles que va por unos tacos"
+        value={idea}
+        onChange={(e) => useProject.getState().setBible({ castIdea: e.target.value })}
+      />
+      {isDesktop() ? (
+        <button className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void requestSuggestion(names)}>
+          <Sparkles size={16} /> Generar
+        </button>
+      ) : (
+        <p className="text-[13px] text-ink-3">El botón «Generar» está en la app de escritorio (ahí trabaja Claude). Aquí puedes llenar cada ficha a mano.</p>
+      )}
+    </div>
+  )
+}
+
 /** Paso 5: Claude sugiere cómo se ve cada personaje; al aceptar, pasa a su ficha. */
 export function SuggestionStep({ names }: { names: string[] }) {
   const suggestion = useProject((s) => s.project?.suggestion)
   const { acceptSuggestion, dismissSuggestion } = useProject.getState()
 
-  if (!suggestion?.length)
-    return isDesktop() ? (
-      <button className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void requestSuggestion(names)}>
-        <Lightbulb size={16} /> Pedir sugerencia a Claude
-      </button>
-    ) : (
-      <p className="text-[13px] text-ink-3">La sugerencia la hace Claude desde la app de escritorio. Aquí puedes llenar cada ficha a mano.</p>
-    )
+  if (!suggestion?.length) return <IdeaBox names={names} />
 
   return (
     <div className="flex flex-col gap-2.5" aria-label="Sugerencia de personajes">

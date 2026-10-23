@@ -486,7 +486,7 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       const bible = { ...(cur.project.bible ?? {}), ...patch }
-      const typing = 'era' in patch || 'lookOther' in patch
+      const typing = 'era' in patch || 'lookOther' in patch || 'castIdea' in patch
       commit({ ...cur, project: { ...cur.project, bible } }, typing ? 'bible-text' : undefined, typing ? 500 : 0)
     },
 

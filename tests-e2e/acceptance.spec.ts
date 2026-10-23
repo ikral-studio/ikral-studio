@@ -711,6 +711,8 @@ test('extra · ficha del personaje: descripción, prompt e imagen', async ({ pag
   await page.getByRole('button', { name: 'Elegir archivo .json' }).click()
   await (await chooser).setFiles(fx('guion-ia.json'))
   await page.getByRole('button', { name: 'Crear proyecto nuevo' }).click()
+  await page.getByLabel('Idea de los personajes').fill('familia típica de Los Ángeles que va por unos tacos')
+  await expect(page.getByLabel('Idea de los personajes')).toHaveValue(/tacos/)
   await page.getByRole('button', { name: /Joven/ }).click()
   await page.getByLabel('Descripción de Joven').fill('25 años, camisa azul')
   await expect(page.getByLabel('Prompt de Joven')).toContainText('25 años, camisa azul')

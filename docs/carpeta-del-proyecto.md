@@ -24,4 +24,4 @@ Puedes editar `proyecto.json` mientras la app está abierta: la app detecta el c
 - Escribe el JSON completo y válido de una vez (la app escribe con archivo temporal + renombrar; haz lo mismo).
 - No borres archivos: la app limpia sola los que ya nadie usa (y respeta los que usan los respaldos).
 - Personajes: `project.characters` = `[{ id, name, description, imageId? }]`. Pedido `character-preview` del chat → genera la imagen y pon su id en `imageId` de ese personaje.
-- Sugerencia (paso 5 de la Biblia): pedido `character-suggestions` del chat → escribe `project.suggestion` = `[{ name, description, imageId? }]` (description en español, con el estilo de `project.bible`). La persona la acepta en la app y pasa sola a las fichas.
+- Sugerencia (paso 5 de la Biblia): pedido `character-suggestions` del chat → escribe `project.suggestion` = `[{ name, description, imageId? }]` (description en español, con el estilo de `project.bible` y la idea `project.bible.castIdea`). La persona la acepta en la app y pasa sola a las fichas.

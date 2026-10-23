@@ -28,6 +28,8 @@ export interface BibleAnswers {
   era?: string
   mood?: string
   audience?: string
+  /** Idea general de los personajes para la sugerencia (paso 5). */
+  castIdea?: string
 }
 
 export interface Character {
