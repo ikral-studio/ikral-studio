@@ -9,6 +9,7 @@ import {
   FilePlus2,
   FolderOpen,
   HelpCircle,
+  Lightbulb,
   Loader2,
   Monitor,
   Pencil,
@@ -29,6 +30,18 @@ import { exportNleFolder, exportNleZip } from '../../features/projects/nleExport
 import { exportPortfolioPdf } from '../../features/projects/portfolio'
 import { masterScriptMarkdown, orderedScenes } from '../../features/script-sync/derive'
 import { downloadBlob, downloadText, safeFilename } from '../../utils'
+
+const SUGGEST_URL = 'https://github.com/ikral-studio/ikral-studio/discussions/new?category=ideas'
+
+/** En la app de escritorio los enlaces no abren el navegador: se copia el enlace. */
+function suggest(e: React.MouseEvent) {
+  if (!isDesktop()) return
+  e.preventDefault()
+  navigator.clipboard.writeText(SUGGEST_URL).then(
+    () => toast('Enlace para sugerir copiado: pégalo en tu navegador', 'info'),
+    () => toast(SUGGEST_URL, 'info'),
+  )
+}
 
 function SaveIndicator() {
   const state = useProject((s) => s.saveState)
@@ -254,6 +267,17 @@ export function TopBar() {
         <button className="icon-btn" onClick={exportScript} title="Exportar guion (Markdown)" aria-label="Exportar guion">
           <FileDown size={17} />
         </button>
+        <a
+          className="icon-btn"
+          href={SUGGEST_URL}
+          target="_blank"
+          rel="noopener"
+          onClick={suggest}
+          title="💡 Sugerir una función (se abre en GitHub, ahí otros pueden votar)"
+          aria-label="Sugerir una función"
+        >
+          <Lightbulb size={17} />
+        </a>
         <button className="icon-btn" onClick={() => useUI.setState({ modal: 'help' })} title="Ayuda y atajos" aria-label="Ayuda">
           <HelpCircle size={17} />
         </button>
