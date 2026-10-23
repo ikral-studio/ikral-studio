@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, BookMarked, ChevronDown, ChevronRight, Clapperboard, CheckCircle2, Circle, Palette, Sparkles, Users } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
-import { ImportScriptButton } from '../sidebar/Sidebar'
+import { CopyFormatButton, ImportScriptButton } from '../sidebar/Sidebar'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { CharacterSheet } from './CharacterSheet'
 import { SuggestionStep } from './SuggestionStep'
@@ -72,19 +72,20 @@ export function BibleScreen() {
             <Palette size={18} className="text-[#c4b5fd]" /> Estilo <span className="text-[13px] font-normal text-ink-3">{answered} de 4</span>
           </h2>
           <Step n={1} title="Guion" done={scriptScenes > 0}>
-            {scriptScenes > 0 ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-[14px] text-ink-2">
-                  {scriptScenes} escena{scriptScenes === 1 ? '' : 's'} con guion · {found.length} personaje{found.length === 1 ? '' : 's'}
-                </span>
-                <ImportScriptButton />
-              </div>
-            ) : (
-              <div className="flex flex-col items-start gap-2">
-                <p className="text-[14px] text-ink-2">Primero carga tu guion: de ahí salen los personajes y lo que dicen.</p>
-                <ImportScriptButton className="!h-10 !px-4 !text-[14px]" />
-              </div>
+            {scriptScenes > 0 && (
+              <span className="text-[14px] text-ink-2">
+                {scriptScenes} escena{scriptScenes === 1 ? '' : 's'} con guion · {found.length} personaje{found.length === 1 ? '' : 's'}
+              </span>
             )}
+            <ol className="flex list-decimal flex-col gap-1 pl-5 text-[14px] text-ink-2" aria-label="Cómo hacer el guion con IA">
+              <li>Toca «Copiar formato para IA».</li>
+              <li>Pégalo en ChatGPT o Claude y escribe tu idea al final.</li>
+              <li>Lo que te devuelva, tráelo con «Importar guion».</li>
+            </ol>
+            <div className="flex flex-wrap gap-2">
+              <CopyFormatButton className="!h-10 !px-4 !text-[14px]" />
+              <ImportScriptButton className="!h-10 !px-4 !text-[14px]" />
+            </div>
           </Step>
           <Step n={2} title="¿Cómo se ve?" done={b.look === 'otro' ? !!b.lookOther?.trim() : !!b.look}>
             <Options label="Cómo se ve" list={LOOKS} value={b.look} onPick={(look) => setBible({ look })} />

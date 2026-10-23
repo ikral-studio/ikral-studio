@@ -81,6 +81,23 @@ const SceneItem = memo(function SceneItem({ id, n }: { id: string; n: number }) 
 })
 
 /** «Importar guion»: también acepta soltar el archivo .json encima. */
+/** Copia las instrucciones para que una IA escriba el guion en el formato de IKRAL Studio. */
+export function CopyFormatButton({ className = '!h-9' }: { className?: string }) {
+  return (
+    <button
+      className={`btn ${className}`}
+      onClick={async () => {
+        const p = useProject.getState().project
+        const text = buildAIPrompt(p ? { title: p.title, aspectRatio: p.aspectRatio, customFields: (p.customFields ?? []).map((f) => f.name) } : undefined)
+        if (await copyToClipboard(text)) toast('Formato copiado: pégalo en ChatGPT o Claude y escribe tu idea al final')
+      }}
+      title="Copia las instrucciones para que ChatGPT, Claude u otra IA escriba tu guion en el formato de IKRAL Studio"
+    >
+      <Sparkles size={14} className="shrink-0 text-[#c4b5fd]" /> Copiar formato para IA
+    </button>
+  )
+}
+
 export function ImportScriptButton({ className = '!h-9' }: { className?: string }) {
   const drop = useFileDrop(async (files) => {
     const f = files.find((x) => x.name.toLowerCase().endsWith('.json') || x.type === 'application/json')
@@ -127,17 +144,7 @@ export function Sidebar() {
         <Copy size={15} /> Duplicar escena
       </button>
       <div className="flex flex-col gap-1.5">
-        <button
-          className="btn !h-9"
-          onClick={async () => {
-            const p = useProject.getState().project
-            const text = buildAIPrompt(p ? { title: p.title, aspectRatio: p.aspectRatio, customFields: (p.customFields ?? []).map((f) => f.name) } : undefined)
-            if (await copyToClipboard(text)) toast('Formato copiado: pégalo en ChatGPT o Claude y escribe tu idea al final')
-          }}
-          title="Copia las instrucciones para que ChatGPT, Claude u otra IA escriba tu guion en el formato de IKRAL Studio"
-        >
-          <Sparkles size={14} className="shrink-0 text-[#c4b5fd]" /> Copiar formato para IA
-        </button>
+        <CopyFormatButton />
         <ImportScriptButton />
         {isDesktop() && (
           <button className="btn !h-9" onClick={() => void requestImages(scenesMissingImages())} title="Claude genera con ChatGPT las imágenes que faltan en todo el proyecto">
