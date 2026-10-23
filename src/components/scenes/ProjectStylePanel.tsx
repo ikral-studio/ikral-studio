@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Palette, Plus, Trash2, Users } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
+import { useUI } from '../../stores/uiStore'
 import { STYLE_PRESETS, styleSpanish } from '../../features/project-style/style'
 
 /** Estilo visual del proyecto y personajes: se agregan solos a cada prompt. */
@@ -23,6 +24,9 @@ export function ProjectStylePanel() {
       </button>
       {open && (
         <div className="flex flex-col gap-4 border-t border-line px-3 pb-4 pt-3">
+          <button className="btn self-start" onClick={() => useUI.setState({ view: 'bible' })}>
+            📘 Abrir la Biblia del proyecto (preguntas de estilo y personajes del guion)
+          </button>
           <div>
             <div className="label mb-1.5">Estilo visual de todo el video (se agrega a cada prompt)</div>
             <div className="flex flex-wrap gap-1.5">
@@ -53,7 +57,7 @@ export function ProjectStylePanel() {
               <span className="label flex items-center gap-1.5">
                 <Users size={13} /> Personajes (para que se vean iguales en todas las escenas)
               </span>
-              <button className="btn btn-sm btn-ghost" onClick={addCharacter}>
+              <button className="btn btn-sm btn-ghost" onClick={() => addCharacter()}>
                 <Plus size={13} /> Agregar personaje
               </button>
             </div>

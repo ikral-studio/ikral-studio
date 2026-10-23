@@ -14,6 +14,7 @@ import { ConfirmDialog, Lightbox, Toasts } from './components/common/Overlays'
 import { useShortcuts } from './hooks/useShortcuts'
 import { PausedOverlay } from './components/layout/PausedOverlay'
 import { ClaudeChat } from './components/chat/ClaudeChat'
+import { BibleScreen } from './components/bible/BibleScreen'
 import { isDesktop } from './database/db'
 import { startTabGuard } from './features/session/tabGuard'
 import { clamp } from './utils'
@@ -62,6 +63,7 @@ export default function App() {
   const leftCollapsed = useUI((s) => s.leftCollapsed)
   const rightCollapsed = useUI((s) => s.rightCollapsed)
   const scriptDock = useUI((s) => s.scriptDock)
+  const view = useUI((s) => s.view)
   const [sizes, setSizes] = useState<Sizes>(loadSizes)
   const start = useRef(sizes)
 
@@ -123,7 +125,9 @@ export default function App() {
 
   return (
     <>
-      {hasProject ? (
+      {hasProject && view === 'bible' ? (
+        <BibleScreen />
+      ) : hasProject ? (
         <div className="flex h-screen">
         <div className={`min-w-0 flex-1 overflow-hidden studio ${leftCollapsed ? 'left-collapsed' : ''} ${rightCollapsed ? 'right-collapsed' : ''}`} style={style}>
           <TopBar />

@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, CameraSpec, Character, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
@@ -57,7 +57,8 @@ interface State {
   setNumbersToWords: (id: string, on: boolean) => void
   setCamera: (id: string, camera: CameraSpec | undefined) => void
   setStyle: (patch: { preset?: string; notes?: string }) => void
-  addCharacter: () => void
+  setBible: (patch: Partial<BibleAnswers>) => void
+  addCharacter: (name?: string) => void
   updateCharacter: (id: string, patch: Partial<Omit<Character, 'id'>>) => void
   removeCharacter: (id: string) => void
   addCustomField: (name: string) => void
@@ -477,10 +478,18 @@ export const useProject = create<State>()((set, get) => {
       commit({ ...cur, project: { ...cur.project, style } }, 'notes' in patch ? 'style-notes' : undefined, 'notes' in patch ? 500 : 0)
     },
 
-    addCharacter() {
+    setBible(patch) {
       const cur = snap()
       if (!cur) return
-      const characters = [...(cur.project.characters ?? []), { id: uid('ch_'), name: '', description: '' }]
+      const bible = { ...(cur.project.bible ?? {}), ...patch }
+      const typing = 'era' in patch || 'lookOther' in patch
+      commit({ ...cur, project: { ...cur.project, bible } }, typing ? 'bible-text' : undefined, typing ? 500 : 0)
+    },
+
+    addCharacter(name = '') {
+      const cur = snap()
+      if (!cur) return
+      const characters = [...(cur.project.characters ?? []), { id: uid('ch_'), name, description: '' }]
       commit({ ...cur, project: { ...cur.project, characters } })
     },
 

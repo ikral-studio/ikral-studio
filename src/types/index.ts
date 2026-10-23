@@ -8,6 +8,8 @@ export interface Project {
   sceneIds: string[]
   /** Estilo visual de todo el proyecto (se agrega a cada prompt). */
   style?: { preset?: string; notes?: string }
+  /** Biblia del proyecto: respuestas de estilo (real/caricatura, época, colores, público). */
+  bible?: BibleAnswers
   /** Personajes: su descripción se agrega al prompt de las escenas donde aparecen. */
   characters?: Character[]
   /** Campos extra que tiene cada escena (ej. Vestuario, Emoción). */
@@ -16,6 +18,14 @@ export interface Project {
   audioTracks?: AudioTrack[]
   createdAt: string
   updatedAt: string
+}
+
+export interface BibleAnswers {
+  look?: string
+  lookOther?: string
+  era?: string
+  mood?: string
+  audience?: string
 }
 
 export interface Character {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   BookImage,
+  BookMarked,
   AlertCircle,
   CheckCircle2,
   Clapperboard,
@@ -223,6 +224,9 @@ export function TopBar() {
       <div className="h-6 w-px shrink-0 bg-line" />
 
       <div className="flex shrink-0 items-center gap-1">
+        <button className="btn !h-9" onClick={() => useUI.setState({ view: 'bible' })} title="Biblia del proyecto: estilo, personajes y escenarios">
+          <BookMarked size={16} /> Biblia
+        </button>
         <button className="icon-btn" onClick={createNew} title="Nuevo proyecto" aria-label="Nuevo proyecto">
           <FilePlus2 size={17} />
         </button>

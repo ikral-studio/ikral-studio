@@ -1,0 +1,92 @@
+// Biblia del proyecto: preguntas de estilo y personajes que salen en el guion.
+// Las respuestas se agregan al prompt para que todo el video se vea igual.
+import type { Project, Scene } from '../../types'
+import { parseDialogue } from '../dialogue/lines'
+import { charactersInScene } from '../project-style/style'
+
+export interface Choice {
+  id: string
+  es: string
+  en: string
+}
+
+export const LOOKS: Choice[] = [
+  { id: 'real', es: '🎥 Personas reales', en: 'photorealistic live-action with real people' },
+  { id: 'cartoon', es: '✏️ Caricatura 2D', en: '2D cartoon illustration' },
+  { id: '3d', es: '🧸 Animación 3D', en: '3D animated film' },
+  { id: 'otro', es: '🎨 Otro', en: '' },
+]
+
+export const MOODS: Choice[] = [
+  { id: 'alegre', es: '🌈 Alegres y brillantes', en: 'bright cheerful saturated colors' },
+  { id: 'natural', es: '🌿 Naturales', en: 'natural balanced colors' },
+  { id: 'oscuro', es: '🌑 Oscuros y dramáticos', en: 'dark dramatic low-key colors' },
+]
+
+export const AUDIENCES: Choice[] = [
+  { id: 'ninos', es: '🧒 Niños', en: 'kid-friendly' },
+  { id: 'familia', es: '👨‍👩‍👧 Toda la familia', en: 'family-friendly' },
+  { id: 'adultos', es: '🧑 Adultos', en: 'for adult audiences' },
+]
+
+const pick = (list: Choice[], id?: string) => list.find((c) => c.id === id)
+
+/** Cuántas de las 4 preguntas ya tienen respuesta. */
+export function bibleAnswered(p?: Project | null): number {
+  const b = p?.bible ?? {}
+  const look = b.look === 'otro' ? !!b.lookOther?.trim() : !!b.look
+  return [look, !!b.era?.trim(), !!b.mood, !!b.audience].filter(Boolean).length
+}
+
+/** Respuestas en inglés para el prompt (vacío si no hay ninguna). */
+export function biblePrompt(p?: Project | null): string {
+  const b = p?.bible
+  if (!b) return ''
+  const look = b.look === 'otro' ? b.lookOther?.trim() : pick(LOOKS, b.look)?.en
+  return [look, b.era?.trim() && `setting: ${b.era.trim()}`, pick(MOODS, b.mood)?.en, pick(AUDIENCES, b.audience)?.en].filter(Boolean).join('; ')
+}
+
+export interface FoundCharacter {
+  name: string
+  /** Líneas de diálogo que dice. */
+  lines: number
+  /** Escenas donde habla o se le nombra. */
+  scenes: number
+  /** Ya está en la lista de personajes del proyecto. */
+  saved: boolean
+  /** Ya tiene descripción física. */
+  described: boolean
+}
+
+const key = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
+
+/** Personajes del guion: los que hablan en los diálogos más los ya guardados. */
+export function findCharacters(p: Project | null | undefined, scenes: Scene[]): FoundCharacter[] {
+  const map = new Map<string, FoundCharacter & { sceneIds: Set<string> }>()
+  const get = (name: string) => {
+    const k = key(name)
+    let c = map.get(k)
+    if (!c) map.set(k, (c = { name: name.trim(), lines: 0, scenes: 0, saved: false, described: false, sceneIds: new Set() }))
+    return c
+  }
+  for (const ch of p?.characters ?? []) {
+    if (!ch.name.trim()) continue
+    const c = get(ch.name)
+    c.name = ch.name.trim()
+    c.saved = true
+    c.described = !!ch.description.trim()
+  }
+  for (const s of scenes) {
+    for (const l of parseDialogue(s.script.dialogue)) {
+      if (!l.speaker) continue
+      const c = get(l.speaker)
+      c.lines++
+      c.sceneIds.add(s.id)
+    }
+    // Los guardados con descripción también cuentan si se les nombra en la acción.
+    for (const ch of charactersInScene(p, s)) get(ch.name).sceneIds.add(s.id)
+  }
+  return [...map.values()]
+    .map(({ sceneIds, ...c }) => ({ ...c, scenes: sceneIds.size }))
+    .sort((a, b) => b.scenes - a.scenes || b.lines - a.lines || a.name.localeCompare(b.name))
+}

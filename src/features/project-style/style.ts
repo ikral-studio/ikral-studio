@@ -1,6 +1,7 @@
 // Estilo visual del proyecto y personajes: se agregan a cada prompt para que
 // todas las escenas se vean iguales y los personajes no «cambien» entre clips.
 import type { Project, Scene } from '../../types'
+import { biblePrompt } from '../bible/bible'
 
 export const STYLE_PRESETS = [
   { id: 'cine', es: 'Cine realista 35 mm', en: 'cinematic live-action look, shot on 35mm film, natural color grading, subtle film grain' },
@@ -22,10 +23,9 @@ export function styleSpanish(p?: Project | null): string {
 }
 
 export function stylePrompt(p?: Project | null): string {
-  const s = p?.style
-  if (!s) return ''
+  const s = p?.style ?? {}
   const preset = STYLE_PRESETS.find((x) => x.id === s.preset)
-  const txt = [preset?.en, s.notes?.trim()].filter(Boolean).join('; ')
+  const txt = [preset?.en, s.notes?.trim(), biblePrompt(p)].filter(Boolean).join('; ')
   return txt ? `Visual style: ${txt}.` : ''
 }
 

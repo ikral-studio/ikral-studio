@@ -20,6 +20,8 @@ export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: s
 export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | 'regenerate' | null
 
 interface UIState {
+  /** Pantalla principal: el editor o la Biblia del proyecto. */
+  view: 'studio' | 'bible'
   toasts: Toast[]
   confirm: ConfirmRequest | null
   lightbox: LightboxItem | null
@@ -43,6 +45,7 @@ interface UIState {
 }
 
 export const useUI = create<UIState>()(() => ({
+  view: 'studio',
   toasts: [],
   confirm: null,
   lightbox: null,
