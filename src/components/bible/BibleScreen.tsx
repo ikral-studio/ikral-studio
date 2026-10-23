@@ -1,6 +1,7 @@
 import { ArrowLeft, BookMarked, Clapperboard, CheckCircle2, Circle, MapPinned, Palette, Plus, Sparkles, Users } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
+import { ImportScriptButton } from '../sidebar/Sidebar'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
 
@@ -52,6 +53,7 @@ export function BibleScreen() {
         <BookMarked size={20} className="text-[#c4b5fd]" />
         <h1 className="text-[18px] font-semibold">🎨 Preproducción · Biblia del proyecto</h1>
         <span className="min-w-0 flex-1 truncate text-[14px] text-ink-3">{project.title}</span>
+        <ImportScriptButton />
         <button className="btn !h-9" onClick={() => useUI.setState({ view: 'studio' })}>
           <Clapperboard size={16} /> Ir a Edición
         </button>
@@ -85,7 +87,10 @@ export function BibleScreen() {
             <Users size={18} className="text-[#c4b5fd]" /> Personajes <span className="text-[13px] font-normal text-ink-3">{found.length} en el guion</span>
           </h2>
           {found.length === 0 ? (
-            <p className="text-[14px] text-ink-2">Todavía no hay personajes. Salen solos cuando el guion tiene diálogos como «Ana: —Hola».</p>
+            <div className="flex flex-col items-start gap-3">
+              <p className="text-[14px] text-ink-2">Todavía no hay personajes. Carga tu guion y salen solos de los diálogos (como «Ana: —Hola»).</p>
+              <ImportScriptButton className="!h-11 !px-5 !text-[15px]" />
+            </div>
           ) : (
             <ul className="flex flex-col gap-2">
               {found.map((c) => (

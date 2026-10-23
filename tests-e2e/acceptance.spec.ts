@@ -687,3 +687,17 @@ test('extra · inicio: Preproducción y Edición', async ({ page }) => {
   await page.getByRole('button', { name: 'Inicio', exact: true }).click()
   await expect(page.getByText('Estilo 1 de 4')).toBeVisible()
 })
+
+test('extra · importar guion desde Preproducción', async ({ page }) => {
+  await freshProject(page, 'Desde preproducción')
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  await expect(page.getByText('Todavía no hay personajes')).toBeVisible()
+  await page.getByRole('button', { name: 'Importar guion' }).last().click()
+  await page.getByRole('tab', { name: 'Cargar archivo' }).click()
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Elegir archivo .json' }).click()
+  await (await chooser).setFiles(fx('guion-ia.json'))
+  await page.getByRole('button', { name: 'Crear proyecto nuevo' }).click()
+  await expect(page.getByRole('heading', { name: /Preproducción/ })).toBeVisible()
+  await expect(page.getByText('Todavía no hay personajes')).toHaveCount(0)
+})

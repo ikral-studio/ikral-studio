@@ -81,7 +81,7 @@ const SceneItem = memo(function SceneItem({ id, n }: { id: string; n: number }) 
 })
 
 /** «Importar guion»: también acepta soltar el archivo .json encima. */
-function ImportScriptButton() {
+export function ImportScriptButton({ className = '!h-9' }: { className?: string }) {
   const drop = useFileDrop(async (files) => {
     const f = files.find((x) => x.name.toLowerCase().endsWith('.json') || x.type === 'application/json')
     if (!f) return toast('Suelta aquí un archivo .json del guion', 'info')
@@ -91,7 +91,7 @@ function ImportScriptButton() {
   return (
     <button
       {...drop.props}
-      className={`btn !h-9 ${drop.over ? '!border-sel-2 !bg-sel/20 !text-white' : ''}`}
+      className={`btn ${className} ${drop.over ? '!border-sel-2 !bg-sel/20 !text-white' : ''}`}
       onClick={() => useUI.setState({ modal: 'importScript' })}
       aria-label="Importar guion"
       title="Pega, sube o arrastra aquí el JSON que te dio la IA"
