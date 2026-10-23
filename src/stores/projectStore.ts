@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import { applySuggestion } from '../features/bible/bible'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
@@ -41,6 +41,8 @@ interface State {
   deleteScene: (id: string) => void
   moveScene: (id: string, toIndex: number) => void
   updateScene: (id: string, patch: Partial<Scene>, coalesce?: string) => void
+  /** Preproducción: cambia la propuesta de imagen inicial o final de una escena. */
+  updateFramePlan: (id: string, slot: 'start' | 'end', patch: Partial<FramePlan>) => void
   updateScript: (id: string, field: ScriptField, value: string) => void
   setImage: (id: string, slot: 'start' | 'end', mediaId: string | undefined) => void
   addFrames: (id: string, mediaIds: string[]) => void
@@ -362,6 +364,10 @@ export const useProject = create<State>()((set, get) => {
 
     updateScene(id, patch, coalesce) {
       patchScene(id, (s) => ({ ...s, ...patch }), coalesce, coalesce ? 500 : 0)
+    },
+
+    updateFramePlan(id, slot, patch) {
+      patchScene(id, (s) => ({ ...s, prep: { ...s.prep, [slot]: { ...s.prep?.[slot], ...patch } } }), 'prompt' in patch ? `prep:${id}:${slot}` : undefined, 'prompt' in patch ? 500 : 0)
     },
 
     updateScript(id, field, value) {

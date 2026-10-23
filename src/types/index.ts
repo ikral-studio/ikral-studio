@@ -55,6 +55,17 @@ export interface CharacterTry {
   at: string
 }
 
+/** Propuesta de la imagen inicial o final de una escena (Preproducción). */
+export interface FramePlan {
+  /** Prompt escrito a mano (si no hay, se arma solo con la escena, los personajes y la Biblia). */
+  prompt?: string
+  tries?: CharacterTry[]
+  /** Prueba aprobada: es la que pasa a Edición. */
+  approvedId?: string
+  /** Se pidió una imagen a Claude y todavía no llega. */
+  generating?: boolean
+}
+
 export interface CharacterSuggestion {
   name: string
   description: string
@@ -156,6 +167,8 @@ export interface Scene {
   plannedDuration: number
   startImageId?: string
   endImageId?: string
+  /** Preproducción: propuestas de imagen inicial y final (pruebas y la aprobada) antes de pasarlas a Edición. */
+  prep?: { start?: FramePlan; end?: FramePlan }
   storyboardFrames: StoryboardFrame[]
   script: SceneScript
   videoVersions: VideoVersion[]

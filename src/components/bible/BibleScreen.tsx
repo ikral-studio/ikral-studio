@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ArrowLeft, BookMarked, ChevronDown, ChevronRight, Clapperboard, CheckCircle2, Circle, MapPinned, Palette, Sparkles, Users } from 'lucide-react'
+import { ArrowLeft, BookMarked, ChevronDown, ChevronRight, Clapperboard, CheckCircle2, Circle, Palette, Sparkles, Users } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
 import { ImportScriptButton } from '../sidebar/Sidebar'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { CharacterSheet } from './CharacterSheet'
 import { SuggestionStep } from './SuggestionStep'
+import { FramesPanel } from './FramesPanel'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
 
 function Options({ list, value, onPick, label }: { list: Choice[]; value?: string; onPick: (id?: string) => void; label: string }) {
@@ -146,19 +147,7 @@ export function BibleScreen() {
           </button>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-[14px] border border-dashed border-line bg-panel/50 p-4" aria-label="Locaciones">
-          <h2 className="flex items-center gap-2 text-[16px] font-semibold">
-            <MapPinned size={18} className="text-[#c4b5fd]" /> Locaciones
-          </h2>
-          <p className="text-[14px] text-ink-2">Próximamente: propuesta de cada locación del guion, con 2 o 3 vistas.</p>
-          <ol className="mt-2 flex list-decimal flex-col gap-1 pl-5 text-[13px] text-ink-3">
-            <li>Guion y estilo: estas preguntas</li>
-            <li>Personajes: propuesta → refinar → aprobar</li>
-            <li>Locaciones: propuesta → refinar → aprobar</li>
-            <li>Storyboard a lápiz en una sola hoja</li>
-            <li>Imagen inicial y final de cada escena</li>
-          </ol>
-        </section>
+        <FramesPanel />
       </main>
     </div>
   )

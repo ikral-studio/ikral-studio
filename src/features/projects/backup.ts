@@ -3,6 +3,7 @@ import JSZip from 'jszip'
 import { bulkGetMedia, importProjectData } from '../../database/db'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../../types'
 import { extFromMime, nowIso, uid } from '../../utils'
+import { mapPrep, prepMediaIds } from '../bible/frames'
 
 const FORMAT = 'ikral-studio-backup'
 
@@ -21,6 +22,7 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
   scenes.forEach((s) => {
     if (s.startImageId) used.add(s.startImageId)
     if (s.endImageId) used.add(s.endImageId)
+    prepMediaIds(s).forEach((id) => used.add(id))
     s.storyboardFrames.forEach((f) => used.add(f.mediaId))
     s.videoVersions.forEach((v) => {
       used.add(v.mediaId)
@@ -109,6 +111,7 @@ export async function importProjectZip(file: Blob): Promise<string> {
       projectId,
       startImageId: mapMedia(s.startImageId),
       endImageId: mapMedia(s.endImageId),
+      prep: s.prep && mapPrep(s.prep, mapMedia),
       storyboardFrames: s.storyboardFrames
         .filter((f) => mediaMap.has(f.mediaId))
         .map((f) => ({ ...f, id: uid('fr_'), mediaId: mediaMap.get(f.mediaId)! })),

@@ -13,11 +13,11 @@ import { IMAGE_ACCEPT } from '../scenes/MediaSlot'
 import { uid } from '../../utils'
 import type { CharacterTry } from '../../types'
 
-function TryThumb({ t, n, approved, onApprove, onRemove }: { t: CharacterTry; n: number; approved: boolean; onApprove: () => void; onRemove: () => void }) {
+export function TryThumb({ t, n, approved, onApprove, onRemove, wide }: { t: CharacterTry; n: number; approved: boolean; onApprove: () => void; onRemove: () => void; wide?: boolean }) {
   const url = useMediaUrl(t.mediaId, true)
   return (
-    <li className={`flex w-[104px] shrink-0 flex-col gap-1 rounded-[10px] border p-1 ${approved ? 'border-ok' : 'border-line'}`}>
-      <div className="relative aspect-[3/4] overflow-hidden rounded-[8px] bg-bg">
+    <li className={`flex shrink-0 flex-col gap-1 rounded-[10px] border p-1 ${wide ? 'w-[150px]' : 'w-[104px]'} ${approved ? 'border-ok' : 'border-line'}`}>
+      <div className={`relative overflow-hidden rounded-[8px] bg-bg ${wide ? 'aspect-video' : 'aspect-[3/4]'}`}>
         {url && <img src={url} alt={`Prueba ${n}`} title={t.prompt} className="h-full w-full object-cover" />}
         {!approved && (
           <button className="icon-btn sm absolute right-1 top-1 !bg-black/60 !text-white" onClick={onRemove} aria-label={`Quitar prueba ${n}`} title="Quitar esta prueba">
