@@ -4,6 +4,7 @@ import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
 import { requestSuggestion } from '../../features/chat/requests'
+import { suggestionPrompt } from '../../features/bible/bible'
 import type { CharacterSuggestion } from '../../types'
 
 function SuggestionCard({ s }: { s: CharacterSuggestion }) {
@@ -48,7 +49,19 @@ function IdeaBox({ names }: { names: string[] }) {
           <Sparkles size={16} /> Generar
         </button>
       ) : (
-        <p className="text-[13px] text-ink-3">El botón «Generar» está en la app de escritorio (ahí trabaja Claude). Aquí puedes llenar cada ficha a mano.</p>
+        <>
+          <button
+            className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]"
+            onClick={() =>
+              void navigator.clipboard
+                .writeText(suggestionPrompt(useProject.getState().project, names))
+                .then(() => toast('Pedido copiado: pégalo en Codex o ChatGPT 📋'))
+            }
+          >
+            <Sparkles size={16} /> Generar (copiar para Codex)
+          </button>
+          <p className="text-[13px] text-ink-3">Pégalo en Codex o ChatGPT (gratis con tu plan). Luego suelta cada imagen en la ficha de su personaje.</p>
+        </>
       )}
     </div>
   )

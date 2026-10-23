@@ -121,3 +121,18 @@ export function applySuggestion(p: Project, name?: string): Project {
   const rest = (p.suggestion ?? []).filter((s) => !take.includes(s))
   return { ...p, characters, suggestion: rest.length ? rest : undefined }
 }
+
+/** Pedido listo para pegar en Codex/ChatGPT: cómo se ve cada personaje + una imagen de cada uno. */
+export function suggestionPrompt(p: Project | null | undefined, names: string[]): string {
+  const style = biblePrompt(p)
+  const idea = p?.bible?.castIdea?.trim()
+  return [
+    'Propón cómo se ve cada personaje de mi video y haz una imagen de cada uno (cuerpo completo, de frente, fondo neutro, formato vertical 3:4).',
+    idea && `Idea general: ${idea}.`,
+    style && `Estilo de todas las imágenes: ${style}.`,
+    `Personajes: ${names.join(', ')}.`,
+    'Para cada personaje escribe su nombre y una descripción corta en español (edad, cuerpo, cabello, ropa), y luego su imagen. Que todos se vean del mismo estilo.',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
