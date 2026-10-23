@@ -156,6 +156,7 @@ export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
   }
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
   project.characters?.forEach((c) => c.imageId && used.push(c.imageId))
+  project.suggestion?.forEach((c) => c.imageId && used.push(c.imageId))
   return used
 }
 

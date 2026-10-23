@@ -12,6 +12,8 @@ export interface Project {
   bible?: BibleAnswers
   /** Personajes: su descripción se agrega al prompt de las escenas donde aparecen. */
   characters?: Character[]
+  /** Sugerencia de personajes que hizo Claude (paso 5 de la Biblia), esperando que se acepte. */
+  suggestion?: CharacterSuggestion[]
   /** Campos extra que tiene cada escena (ej. Vestuario, Emoción). */
   customFields?: CustomField[]
   /** Pistas de música (2). Opcional para proyectos viejos. */
@@ -33,6 +35,12 @@ export interface Character {
   name: string
   description: string
   /** Imagen de prueba del personaje (también sirve de referencia para generar escenas). */
+  imageId?: string
+}
+
+export interface CharacterSuggestion {
+  name: string
+  description: string
   imageId?: string
 }
 

@@ -5,6 +5,7 @@ import { useUI } from '../../stores/uiStore'
 import { ImportScriptButton } from '../sidebar/Sidebar'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { CharacterSheet } from './CharacterSheet'
+import { SuggestionStep } from './SuggestionStep'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
 
 function Options({ list, value, onPick, label }: { list: Choice[]; value?: string; onPick: (id?: string) => void; label: string }) {
@@ -81,6 +82,9 @@ export function BibleScreen() {
           </Step>
           <Step n={4} title="¿Para quién es?" done={!!b.audience}>
             <Options label="Público" list={AUDIENCES} value={b.audience} onPick={(audience) => setBible({ audience })} />
+          </Step>
+          <Step n={5} title="Sugerencia de personajes" done={!!project.characters?.length && project.characters.every((c) => c.description.trim())}>
+            <SuggestionStep names={found.map((c) => c.name)} />
           </Step>
           <p className="text-[12.5px] text-ink-3">Las respuestas entran solas al prompt de cada escena.</p>
         </section>

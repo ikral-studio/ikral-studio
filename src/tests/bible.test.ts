@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createProjectData, createScene } from '../features/scene-management/factory'
 import { generationPrompt } from '../features/script-sync/derive'
-import { bibleAnswered, findCharacters } from '../features/bible/bible'
+import { applySuggestion, bibleAnswered, findCharacters } from '../features/bible/bible'
 
 describe('biblia del proyecto', () => {
   const p = createProjectData('Promo')
@@ -25,5 +25,18 @@ describe('biblia del proyecto', () => {
     p.bible = { look: 'cartoon', era: 'pueblo mexicano, años 80', mood: 'alegre' }
     expect(bibleAnswered(p)).toBe(3)
     expect(generationPrompt(s1, [], p)).toMatch(/^Visual style: 2D cartoon illustration; setting: pueblo mexicano, años 80; bright cheerful/)
+  })
+
+  it('aceptar la sugerencia la pasa a las fichas', () => {
+    const q = { ...p, suggestion: [
+      { name: 'mesero', description: 'joven, mandil negro', imageId: 'm1' },
+      { name: 'Ana', description: 'señora alegre' },
+    ] }
+    const one = applySuggestion(q, 'Mesero')
+    expect(one.characters).toEqual([{ id: '1', name: 'Mesero', description: 'joven, mandil negro', imageId: 'm1' }])
+    expect(one.suggestion?.map((s) => s.name)).toEqual(['Ana'])
+    const all = applySuggestion(one)
+    expect(all.characters?.map((c) => [c.name, c.description])).toEqual([['Mesero', 'joven, mandil negro'], ['Ana', 'señora alegre']])
+    expect(all.suggestion).toBeUndefined()
   })
 })

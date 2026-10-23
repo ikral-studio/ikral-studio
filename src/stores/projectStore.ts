@@ -1,6 +1,7 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
 import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import { applySuggestion } from '../features/bible/bible'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
@@ -61,6 +62,9 @@ interface State {
   addCharacter: (name?: string) => string | undefined
   updateCharacter: (id: string, patch: Partial<Omit<Character, 'id'>>) => void
   removeCharacter: (id: string) => void
+  /** Aceptar la sugerencia de un personaje (o de todos si no se da nombre). */
+  acceptSuggestion: (name?: string) => void
+  dismissSuggestion: () => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -197,7 +201,7 @@ export const useProject = create<State>()((set, get) => {
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
       store
-        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...(project.characters ?? []).flatMap((c) => (c.imageId ? [c.imageId] : []))])
+        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...[...(project.characters ?? []), ...(project.suggestion ?? [])].flatMap((c) => (c.imageId ? [c.imageId] : []))])
         .catch(() => {})
   }
 
@@ -506,6 +510,18 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       commit({ ...cur, project: { ...cur.project, characters: (cur.project.characters ?? []).filter((c) => c.id !== id) } })
+    },
+
+    acceptSuggestion(name) {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: applySuggestion(cur.project, name) })
+    },
+
+    dismissSuggestion() {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: { ...cur.project, suggestion: undefined } })
     },
 
     setCamera(id, camera) {

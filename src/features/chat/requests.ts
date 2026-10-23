@@ -65,3 +65,18 @@ export async function requestCharacterPreview(characterId: string) {
   })
   toast('Pedido enviado a Claude por el chat 👤')
 }
+
+/** Paso 5 de la Biblia: pedir a Claude cómo se ve cada personaje (texto + imagen con ChatGPT). */
+export async function requestSuggestion(names: string[]) {
+  const { project } = useProject.getState()
+  if (!project || !isDesktop()) return
+  if (!names.length) return toast('Primero carga el guion para que salgan los personajes', 'info')
+  await sendChat(project.id, {
+    id: uid('msg_'),
+    from: 'user',
+    at: new Date().toISOString(),
+    text: `💡 Sugiere cómo se ve cada personaje (${names.join(', ')}) con el estilo de la Biblia, y haz su imagen con ChatGPT.`,
+    request: { type: 'character-suggestions', names },
+  })
+  toast('Pedido enviado a Claude por el chat 💡')
+}

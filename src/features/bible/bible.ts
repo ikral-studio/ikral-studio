@@ -1,8 +1,9 @@
 // Biblia del proyecto: preguntas de estilo y personajes que salen en el guion.
 // Las respuestas se agregan al prompt para que todo el video se vea igual.
-import type { Project, Scene } from '../../types'
+import type { Character, Project, Scene } from '../../types'
 import { parseDialogue } from '../dialogue/lines'
 import { charactersInScene } from '../project-style/style'
+import { uid } from '../../utils'
 
 export interface Choice {
   id: string
@@ -104,4 +105,19 @@ export function characterPrompt(p: Project | null | undefined, ch: { name: strin
   ]
     .filter(Boolean)
     .join('. ')
+}
+
+/** Pasa la sugerencia de Claude a las fichas (de un personaje o de todos) y la quita de la lista. */
+export function applySuggestion(p: Project, name?: string): Project {
+  const take = (p.suggestion ?? []).filter((s) => name === undefined || key(s.name) === key(name))
+  if (!take.length) return p
+  const characters: Character[] = [...(p.characters ?? [])]
+  for (const s of take) {
+    const i = characters.findIndex((c) => key(c.name) === key(s.name))
+    const patch = { description: s.description, ...(s.imageId ? { imageId: s.imageId } : {}) }
+    if (i >= 0) characters[i] = { ...characters[i], ...patch }
+    else characters.push({ id: uid('ch_'), name: s.name.trim(), ...patch })
+  }
+  const rest = (p.suggestion ?? []).filter((s) => !take.includes(s))
+  return { ...p, characters, suggestion: rest.length ? rest : undefined }
 }
