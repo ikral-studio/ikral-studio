@@ -172,7 +172,7 @@ export function FramesPanel() {
       {scenes.length === 0 ? (
         <p className="text-[14px] text-ink-3">Primero carga tu guion.</p>
       ) : (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="-mr-2 flex max-h-[calc(100vh-330px)] min-h-[240px] flex-col gap-1.5 overflow-y-auto overscroll-contain pr-2" aria-label="Lista de escenas">
           {scenes.map((s, i) => {
             const open = openId === s.id
             const done = (s.prep?.start?.approvedId ? 1 : 0) + (s.prep?.end?.approvedId ? 1 : 0)

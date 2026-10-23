@@ -238,7 +238,7 @@ export function BibleScreen() {
               <RelationsSection />
             </div>
 
-            <div className="lg:col-span-2 2xl:col-span-1">
+            <div className="lg:col-span-2 2xl:sticky 2xl:top-0 2xl:col-span-1">
               <FramesPanel />
             </div>
           </div>
