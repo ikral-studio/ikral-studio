@@ -7,12 +7,14 @@ import { useMediaUrl } from '../../features/media-library/media'
 import { importFiles } from '../../features/scene-management/actions'
 import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { characterPrompt } from '../../features/bible/bible'
+import { orderedScenes } from '../../features/script-sync/derive'
 import { requestCharacterPreview } from '../../features/chat/requests'
 import { IMAGE_ACCEPT } from '../scenes/MediaSlot'
 
 /** Ficha de un personaje: descripción editable, el prompt que se usará y su imagen de prueba. */
 export function CharacterSheet({ characterId }: { characterId: string }) {
   const project = useProject((s) => s.project)
+  const scenes = useProject((s) => s.scenes)
   const ch = project?.characters?.find((c) => c.id === characterId)
   const url = useMediaUrl(ch?.imageId)
   const [busy, setBusy] = useState(false)
@@ -30,7 +32,7 @@ export function CharacterSheet({ characterId }: { characterId: string }) {
   }
   const drop = useFileDrop(accept, (id) => updateCharacter(characterId, { imageId: id }))
   if (!ch) return null
-  const prompt = characterPrompt(project, ch)
+  const prompt = characterPrompt(project, ch, orderedScenes(project, scenes))
 
   return (
     <div className="grid grid-cols-[150px_1fr] gap-3 border-t border-line px-3 pb-3 pt-3" aria-label={`Ficha de ${ch.name}`}>
@@ -73,7 +75,7 @@ export function CharacterSheet({ characterId }: { characterId: string }) {
           />
         </label>
         <div className="flex flex-col gap-1">
-          <span className="text-[13px] text-ink-3">Así se le pide a la IA (con el estilo de la Biblia):</span>
+          <span className="text-[13px] text-ink-3">Así se le pide a la IA (con el estilo de la Biblia y el guion):</span>
           <p className="rounded-[8px] bg-bg px-2.5 py-2 text-[12.5px] leading-snug text-ink-2" aria-label={`Prompt de ${ch.name}`}>
             {prompt}
           </p>

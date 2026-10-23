@@ -95,16 +95,52 @@ export function findCharacters(p: Project | null | undefined, scenes: Scene[]): 
     .sort((a, b) => b.scenes - a.scenes || b.lines - a.lines || a.name.localeCompare(b.name))
 }
 
-/** Prompt para la imagen de prueba de un personaje: estilo de la Biblia + su descripción. */
-export function characterPrompt(p: Project | null | undefined, ch: { name: string; description: string }): string {
+/** Lo que el guion dice de un personaje: sus diálogos y las acciones donde se le nombra (corto). */
+export function characterContext(name: string, scenes: Scene[]): string {
+  const k = key(name)
+  const said: string[] = []
+  const does: string[] = []
+  const named = new RegExp(`(^|[^\\p{L}])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'u')
+  for (const s of scenes) {
+    for (const l of parseDialogue(s.script.dialogue))
+      if (key(l.speaker) === k && l.text.trim()) said.push(`«${l.text.replace(/^[—–-]\s*/, '').trim()}»${l.emotion ? ` (${l.emotion})` : ''}`)
+    for (const f of s.script.action.split(/(?<=[.!?])\s+|\n+/)) if (f.trim() && named.test(key(f))) does.push(f.trim())
+  }
+  return [said.length && `Dice: ${said.slice(0, 5).join(' ')}`, does.length && `Hace: ${does.slice(0, 3).join(' ')}`].filter(Boolean).join(' · ')
+}
+
+/** Prompt para la imagen de prueba de un personaje: estilo de la Biblia + su descripción + lo que dice el guion. */
+export function characterPrompt(p: Project | null | undefined, ch: { name: string; description: string }, scenes: Scene[] = []): string {
   const style = biblePrompt(p)
+  const ctx = characterContext(ch.name, scenes)
   return [
     `Character design sheet of "${ch.name.trim()}", full body, front view, plain neutral background`,
     ch.description.trim() && `Appearance: ${ch.description.trim()}`,
+    !ch.description.trim() && ctx && `Infer age, look and clothing from the script (Spanish): ${ctx}`,
     style && `Style: ${style}`,
   ]
     .filter(Boolean)
     .join('. ')
+}
+
+/** Pedido listo para pegar en Codex/ChatGPT: cómo se ve cada personaje + una imagen de cada uno. */
+export function suggestionPrompt(p: Project | null | undefined, names: string[], scenes: Scene[] = []): string {
+  const style = biblePrompt(p)
+  const idea = p?.bible?.castIdea?.trim()
+  const list = names.map((n) => {
+    const ctx = characterContext(n, scenes)
+    return `- ${n}${ctx ? `: ${ctx}` : ''}`
+  })
+  return [
+    'Propón cómo se ve cada personaje de mi video y haz una imagen de cada uno (cuerpo completo, de frente, fondo neutro, formato vertical 3:4).',
+    idea && `Idea general: ${idea}.`,
+    style && `Estilo de todas las imágenes: ${style}.`,
+    'Personajes (con lo que dicen y hacen en el guion, úsalo para saber su edad, carácter y ropa):',
+    ...list,
+    'Para cada personaje escribe su nombre y una descripción corta en español (edad, cuerpo, cabello, ropa), y luego su imagen. Que todos se vean del mismo estilo.',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 /** Pasa la sugerencia de Claude a las fichas (de un personaje o de todos) y la quita de la lista. */
@@ -120,19 +156,4 @@ export function applySuggestion(p: Project, name?: string): Project {
   }
   const rest = (p.suggestion ?? []).filter((s) => !take.includes(s))
   return { ...p, characters, suggestion: rest.length ? rest : undefined }
-}
-
-/** Pedido listo para pegar en Codex/ChatGPT: cómo se ve cada personaje + una imagen de cada uno. */
-export function suggestionPrompt(p: Project | null | undefined, names: string[]): string {
-  const style = biblePrompt(p)
-  const idea = p?.bible?.castIdea?.trim()
-  return [
-    'Propón cómo se ve cada personaje de mi video y haz una imagen de cada uno (cuerpo completo, de frente, fondo neutro, formato vertical 3:4).',
-    idea && `Idea general: ${idea}.`,
-    style && `Estilo de todas las imágenes: ${style}.`,
-    `Personajes: ${names.join(', ')}.`,
-    'Para cada personaje escribe su nombre y una descripción corta en español (edad, cuerpo, cabello, ropa), y luego su imagen. Que todos se vean del mismo estilo.',
-  ]
-    .filter(Boolean)
-    .join('\n')
 }

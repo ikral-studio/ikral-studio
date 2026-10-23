@@ -45,8 +45,10 @@ export function BibleScreen() {
   if (!project) return null
   const { setBible, addCharacter } = useProject.getState()
   const b = project.bible ?? {}
-  const found = findCharacters(project, orderedScenes(project, scenes))
+  const ordered = orderedScenes(project, scenes)
+  const found = findCharacters(project, ordered)
   const answered = bibleAnswered(project)
+  const scriptScenes = ordered.filter((sc) => sc.script.action.trim() || sc.script.dialogue.trim()).length
 
   return (
     <div className="flex h-screen flex-col bg-bg">
@@ -68,22 +70,37 @@ export function BibleScreen() {
           <h2 className="flex items-center gap-2 text-[16px] font-semibold">
             <Palette size={18} className="text-[#c4b5fd]" /> Estilo <span className="text-[13px] font-normal text-ink-3">{answered} de 4</span>
           </h2>
-          <Step n={1} title="¿Cómo se ve?" done={b.look === 'otro' ? !!b.lookOther?.trim() : !!b.look}>
+          <Step n={1} title="Guion" done={scriptScenes > 0}>
+            {scriptScenes > 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[14px] text-ink-2">
+                  {scriptScenes} escena{scriptScenes === 1 ? '' : 's'} con guion · {found.length} personaje{found.length === 1 ? '' : 's'}
+                </span>
+                <ImportScriptButton />
+              </div>
+            ) : (
+              <div className="flex flex-col items-start gap-2">
+                <p className="text-[14px] text-ink-2">Primero carga tu guion: de ahí salen los personajes y lo que dicen.</p>
+                <ImportScriptButton className="!h-10 !px-4 !text-[14px]" />
+              </div>
+            )}
+          </Step>
+          <Step n={2} title="¿Cómo se ve?" done={b.look === 'otro' ? !!b.lookOther?.trim() : !!b.look}>
             <Options label="Cómo se ve" list={LOOKS} value={b.look} onPick={(look) => setBible({ look })} />
             {b.look === 'otro' && (
               <input className="field" aria-label="Otro estilo" placeholder="Ej.: plastilina, acuarela, cómic…" value={b.lookOther ?? ''} onChange={(e) => setBible({ lookOther: e.target.value })} />
             )}
           </Step>
-          <Step n={2} title="¿Época y lugar?" done={!!b.era?.trim()}>
+          <Step n={3} title="¿Época y lugar?" done={!!b.era?.trim()}>
             <input className="field !text-[14px]" aria-label="Época y lugar" placeholder="Ej.: pueblo mexicano, años 80" value={b.era ?? ''} onChange={(e) => setBible({ era: e.target.value })} />
           </Step>
-          <Step n={3} title="¿Colores?" done={!!b.mood}>
+          <Step n={4} title="¿Colores?" done={!!b.mood}>
             <Options label="Colores" list={MOODS} value={b.mood} onPick={(mood) => setBible({ mood })} />
           </Step>
-          <Step n={4} title="¿Para quién es?" done={!!b.audience}>
+          <Step n={5} title="¿Para quién es?" done={!!b.audience}>
             <Options label="Público" list={AUDIENCES} value={b.audience} onPick={(audience) => setBible({ audience })} />
           </Step>
-          <Step n={5} title="Sugerencia de personajes" done={!!project.characters?.length && project.characters.every((c) => c.description.trim())}>
+          <Step n={6} title="Sugerencia de personajes" done={!!project.characters?.length && project.characters.every((c) => c.description.trim())}>
             <SuggestionStep names={found.map((c) => c.name)} />
           </Step>
           <p className="text-[12.5px] text-ink-3">Las respuestas entran solas al prompt de cada escena.</p>
@@ -135,7 +152,7 @@ export function BibleScreen() {
           </h2>
           <p className="text-[14px] text-ink-2">Próximamente: propuesta de cada locación del guion, con 2 o 3 vistas.</p>
           <ol className="mt-2 flex list-decimal flex-col gap-1 pl-5 text-[13px] text-ink-3">
-            <li>Estilo: estas 4 preguntas</li>
+            <li>Guion y estilo: estas preguntas</li>
             <li>Personajes: propuesta → refinar → aprobar</li>
             <li>Locaciones: propuesta → refinar → aprobar</li>
             <li>Storyboard a lápiz en una sola hoja</li>

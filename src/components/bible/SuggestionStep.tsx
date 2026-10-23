@@ -5,6 +5,7 @@ import { toast } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
 import { requestSuggestion } from '../../features/chat/requests'
 import { suggestionPrompt } from '../../features/bible/bible'
+import { orderedScenes } from '../../features/script-sync/derive'
 import type { CharacterSuggestion } from '../../types'
 
 function SuggestionCard({ s }: { s: CharacterSuggestion }) {
@@ -54,7 +55,7 @@ function IdeaBox({ names }: { names: string[] }) {
             className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]"
             onClick={() =>
               void navigator.clipboard
-                .writeText(suggestionPrompt(useProject.getState().project, names))
+                .writeText(suggestionPrompt(useProject.getState().project, names, orderedScenes(useProject.getState().project, useProject.getState().scenes)))
                 .then(() => toast('Pedido copiado: pégalo en Codex o ChatGPT 📋'))
             }
           >

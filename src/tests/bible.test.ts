@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createProjectData, createScene } from '../features/scene-management/factory'
 import { generationPrompt } from '../features/script-sync/derive'
-import { applySuggestion, bibleAnswered, findCharacters } from '../features/bible/bible'
+import { applySuggestion, bibleAnswered, characterContext, findCharacters, suggestionPrompt } from '../features/bible/bible'
 
 describe('biblia del proyecto', () => {
   const p = createProjectData('Promo')
@@ -38,5 +38,14 @@ describe('biblia del proyecto', () => {
     const all = applySuggestion(one)
     expect(all.characters?.map((c) => [c.name, c.description])).toEqual([['Mesero', 'joven, mandil negro'], ['Ana', 'señora alegre']])
     expect(all.suggestion).toBeUndefined()
+  })
+
+  it('el guion da contexto de cada personaje', () => {
+    s1.script.action = 'Ana entra cargando bolsas. Llueve.'
+    const ctx = characterContext('ana', [s1, s2])
+    expect(ctx).toContain('«Hola»')
+    expect(ctx).toContain('Hace: Ana entra cargando bolsas.')
+    expect(ctx).not.toContain('Llueve')
+    expect(suggestionPrompt(p, ['Ana'], [s1, s2])).toContain('- Ana: Dice:')
   })
 })
