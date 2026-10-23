@@ -32,6 +32,8 @@ export interface Character {
   id: string
   name: string
   description: string
+  /** Imagen de prueba del personaje (también sirve de referencia para generar escenas). */
+  imageId?: string
 }
 
 export interface CustomField {

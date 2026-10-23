@@ -58,7 +58,7 @@ interface State {
   setCamera: (id: string, camera: CameraSpec | undefined) => void
   setStyle: (patch: { preset?: string; notes?: string }) => void
   setBible: (patch: Partial<BibleAnswers>) => void
-  addCharacter: (name?: string) => void
+  addCharacter: (name?: string) => string | undefined
   updateCharacter: (id: string, patch: Partial<Omit<Character, 'id'>>) => void
   removeCharacter: (id: string) => void
   addCustomField: (name: string) => void
@@ -197,7 +197,7 @@ export const useProject = create<State>()((set, get) => {
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
       store
-        .collectGarbage(project.id, Object.values(map), project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)))
+        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...(project.characters ?? []).flatMap((c) => (c.imageId ? [c.imageId] : []))])
         .catch(() => {})
   }
 
@@ -489,8 +489,10 @@ export const useProject = create<State>()((set, get) => {
     addCharacter(name = '') {
       const cur = snap()
       if (!cur) return
-      const characters = [...(cur.project.characters ?? []), { id: uid('ch_'), name, description: '' }]
+      const id = uid('ch_')
+      const characters = [...(cur.project.characters ?? []), { id, name, description: '' }]
       commit({ ...cur, project: { ...cur.project, characters } })
+      return id
     },
 
     updateCharacter(id, patch) {

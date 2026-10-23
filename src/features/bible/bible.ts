@@ -48,6 +48,8 @@ export function biblePrompt(p?: Project | null): string {
 
 export interface FoundCharacter {
   name: string
+  /** Id en la lista de personajes del proyecto (si ya está guardado). */
+  id?: string
   /** Líneas de diálogo que dice. */
   lines: number
   /** Escenas donde habla o se le nombra. */
@@ -73,6 +75,7 @@ export function findCharacters(p: Project | null | undefined, scenes: Scene[]): 
     if (!ch.name.trim()) continue
     const c = get(ch.name)
     c.name = ch.name.trim()
+    c.id = ch.id
     c.saved = true
     c.described = !!ch.description.trim()
   }
@@ -89,4 +92,16 @@ export function findCharacters(p: Project | null | undefined, scenes: Scene[]): 
   return [...map.values()]
     .map(({ sceneIds, ...c }) => ({ ...c, scenes: sceneIds.size }))
     .sort((a, b) => b.scenes - a.scenes || b.lines - a.lines || a.name.localeCompare(b.name))
+}
+
+/** Prompt para la imagen de prueba de un personaje: estilo de la Biblia + su descripción. */
+export function characterPrompt(p: Project | null | undefined, ch: { name: string; description: string }): string {
+  const style = biblePrompt(p)
+  return [
+    `Character design sheet of "${ch.name.trim()}", full body, front view, plain neutral background`,
+    ch.description.trim() && `Appearance: ${ch.description.trim()}`,
+    style && `Style: ${style}`,
+  ]
+    .filter(Boolean)
+    .join('. ')
 }

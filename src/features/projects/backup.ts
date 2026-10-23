@@ -32,6 +32,7 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
     })
   })
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
+  project.characters?.forEach((c) => c.imageId && used.add(c.imageId))
   const records = await bulkGetMedia([...used])
   const media: Manifest['media'] = []
   for (const rec of records) {

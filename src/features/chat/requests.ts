@@ -50,3 +50,18 @@ export async function requestImages(sceneIds: string[]) {
   })
   toast('Pedido enviado a Claude por el chat ✨')
 }
+
+/** Pedir a Claude la imagen de prueba de un personaje (la hace con Codex/ChatGPT). */
+export async function requestCharacterPreview(characterId: string) {
+  const { project } = useProject.getState()
+  const ch = project?.characters?.find((c) => c.id === characterId)
+  if (!project || !ch || !isDesktop()) return
+  await sendChat(project.id, {
+    id: uid('msg_'),
+    from: 'user',
+    at: new Date().toISOString(),
+    text: `👤 Haz con ChatGPT la imagen de prueba de «${ch.name}»${ch.imageId ? ' (otra versión)' : ''}.`,
+    request: { type: 'character-preview', characterId, name: ch.name },
+  })
+  toast('Pedido enviado a Claude por el chat 👤')
+}

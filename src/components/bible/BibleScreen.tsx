@@ -1,8 +1,10 @@
-import { ArrowLeft, BookMarked, Clapperboard, CheckCircle2, Circle, MapPinned, Palette, Plus, Sparkles, Users } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, BookMarked, ChevronDown, ChevronRight, Clapperboard, CheckCircle2, Circle, MapPinned, Palette, Sparkles, Users } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
 import { ImportScriptButton } from '../sidebar/Sidebar'
 import { orderedScenes } from '../../features/script-sync/derive'
+import { CharacterSheet } from './CharacterSheet'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
 
 function Options({ list, value, onPick, label }: { list: Choice[]; value?: string; onPick: (id?: string) => void; label: string }) {
@@ -38,6 +40,7 @@ function Step({ n, title, done, children }: { n: number; title: string; done: bo
 export function BibleScreen() {
   const project = useProject((s) => s.project)
   const scenes = useProject((s) => s.scenes)
+  const [openId, setOpenId] = useState<string>()
   if (!project) return null
   const { setBible, addCharacter } = useProject.getState()
   const b = project.bible ?? {}
@@ -94,20 +97,25 @@ export function BibleScreen() {
           ) : (
             <ul className="flex flex-col gap-2">
               {found.map((c) => (
-                <li key={c.name} className="flex items-center gap-3 rounded-[10px] border border-line bg-card px-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[15px] font-semibold">{c.name}</div>
-                    <div className="text-[12.5px] text-ink-3">
-                      {c.scenes} escena{c.scenes === 1 ? '' : 's'} · {c.lines} diálogo{c.lines === 1 ? '' : 's'}
+                <li key={c.name} className="overflow-hidden rounded-[10px] border border-line bg-card">
+                  <button
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+                    aria-expanded={!!c.id && openId === c.id}
+                    onClick={() => {
+                      const id = c.id ?? addCharacter(c.name)
+                      setOpenId(openId === id ? undefined : id)
+                    }}
+                  >
+                    {c.id && openId === c.id ? <ChevronDown size={16} className="text-ink-2" /> : <ChevronRight size={16} className="text-ink-2" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[15px] font-semibold">{c.name}</div>
+                      <div className="text-[12.5px] text-ink-3">
+                        {c.scenes} escena{c.scenes === 1 ? '' : 's'} · {c.lines} diálogo{c.lines === 1 ? '' : 's'}
+                      </div>
                     </div>
-                  </div>
-                  {c.saved ? (
                     <span className={`text-[12.5px] ${c.described ? 'text-ok' : 'text-ink-3'}`}>{c.described ? '✓ Descrito' : 'Sin descripción'}</span>
-                  ) : (
-                    <button className="btn btn-sm" onClick={() => addCharacter(c.name)}>
-                      <Plus size={13} /> Guardar
-                    </button>
-                  )}
+                  </button>
+                  {c.id && openId === c.id && <CharacterSheet characterId={c.id} />}
                 </li>
               ))}
             </ul>
