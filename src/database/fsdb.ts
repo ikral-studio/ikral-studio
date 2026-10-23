@@ -353,7 +353,7 @@ export interface ChatMessage {
   sceneId?: string
   sceneLabel?: string
   /** Pedido hecho con un botón (por ejemplo, generar imágenes). */
-  request?: { type: 'generate-images'; sceneIds: string[] } | { type: 'regenerate-image'; sceneIds: string[]; slot: 'start' | 'end'; note?: string } | { type: 'character-preview'; characterId: string; name: string; prompt: string } | { type: 'character-suggestions'; names: string[]; idea?: string } | { type: 'frame-preview'; sceneId: string; slot: 'start' | 'end'; prompt: string; characterImageIds?: string[] }
+  request?: { type: 'generate-images'; sceneIds: string[] } | { type: 'regenerate-image'; sceneIds: string[]; slot: 'start' | 'end'; note?: string } | { type: 'character-preview'; characterId: string; name: string; prompt: string } | { type: 'character-suggestions'; names: string[]; idea?: string } | { type: 'item-preview'; kind: 'locations' | 'props' | 'wardrobe'; itemId: string; name: string; prompt: string } | { type: 'frame-preview'; sceneId: string; slot: 'start' | 'end'; prompt: string; characterImageIds?: string[] }
 }
 interface ClaudeChatFile {
   messages: ChatMessage[]

@@ -4,6 +4,7 @@ import { bulkGetMedia, importProjectData } from '../../database/db'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../../types'
 import { extFromMime, nowIso, uid } from '../../utils'
 import { mapPrep, prepMediaIds } from '../bible/frames'
+import { bibleMediaIds, mapBibleMedia } from '../bible/items'
 
 const FORMAT = 'ikral-studio-backup'
 
@@ -34,9 +35,7 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
     })
   })
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
-  project.characters?.forEach((c) => c.imageId && used.add(c.imageId))
-  project.characters?.forEach((c) => c.tries?.forEach((t) => used.add(t.mediaId)))
-  project.suggestion?.forEach((c) => c.imageId && used.add(c.imageId))
+  bibleMediaIds(project).forEach((id) => used.add(id))
   const records = await bulkGetMedia([...used])
   const media: Manifest['media'] = []
   for (const rec of records) {
@@ -122,6 +121,7 @@ export async function importProjectZip(file: Blob): Promise<string> {
   })
   const project: Project = {
     ...m.project,
+    ...mapBibleMedia(m.project, mapMedia),
     id: projectId,
     sceneIds: m.project.sceneIds.map((id) => sceneMap.get(id)).filter((x): x is string => !!x),
     audioTracks: m.project.audioTracks?.map((t) => ({

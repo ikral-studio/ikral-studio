@@ -105,3 +105,20 @@ export async function requestFramePreview(sceneId: string, slot: 'start' | 'end'
   })
   toast('Pedido enviado a Claude 🖼️ La imagen aparecerá aquí')
 }
+
+/** Biblia: pedir a Claude una prueba de imagen de una locación, objeto o vestuario. */
+export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe', itemId: string, prompt: string) {
+  const { project, updateItem } = useProject.getState()
+  const it = project?.[kind]?.find((c) => c.id === itemId)
+  if (!project || !it || !isDesktop()) return
+  const what = kind === 'locations' ? '📍 la locación' : kind === 'props' ? '📦 el objeto' : '👕 el vestuario'
+  updateItem(kind, itemId, { generating: true })
+  await sendChat(project.id, {
+    id: uid('msg_'),
+    from: 'user',
+    at: new Date().toISOString(),
+    text: `Haz con ChatGPT una prueba de imagen de ${what} «${it.name}» con este prompt: ${prompt}`,
+    request: { type: 'item-preview', kind, itemId, name: it.name, prompt },
+  })
+  toast('Pedido enviado a Claude. La imagen aparecerá aquí')
+}

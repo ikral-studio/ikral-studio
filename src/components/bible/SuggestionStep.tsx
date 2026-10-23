@@ -55,21 +55,21 @@ function IdeaBox({ names }: { names: string[] }) {
             </button>
           </div>
         ) : (
-          <button className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void requestSuggestion(names)}>
-            <Sparkles size={16} /> Generar
+          <button className="btn btn-hero !h-12 !text-[16px]" onClick={() => void requestSuggestion(names)}>
+            <Sparkles size={18} /> Generar
           </button>
         )
       ) : (
         <>
           <button
-            className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]"
+            className="btn btn-hero !h-12 !text-[16px]"
             onClick={() =>
               void navigator.clipboard
                 .writeText(suggestionPrompt(useProject.getState().project, names, orderedScenes(useProject.getState().project, useProject.getState().scenes)))
                 .then(() => toast('Pedido copiado: pégalo en Codex o ChatGPT 📋'))
             }
           >
-            <Sparkles size={16} /> Generar (copiar para Codex)
+            <Sparkles size={18} /> Generar (copiar para Codex)
           </button>
           <p className="text-[13px] text-ink-3">Pégalo en Codex o ChatGPT (gratis con tu plan). Luego suelta cada imagen en la ficha de su personaje.</p>
         </>

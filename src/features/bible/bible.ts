@@ -36,7 +36,7 @@ const pick = (list: Choice[], id?: string) => list.find((c) => c.id === id)
 export function bibleAnswered(p?: Project | null): number {
   const b = p?.bible ?? {}
   const look = b.look === 'otro' ? !!b.lookOther?.trim() : !!b.look
-  return [look, !!b.era?.trim(), !!b.mood, !!b.audience].filter(Boolean).length
+  return [look, !!(b.era?.trim() || b.place?.trim()), !!b.mood, !!b.audience].filter(Boolean).length
 }
 
 /** Respuestas en inglés para el prompt (vacío si no hay ninguna). */
@@ -44,7 +44,7 @@ export function biblePrompt(p?: Project | null): string {
   const b = p?.bible
   if (!b) return ''
   const look = b.look === 'otro' ? b.lookOther?.trim() : pick(LOOKS, b.look)?.en
-  return [look, b.era?.trim() && `setting: ${b.era.trim()}`, pick(MOODS, b.mood)?.en, pick(AUDIENCES, b.audience)?.en].filter(Boolean).join('; ')
+  return [look, b.era?.trim() && `setting: ${b.era.trim()}`, b.place?.trim() && `place: ${b.place.trim()}`, pick(MOODS, b.mood)?.en, pick(AUDIENCES, b.audience)?.en].filter(Boolean).join('; ')
 }
 
 export interface FoundCharacter {

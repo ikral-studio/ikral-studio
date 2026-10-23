@@ -14,6 +14,14 @@ export interface Project {
   characters?: Character[]
   /** Sugerencia de personajes que hizo Claude (paso 5 de la Biblia), esperando que se acepte. */
   suggestion?: CharacterSuggestion[]
+  /** Biblia: locaciones (lugares donde pasa la historia). */
+  locations?: BibleItem[]
+  /** Biblia: objetos importantes. */
+  props?: BibleItem[]
+  /** Biblia: vestuario (de qué personaje es en `characterId`). */
+  wardrobe?: BibleItem[]
+  /** Biblia: relaciones entre personajes. */
+  relations?: Relation[]
   /** Campos extra que tiene cada escena (ej. Vestuario, Emoción). */
   customFields?: CustomField[]
   /** Pistas de música (2). Opcional para proyectos viejos. */
@@ -26,6 +34,8 @@ export interface BibleAnswers {
   look?: string
   lookOther?: string
   era?: string
+  /** Lugar principal (ej.: Los Ángeles, USA). */
+  place?: string
   mood?: string
   audience?: string
   /** Se pidió la sugerencia a Claude y todavía no llega. */
@@ -37,6 +47,8 @@ export interface BibleAnswers {
 export interface Character {
   id: string
   name: string
+  /** Papel corto que se ve en la tarjeta (ej.: Dueña, Empleado). */
+  role?: string
   description: string
   /** Imagen aprobada del personaje (también sirve de referencia para generar escenas). */
   imageId?: string
@@ -53,6 +65,31 @@ export interface CharacterTry {
   mediaId: string
   prompt?: string
   at: string
+}
+
+/** Elemento de la Biblia (locación, objeto o vestuario). Sin imagen aprobada = sin preparar; con imagen aprobada = Canon. */
+export interface BibleItem {
+  id: string
+  name: string
+  /** Texto corto que se ve en la tarjeta (ej.: Interior principal, Para llevar). */
+  note?: string
+  description: string
+  imageId?: string
+  prompt?: string
+  tries?: CharacterTry[]
+  generating?: boolean
+  /** Vestuario: personaje que lo usa. */
+  characterId?: string
+}
+
+export type BibleKind = 'characters' | 'locations' | 'props' | 'wardrobe'
+
+export interface Relation {
+  id: string
+  a: string
+  b: string
+  /** Qué son (ej.: Matrimonio, Jefa / Empleado). */
+  label: string
 }
 
 /** Propuesta de la imagen inicial o final de una escena (Preproducción). */

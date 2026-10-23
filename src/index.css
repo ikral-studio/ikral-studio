@@ -329,3 +329,30 @@ input[type='range'] {
 .camdiag .gd { stroke: var(--ink3c); stroke-width: 1; stroke-dasharray: 3 4; fill: none; }
 .camdiag .t { fill: #9fb0c8; font: 500 9px ui-monospace, monospace; }
 .camdiag .frame { fill: none; stroke: var(--accc); stroke-width: 2.5; }
+
+/* Preproducción · Biblia (oscuro cinematográfico) */
+.bible-screen {
+  background:
+    radial-gradient(1200px 500px at 15% -10%, #312e8133 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, #4c1d9526 0%, transparent 55%),
+    #080d18;
+}
+.bible-card {
+  background: linear-gradient(180deg, #121b2ef2 0%, #0f1727f2 100%);
+  border: 1px solid #22314b;
+  border-radius: 16px;
+  box-shadow: 0 1px 0 #ffffff08 inset, 0 10px 30px -18px #000;
+}
+.btn.btn-hero {
+  background: linear-gradient(90deg, #6d4dfa 0%, #8b5cf6 55%, #a855f7 100%);
+  border-color: #8b5cf6;
+  color: white;
+  box-shadow: 0 0 18px #7c3aed55;
+}
+.btn.btn-hero:hover:not(:disabled) {
+  background: linear-gradient(90deg, #7c5cff 0%, #9b6cff 55%, #b46bff 100%);
+  border-color: #a78bfa;
+}
+.btn.btn-hero svg {
+  color: white !important;
+}

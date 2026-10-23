@@ -1,7 +1,8 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, Project, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import { applySuggestion } from '../features/bible/bible'
+import { bibleMediaIds } from '../features/bible/items'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
@@ -64,6 +65,12 @@ interface State {
   addCharacter: (name?: string) => string | undefined
   updateCharacter: (id: string, patch: Partial<Omit<Character, 'id'>>) => void
   removeCharacter: (id: string) => void
+  /** Biblia: agregar, cambiar o quitar un personaje, locación, objeto o vestuario. */
+  addItem: (kind: BibleKind, name: string, extra?: Partial<BibleItem>) => string | undefined
+  updateItem: (kind: BibleKind, id: string, patch: Partial<Omit<BibleItem, 'id'>>) => void
+  removeItem: (kind: BibleKind, id: string) => void
+  addRelation: (a: string, b: string, label: string) => void
+  removeRelation: (id: string) => void
   /** Aceptar la sugerencia de un personaje (o de todos si no se da nombre). */
   acceptSuggestion: (name?: string) => void
   dismissSuggestion: () => void
@@ -203,7 +210,7 @@ export const useProject = create<State>()((set, get) => {
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
       store
-        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...[...(project.characters ?? []), ...(project.suggestion ?? [])].flatMap((c) => (c.imageId ? [c.imageId] : [])), ...(project.characters ?? []).flatMap((c) => c.tries?.map((t) => t.mediaId) ?? [])])
+        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...bibleMediaIds(project)])
         .catch(() => {})
   }
 
@@ -492,7 +499,7 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       const bible = { ...(cur.project.bible ?? {}), ...patch }
-      const typing = 'era' in patch || 'lookOther' in patch || 'castIdea' in patch
+      const typing = 'era' in patch || 'place' in patch || 'lookOther' in patch || 'castIdea' in patch
       commit({ ...cur, project: { ...cur.project, bible } }, typing ? 'bible-text' : undefined, typing ? 500 : 0)
     },
 
@@ -516,6 +523,44 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       commit({ ...cur, project: { ...cur.project, characters: (cur.project.characters ?? []).filter((c) => c.id !== id) } })
+    },
+
+    addItem(kind, name, extra) {
+      const cur = snap()
+      if (!cur) return
+      const id = uid(kind === 'characters' ? 'ch_' : kind === 'locations' ? 'loc_' : kind === 'props' ? 'obj_' : 'ves_')
+      const list = [...((cur.project[kind] ?? []) as BibleItem[]), { ...extra, id, name: name.trim(), description: extra?.description ?? '' }]
+      commit({ ...cur, project: { ...cur.project, [kind]: list } })
+      return id
+    },
+
+    updateItem(kind, id, patch) {
+      const cur = snap()
+      if (!cur) return
+      const list = ((cur.project[kind] ?? []) as BibleItem[]).map((c) => (c.id === id ? { ...c, ...patch } : c))
+      commit({ ...cur, project: { ...cur.project, [kind]: list } }, `${kind}:${id}`, 500)
+    },
+
+    removeItem(kind, id) {
+      const cur = snap()
+      if (!cur) return
+      const list = ((cur.project[kind] ?? []) as BibleItem[]).filter((c) => c.id !== id)
+      // Quitar un personaje también quita sus relaciones.
+      const relations = kind === 'characters' ? cur.project.relations?.filter((r) => r.a !== id && r.b !== id) : cur.project.relations
+      commit({ ...cur, project: { ...cur.project, [kind]: list, relations } })
+    },
+
+    addRelation(a, b, label) {
+      const cur = snap()
+      if (!cur || !a || !b || a === b) return
+      const relations: Relation[] = [...(cur.project.relations ?? []), { id: uid('rel_'), a, b, label: label.trim() }]
+      commit({ ...cur, project: { ...cur.project, relations } })
+    },
+
+    removeRelation(id) {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: { ...cur.project, relations: (cur.project.relations ?? []).filter((r) => r.id !== id) } })
     },
 
     acceptSuggestion(name) {
