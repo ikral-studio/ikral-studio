@@ -9,6 +9,7 @@ const fx = (f: string) => path.join(FX, f)
 
 async function freshProject(page: Page, title = 'Proyecto de prueba') {
   await page.goto('./')
+  await page.getByRole('button', { name: 'Edición', exact: true }).click()
   await expect(page.getByText('Promocional de TuApp.digital').first()).toBeVisible()
   await page.getByRole('button', { name: 'Nuevo proyecto' }).click()
   await page.getByRole('button', { name: 'Crear proyecto' }).click()
@@ -417,6 +418,7 @@ test('extra · guion con IA: copiar formato, pegar, subir archivo, inválido, ag
 
 test('extra · guion en columna alta', async ({ page }) => {
   await page.goto('./')
+  await page.getByRole('button', { name: 'Edición', exact: true }).click()
   await page.getByRole('button', { name: 'Guion en panel lateral', exact: true }).click()
   const dock = page.getByLabel('Guion completo en panel')
   await expect(dock).toBeVisible()
@@ -511,6 +513,7 @@ test('extra · dos ventanas no se pisan y respaldos restaurables', async ({ page
   await addScenes(page, 1)
   const page2 = await context.newPage()
   await page2.goto('./')
+  await page2.getByRole('button', { name: 'Edición', exact: true }).click()
   await expect(page.getByText('IKRAL Studio está abierto en otra ventana')).toBeVisible()
   await expect(page2.getByTitle('Clic para renombrar')).toHaveText('Dos ventanas')
   await card(page2, 1).getByLabel('Nombre de la escena').fill('Editada en la ventana 2')
@@ -534,6 +537,7 @@ test('extra · dos ventanas no se pisan y respaldos restaurables', async ({ page
 test('extra · soltar el .json sobre «Importar guion»', async ({ page }) => {
   const json = await readFile(fx('guion-ia.json'), 'utf8')
   await page.goto('./')
+  await page.getByRole('button', { name: 'Edición', exact: true }).click()
   const btn = page.getByRole('button', { name: 'Importar guion' })
   const dt = await page.evaluateHandle((text) => {
     const d = new DataTransfer()
@@ -670,4 +674,16 @@ test('extra · portafolio PDF con storyboard', async ({ page }) => {
   const pdf = await readFile(await d.path())
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
   expect(pdf.byteLength).toBeGreaterThan(50_000)
+})
+
+test('extra · inicio: Preproducción y Edición', async ({ page }) => {
+  await page.goto('./')
+  await expect(page.getByRole('button', { name: 'Preproducción', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  await page.getByRole('button', { name: /Caricatura 2D/ }).click()
+  await expect(page.getByText('1 de 4')).toBeVisible()
+  await page.getByRole('button', { name: 'Ir a Edición' }).click()
+  await expect(page.getByTitle('Clic para renombrar')).toBeVisible()
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click()
+  await expect(page.getByText('Estilo 1 de 4')).toBeVisible()
 })

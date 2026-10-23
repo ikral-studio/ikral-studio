@@ -20,8 +20,8 @@ export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: s
 export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | 'regenerate' | null
 
 interface UIState {
-  /** Pantalla principal: el editor o la Biblia del proyecto. */
-  view: 'studio' | 'bible'
+  /** Pantalla principal: inicio, Preproducción (Biblia) o Edición. */
+  view: 'home' | 'studio' | 'bible'
   toasts: Toast[]
   confirm: ConfirmRequest | null
   lightbox: LightboxItem | null
@@ -44,8 +44,19 @@ interface UIState {
   regenerate: { sceneId: string; slot: 'start' | 'end' } | null
 }
 
+// Al recargar se queda en la misma pantalla; una pestaña nueva empieza en el inicio.
+const VIEW_KEY = 'ikral-studio:view'
+function savedView(): UIState['view'] {
+  try {
+    const v = sessionStorage.getItem(VIEW_KEY)
+    return v === 'studio' || v === 'bible' ? v : 'home'
+  } catch {
+    return 'home'
+  }
+}
+
 export const useUI = create<UIState>()(() => ({
-  view: 'studio',
+  view: savedView(),
   toasts: [],
   confirm: null,
   lightbox: null,
@@ -60,6 +71,15 @@ export const useUI = create<UIState>()(() => ({
   importText: null,
   regenerate: null,
 }))
+
+useUI.subscribe((s, prev) => {
+  if (s.view === prev.view) return
+  try {
+    sessionStorage.setItem(VIEW_KEY, s.view)
+  } catch {
+    /* sin almacenamiento: no pasa nada */
+  }
+})
 
 export function openCameraLibrary(sceneId: string) {
   useUI.setState({ modal: 'camera', pasteSceneId: sceneId })

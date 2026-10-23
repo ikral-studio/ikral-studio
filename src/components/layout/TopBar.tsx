@@ -200,12 +200,12 @@ export function TopBar() {
 
   return (
     <header className="area-top no-print flex items-center gap-3 border-b border-line bg-bg px-4">
-      <div className="flex shrink-0 items-center gap-2.5 pr-2">
+      <button className="flex shrink-0 items-center gap-2.5 pr-2" onClick={() => useUI.setState({ view: 'home' })} title="Inicio" aria-label="Inicio">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-sel to-acc-purple">
           <Clapperboard size={19} className="text-white" />
         </div>
         <span className={`hidden text-[14px] font-semibold tracking-tight text-ink-2 ${scriptDock ? "" : "xl:inline"}`}>IKRAL Studio</span>
-      </div>
+      </button>
       <div className="h-6 w-px shrink-0 bg-line" />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-4">
@@ -237,8 +237,8 @@ export function TopBar() {
       <div className="h-6 w-px shrink-0 bg-line" />
 
       <div className="flex shrink-0 items-center gap-1">
-        <button className="btn !h-9" onClick={() => useUI.setState({ view: 'bible' })} title="Biblia del proyecto: estilo, personajes y escenarios">
-          <BookMarked size={16} /> Biblia
+        <button className="btn !h-9" onClick={() => useUI.setState({ view: 'bible' })} title="Preproducción: Biblia del proyecto (estilo, personajes y locaciones)">
+          <BookMarked size={16} /> Preproducción
         </button>
         <button className="icon-btn" onClick={createNew} title="Nuevo proyecto" aria-label="Nuevo proyecto">
           <FilePlus2 size={17} />

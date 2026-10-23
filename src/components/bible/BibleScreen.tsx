@@ -1,4 +1,4 @@
-import { ArrowLeft, BookMarked, CheckCircle2, Circle, MapPinned, Palette, Plus, Sparkles, Users } from 'lucide-react'
+import { ArrowLeft, BookMarked, Clapperboard, CheckCircle2, Circle, MapPinned, Palette, Plus, Sparkles, Users } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
 import { orderedScenes } from '../../features/script-sync/derive'
@@ -46,12 +46,15 @@ export function BibleScreen() {
   return (
     <div className="flex h-screen flex-col bg-bg">
       <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
-        <button className="btn !h-9" onClick={() => useUI.setState({ view: 'studio' })}>
-          <ArrowLeft size={16} /> Volver al editor
+        <button className="btn !h-9" onClick={() => useUI.setState({ view: 'home' })}>
+          <ArrowLeft size={16} /> Inicio
         </button>
         <BookMarked size={20} className="text-[#c4b5fd]" />
-        <h1 className="text-[18px] font-semibold">Biblia del proyecto</h1>
-        <span className="truncate text-[14px] text-ink-3">{project.title}</span>
+        <h1 className="text-[18px] font-semibold">🎨 Preproducción · Biblia del proyecto</h1>
+        <span className="min-w-0 flex-1 truncate text-[14px] text-ink-3">{project.title}</span>
+        <button className="btn !h-9" onClick={() => useUI.setState({ view: 'studio' })}>
+          <Clapperboard size={16} /> Ir a Edición
+        </button>
       </header>
 
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-3">
@@ -109,15 +112,15 @@ export function BibleScreen() {
           </button>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-[14px] border border-dashed border-line bg-panel/50 p-4" aria-label="Escenarios">
+        <section className="flex flex-col gap-3 rounded-[14px] border border-dashed border-line bg-panel/50 p-4" aria-label="Locaciones">
           <h2 className="flex items-center gap-2 text-[16px] font-semibold">
-            <MapPinned size={18} className="text-[#c4b5fd]" /> Escenarios
+            <MapPinned size={18} className="text-[#c4b5fd]" /> Locaciones
           </h2>
-          <p className="text-[14px] text-ink-2">Próximamente: propuesta de cada lugar del guion, con 2 o 3 vistas.</p>
+          <p className="text-[14px] text-ink-2">Próximamente: propuesta de cada locación del guion, con 2 o 3 vistas.</p>
           <ol className="mt-2 flex list-decimal flex-col gap-1 pl-5 text-[13px] text-ink-3">
             <li>Estilo: estas 4 preguntas</li>
             <li>Personajes: propuesta → refinar → aprobar</li>
-            <li>Escenarios: propuesta → refinar → aprobar</li>
+            <li>Locaciones: propuesta → refinar → aprobar</li>
             <li>Storyboard a lápiz en una sola hoja</li>
             <li>Imagen inicial y final de cada escena</li>
           </ol>

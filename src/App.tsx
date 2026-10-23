@@ -15,6 +15,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { PausedOverlay } from './components/layout/PausedOverlay'
 import { ClaudeChat } from './components/chat/ClaudeChat'
 import { BibleScreen } from './components/bible/BibleScreen'
+import { HomeScreen } from './components/home/HomeScreen'
 import { isDesktop } from './database/db'
 import { startTabGuard } from './features/session/tabGuard'
 import { clamp } from './utils'
@@ -125,7 +126,9 @@ export default function App() {
 
   return (
     <>
-      {hasProject && view === 'bible' ? (
+      {hasProject && view === 'home' ? (
+        <HomeScreen />
+      ) : hasProject && view === 'bible' ? (
         <BibleScreen />
       ) : hasProject ? (
         <div className="flex h-screen">
