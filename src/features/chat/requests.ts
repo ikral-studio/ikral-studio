@@ -51,19 +51,20 @@ export async function requestImages(sceneIds: string[]) {
   toast('Pedido enviado a Claude por el chat ✨')
 }
 
-/** Pedir a Claude la imagen de prueba de un personaje (la hace con Codex/ChatGPT). */
-export async function requestCharacterPreview(characterId: string) {
-  const { project } = useProject.getState()
+/** Pedir a Claude una prueba de imagen de un personaje con este prompt (la hace con Codex/ChatGPT). */
+export async function requestCharacterPreview(characterId: string, prompt: string) {
+  const { project, updateCharacter } = useProject.getState()
   const ch = project?.characters?.find((c) => c.id === characterId)
   if (!project || !ch || !isDesktop()) return
+  updateCharacter(characterId, { generating: true })
   await sendChat(project.id, {
     id: uid('msg_'),
     from: 'user',
     at: new Date().toISOString(),
-    text: `👤 Haz con ChatGPT la imagen de prueba de «${ch.name}»${ch.imageId ? ' (otra versión)' : ''}.`,
-    request: { type: 'character-preview', characterId, name: ch.name },
+    text: `👤 Haz con ChatGPT una prueba de imagen de «${ch.name}» con este prompt: ${prompt}`,
+    request: { type: 'character-preview', characterId, name: ch.name, prompt },
   })
-  toast('Pedido enviado a Claude por el chat 👤')
+  toast('Pedido enviado a Claude 👤 La imagen aparecerá aquí')
 }
 
 /** Paso 5 de la Biblia: pedir a Claude cómo se ve cada personaje (texto + imagen con ChatGPT). */
@@ -72,6 +73,7 @@ export async function requestSuggestion(names: string[]) {
   if (!project || !isDesktop()) return
   if (!names.length) return toast('Primero carga el guion para que salgan los personajes', 'info')
   const idea = project.bible?.castIdea?.trim()
+  useProject.getState().setBible({ suggesting: true })
   await sendChat(project.id, {
     id: uid('msg_'),
     from: 'user',

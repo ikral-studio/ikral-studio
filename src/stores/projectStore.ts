@@ -201,7 +201,7 @@ export const useProject = create<State>()((set, get) => {
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
       store
-        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...[...(project.characters ?? []), ...(project.suggestion ?? [])].flatMap((c) => (c.imageId ? [c.imageId] : []))])
+        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...[...(project.characters ?? []), ...(project.suggestion ?? [])].flatMap((c) => (c.imageId ? [c.imageId] : [])), ...(project.characters ?? []).flatMap((c) => c.tries?.map((t) => t.mediaId) ?? [])])
         .catch(() => {})
   }
 

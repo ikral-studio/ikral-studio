@@ -28,6 +28,8 @@ export interface BibleAnswers {
   era?: string
   mood?: string
   audience?: string
+  /** Se pidió la sugerencia a Claude y todavía no llega. */
+  suggesting?: boolean
   /** Idea general de los personajes para la sugerencia (paso 5). */
   castIdea?: string
 }
@@ -36,8 +38,21 @@ export interface Character {
   id: string
   name: string
   description: string
-  /** Imagen de prueba del personaje (también sirve de referencia para generar escenas). */
+  /** Imagen aprobada del personaje (también sirve de referencia para generar escenas). */
   imageId?: string
+  /** Prompt escrito a mano (si no hay, se arma solo con la Biblia y el guion). */
+  prompt?: string
+  /** Todas las pruebas de imagen que se han hecho, para escoger cuál aprobar. */
+  tries?: CharacterTry[]
+  /** Se pidió una imagen a Claude y todavía no llega. */
+  generating?: boolean
+}
+
+export interface CharacterTry {
+  id: string
+  mediaId: string
+  prompt?: string
+  at: string
 }
 
 export interface CharacterSuggestion {

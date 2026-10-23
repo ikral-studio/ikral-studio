@@ -33,7 +33,7 @@ describe('biblia del proyecto', () => {
       { name: 'Ana', description: 'señora alegre' },
     ] }
     const one = applySuggestion(q, 'Mesero')
-    expect(one.characters).toEqual([{ id: '1', name: 'Mesero', description: 'joven, mandil negro', imageId: 'm1' }])
+    expect(one.characters).toMatchObject([{ id: '1', name: 'Mesero', description: 'joven, mandil negro', imageId: 'm1', tries: [{ mediaId: 'm1' }] }])
     expect(one.suggestion?.map((s) => s.name)).toEqual(['Ana'])
     const all = applySuggestion(one)
     expect(all.characters?.map((c) => [c.name, c.description])).toEqual([['Mesero', 'joven, mandil negro'], ['Ana', 'señora alegre']])

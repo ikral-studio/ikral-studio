@@ -151,8 +151,11 @@ export function applySuggestion(p: Project, name?: string): Project {
   for (const s of take) {
     const i = characters.findIndex((c) => key(c.name) === key(s.name))
     const patch = { description: s.description, ...(s.imageId ? { imageId: s.imageId } : {}) }
-    if (i >= 0) characters[i] = { ...characters[i], ...patch }
-    else characters.push({ id: uid('ch_'), name: s.name.trim(), ...patch })
+    const old = i >= 0 ? characters[i] : { id: uid('ch_'), name: s.name.trim(), description: '' }
+    const tries = s.imageId && !old.tries?.some((t) => t.mediaId === s.imageId) ? [...(old.tries ?? []), { id: uid('try_'), mediaId: s.imageId, at: new Date().toISOString() }] : old.tries
+    const next = { ...old, ...patch, ...(tries ? { tries } : {}) }
+    if (i >= 0) characters[i] = next
+    else characters.push(next)
   }
   const rest = (p.suggestion ?? []).filter((s) => !take.includes(s))
   return { ...p, characters, suggestion: rest.length ? rest : undefined }

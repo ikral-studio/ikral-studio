@@ -1,4 +1,4 @@
-import { Check, RefreshCw, Sparkles, X } from 'lucide-react'
+import { Check, Loader2, RefreshCw, Sparkles, X } from 'lucide-react'
 import { isDesktop } from '../../database/db'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
@@ -35,6 +35,7 @@ function SuggestionCard({ s }: { s: CharacterSuggestion }) {
 /** Cajita con la idea general de los personajes y botón Generar. */
 function IdeaBox({ names }: { names: string[] }) {
   const idea = useProject((s) => s.project?.bible?.castIdea ?? '')
+  const suggesting = useProject((s) => !!s.project?.bible?.suggesting)
   return (
     <div className="flex flex-col gap-2">
       <textarea
@@ -46,9 +47,18 @@ function IdeaBox({ names }: { names: string[] }) {
         onChange={(e) => useProject.getState().setBible({ castIdea: e.target.value })}
       />
       {isDesktop() ? (
-        <button className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void requestSuggestion(names)}>
-          <Sparkles size={16} /> Generar
-        </button>
+        suggesting ? (
+          <div className="flex items-center gap-2 text-[14px] text-[#ddd6fe]">
+            <Loader2 size={16} className="animate-spin" /> Claude está generando los personajes… aparecerán aquí.
+            <button className="btn btn-sm btn-ghost" onClick={() => useProject.getState().setBible({ suggesting: false })}>
+              Cancelar espera
+            </button>
+          </div>
+        ) : (
+          <button className="btn !h-10 self-start !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void requestSuggestion(names)}>
+            <Sparkles size={16} /> Generar
+          </button>
+        )
       ) : (
         <>
           <button
