@@ -7,6 +7,7 @@ import { shotFramePrompt } from '../../features/bible/frames'
 import { requestShotPreview } from '../../features/chat/requests'
 import { pad2 } from '../../utils'
 import { FramePlanBox } from '../bible/FramePlanBox'
+import { GptCoverageToggle } from '../gpt/GptCoveragePanel'
 import type { Shot } from '../../types'
 
 type TextKey = 'cameraDirection' | 'action' | 'sound' | 'continuity' | 'generationPrompt'
@@ -123,6 +124,7 @@ export function ShotCard({ sceneId, shot, n, count }: { sceneId: string; shot: S
           <ShotFrame sceneId={sceneId} shot={shot} slot="start" n={n} count={count} />
           <ShotFrame sceneId={sceneId} shot={shot} slot="end" n={n} count={count} />
           <div className="flex flex-wrap gap-2 pt-1">
+            <GptCoverageToggle sceneId={sceneId} shotId={shot.id} />
             <button
               className="btn btn-sm"
               aria-label={`Duplicar ${label.toLowerCase()}`}

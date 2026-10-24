@@ -3,6 +3,7 @@ import { Clapperboard, Loader2, Plus, Undo2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
 import { hasCoverage, sceneDuration, shotsOf } from '../../features/coverage/shots'
+import { GptCoverageToggle } from '../gpt/GptCoveragePanel'
 import { ShotCard } from './ShotCard'
 
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -41,6 +42,10 @@ export function CoveragePanel({ sceneId }: { sceneId: string }) {
             {shots.length} plano{shots.length === 1 ? '' : 's'} · {round1(sceneDuration(scene))} s
           </span>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <GptCoverageToggle sceneId={sceneId} />
       </div>
 
       {!covered ? (

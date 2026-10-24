@@ -3,8 +3,11 @@
 import { nowIso, uid } from '../../utils'
 import type { ScriptProposal } from './script'
 
-/** «script» = guion de una escena (sceneId = la escena). «bible» = Biblia (sceneId = el apartado: «style» o «<tipo>:<id>»). */
-export type GptSection = 'script' | 'bible'
+/**
+ * «script» = guion de una escena (sceneId = la escena). «bible» = Biblia (sceneId = el apartado: «style» o «<tipo>:<id>»).
+ * «coverage» = cobertura de una escena (sceneId = la escena) o un plano (sceneId = «<escena>#<plano>»).
+ */
+export type GptSection = 'script' | 'bible' | 'coverage'
 
 export type GptProposalStatus = 'pending' | 'accepted' | 'discarded' | 'asked-claude'
 

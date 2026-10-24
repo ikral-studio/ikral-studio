@@ -9,6 +9,8 @@ import { classifyGptError, GPT_ERROR_TEXT, parseContinuityResponse, toReview, ty
 import { buildScriptPacket, parseScriptResponse, toScriptProposals } from './script'
 import bibleSchemaText from './schemas/bible.json?raw'
 import { buildBiblePacket, parseBibleResponse, toBibleProposals, type BibleThread } from './bible'
+import coverageSchemaText from './schemas/coverage.json?raw'
+import { buildCoveragePacket, parseCoverageResponse, toCoverageProposals, type CoverageThread } from './coverage'
 import { addMessage, type GptThread } from './threads'
 
 /** Tiempo máximo de una consulta. */
@@ -103,6 +105,37 @@ export async function runBibleConsult(project: Project, key: string, thread: Bib
     if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
     let next = addMessage(thread, { from: 'director', text: request.trim() })
     next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toBibleProposals(parsed.data, project, key) })
+    return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
+  } catch (e) {
+    const kind = classifyGptError(e)
+    return { ok: false, kind, message: GPT_ERROR_TEXT[kind] }
+  }
+}
+
+export type CoverageConsultResult = { ok: true; thread: CoverageThread } | { ok: false; kind: GptErrorKind; message: string }
+
+/**
+ * Un mensaje del director en un hilo de cobertura (la escena) o de un plano (`key` = «<escena>#<plano>»).
+ * Devuelve el hilo con el mensaje y la respuesta de GPT (propuestas pendientes). Si falla, el hilo queda igual.
+ */
+export async function runCoverageConsult(
+  project: Project,
+  ordered: Scene[],
+  scene: Scene,
+  key: string,
+  thread: CoverageThread,
+  request: string,
+  deps: GptDeps = defaultDeps,
+): Promise<CoverageConsultResult> {
+  if (!deps.desktop()) return { ok: false, kind: 'web', message: GPT_ERROR_TEXT.web }
+  const packet = buildCoveragePacket(project, ordered, scene, key, thread, request)
+  if (!packet) return { ok: false, kind: 'bad-format', message: 'Ese plano ya no existe. No se cambió nada.' }
+  try {
+    const raw = await deps.consult({ prompt: packet.prompt, schema: coverageSchemaText, images: [], timeoutSecs: GPT_TIMEOUT_SECS })
+    const parsed = parseCoverageResponse(raw)
+    if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
+    let next = addMessage(thread, { from: 'director', text: request.trim() })
+    next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toCoverageProposals(parsed.data, scene, key) })
     return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
   } catch (e) {
     const kind = classifyGptError(e)

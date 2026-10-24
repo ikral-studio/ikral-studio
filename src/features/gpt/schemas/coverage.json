@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["respuesta", "resumen_hilo", "propuestas"],
+  "properties": {
+    "respuesta": { "type": "string" },
+    "resumen_hilo": { "type": "string" },
+    "propuestas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tipo", "plano", "campo", "texto", "nombre", "duracion", "camara", "accion", "sonido", "motivo"],
+        "properties": {
+          "tipo": { "type": "string", "enum": ["agregar_plano", "cambiar"] },
+          "plano": { "type": ["integer", "null"] },
+          "campo": {
+            "type": ["string", "null"],
+            "enum": ["nombre", "duracion", "camara", "accion", "sonido", "continuidad", "prompt_imagen_inicial", "prompt_imagen_final", "prompt_video", null]
+          },
+          "texto": { "type": "string" },
+          "nombre": { "type": ["string", "null"] },
+          "duracion": { "type": ["number", "null"] },
+          "camara": { "type": ["string", "null"] },
+          "accion": { "type": ["string", "null"] },
+          "sonido": { "type": ["string", "null"] },
+          "motivo": { "type": "string" }
+        }
+      }
+    }
+  }
+}
