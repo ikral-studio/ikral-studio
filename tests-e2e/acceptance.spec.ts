@@ -669,11 +669,30 @@ test('extra · portafolio PDF con storyboard', async ({ page }) => {
   await addLine(card(page, 1), 'Beto', '—¡Sin cebolla!')
   const dl = page.waitForEvent('download', { timeout: 60000 })
   await page.getByRole('button', { name: 'Exportar portafolio PDF' }).click()
+  await page.getByRole('button', { name: 'Descargar portafolio PDF' }).click()
   const d = await dl
   expect(d.suggestedFilename()).toBe('Portafolio-portafolio.pdf')
   const pdf = await readFile(await d.path())
   expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
   expect(pdf.byteLength).toBeGreaterThan(50_000)
+})
+
+test('fase 4 · Biblia de Producción PDF: escoger secciones y descargar', async ({ page }) => {
+  await freshProject(page, 'Biblia')
+  await addScenes(page, 2)
+  await addLine(card(page, 1), 'Beto', '—¡Sin cebolla! 🌮')
+  await page.getByRole('button', { name: 'Exportar portafolio PDF' }).click()
+  const dialog = page.getByRole('dialog')
+  // Proyecto sin Canon ni etapas: esas secciones salen vacías y no se pueden marcar.
+  await expect(dialog.getByRole('checkbox', { name: /Canon/ })).toBeDisabled()
+  await expect(dialog.getByRole('checkbox', { name: /Guion/ })).toBeChecked()
+  await dialog.getByRole('checkbox', { name: /Anexo de prompts/ }).uncheck()
+  const dl = page.waitForEvent('download', { timeout: 60000 })
+  await dialog.getByRole('button', { name: 'Descargar Biblia de Producción PDF' }).click()
+  const d = await dl
+  expect(d.suggestedFilename()).toBe('Biblia-biblia-de-produccion.pdf')
+  const pdf = await readFile(await d.path())
+  expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
 })
 
 test('extra · inicio: Preproducción y Edición', async ({ page }) => {

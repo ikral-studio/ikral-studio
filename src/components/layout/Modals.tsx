@@ -13,6 +13,7 @@ import { ImportScriptModal } from './ImportScriptModal'
 import { PasteSceneModal } from './PasteSceneModal'
 import { CameraLibraryModal } from '../scenes/CameraLibrary'
 import { ShotListModal } from './ShotListModal'
+import { PdfExportModal } from './PdfExportModal'
 import { Backups } from './Backups'
 import { TrashModal } from './TrashModal'
 import { RegenerateModal } from './RegenerateModal'
@@ -340,5 +341,6 @@ export function Modals() {
   if (modal === 'shotlist') return <ShotListModal />
   if (modal === 'regenerate') return <RegenerateModal />
   if (modal === 'trash') return <TrashModal />
+  if (modal === 'pdf') return <PdfExportModal />
   return null
 }

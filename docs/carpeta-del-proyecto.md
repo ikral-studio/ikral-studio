@@ -112,3 +112,14 @@ En la línea de tiempo, el botón «Consultar GPT» abre un panel donde GPT revi
 - Cada consulta manda: proyecto, estilo, etapas, decisiones APROBADAS, las escenas en orden con su duración (planeada, del video o suma de sus planos), acción y diálogos recortados, sus planos con duración, «esto cambió desde la última vez» y el historial. Sin prompts, imágenes ni chat con Claude.
 - GPT responde con el esquema `src/features/gpt/schemas/edit.json` (máximo 10 propuestas): mover una escena, cambiar la duración de una escena (solo si no tiene cobertura), mover un plano o cambiar su duración. Escenas o planos que no existen, cambios que no cambian nada o duraciones malas se ignoran.
 - Aceptar usa las acciones normales (se deshace con ⌘Z y se guarda). Deshacer no pisa lo que editaste después. También: Editar, Descartar y Pedir a Claude. Si el orden o la duración cambió, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. No corta ni recorta videos.
+
+## Biblia de Producción PDF
+
+El botón «Portafolio PDF» de la barra de arriba abre dos opciones (en la web y en la Mac):
+
+- **Portafolio**: el mismo PDF de siempre (`<título>-portafolio.pdf`), sin cambios.
+- **Biblia de Producción completa** (`<título>-biblia-de-produccion.pdf`): 13 secciones en este orden: Portada, Estilo, Personajes, Canon, Etapas narrativas, Decisiones aprobadas, Guion, Cobertura, Anexo de prompts, Sonido y música, Videos, Continuidad y Lista de tomas.
+- Se escogen las secciones con casillas. Las vacías salen marcadas «(vacía)», no se pueden marcar y no aparecen en el PDF. La portada siempre va.
+- Decisiones: solo las APROBADAS por el director, con quién propuso y quién aprobó. Continuidad: el auditor corre al exportar (solo si hay etapas o decisiones).
+- Proyectos viejos sin planos: cada escena cuenta como un plano (código `01`). Con cobertura los planos van `01.1`, `01.2`…
+- El modelo está en `src/features/projects/productionBible.ts` (`productionBibleModel`, sin tocar el proyecto) y usa las piezas compartidas de `portfolio.ts` (`createPdfKit`). Solo lee; no cambia nada del proyecto.
