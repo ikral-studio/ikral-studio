@@ -4,14 +4,28 @@
 // se reescribe cada ~45 s aunque la ventana de Claude esté cerrada, y si deja de reescribirse enseña «Sin señal».
 // Junta señales reales: estado y candado del puente, procesos vivos (ps), git, eventos del puente y GitHub.
 // Página: ~/Library/Application Support/ikral-coord/monitor.html (solo en este Mac, no se publica).
+// Multiproyecto: la misma página enseña todos los proyectos de tools/monitor-projects.json (ver docs/monitor-multiproyecto.md).
 // A mano: `npm run monitor` la escribe una vez y dice dónde quedó. Lógica pura en coord-monitor-core.mjs.
-import { appendFileSync, existsSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, lstatSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chainRange, closedStages, normalizeState, pidAlive, planStages } from './coord-bridge-core.mjs'
-import { buildView, commentAuthor, inspectProcesses, renderHtml, sanitize, stageTitles } from './coord-monitor-core.mjs'
+import {
+  MAX_STATUS_BYTES,
+  OWN_PROJECT,
+  STATUS_FILE,
+  buildView,
+  commentAuthor,
+  inspectProcesses,
+  parseRegistry,
+  projectView,
+  renderDashboard,
+  sanitize,
+  stageTitles,
+  statusPayload,
+} from './coord-monitor-core.mjs'
 
 const MAX_EVENTS = 300
 
@@ -97,8 +111,44 @@ function githubInfo(repo, issue, prev) {
   }
 }
 
+/** Zona donde los puentes guardan su estado. Fuera de aquí el monitor no lee nada. */
+export const MONITOR_ROOT = join(homedir(), 'Library', 'Application Support')
+
 /**
- * Junta la foto del momento y reescribe monitor.html. Nunca lanza error (el puente sigue aunque esto falle).
+ * status.json de otro proyecto: solo ese archivo, sin seguir enlaces y con tamaño acotado. null si no hay.
+ * Un enlace simbólico se rechaza (podría apuntar a archivos de otro repo).
+ */
+export function readStatusFile(statusDir) {
+  try {
+    const file = join(statusDir, STATUS_FILE)
+    const st = lstatSync(file)
+    if (!st.isFile()) return '{}'
+    if (st.size > MAX_STATUS_BYTES) return '{}'
+    return readFileSync(file, 'utf8')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Página de todos los proyectos del registro (tools/monitor-projects.json). Este proyecto usa lo que acaba de
+ * escribir; los demás, solo su status.json dentro de MONITOR_ROOT. Sin registro legible → solo este proyecto.
+ */
+function dashboardHtml(opts, own, payload, now) {
+  const home = opts.home ?? homedir()
+  const root = opts.monitorRoot ?? MONITOR_ROOT
+  const data = opts.registry ?? readJson(opts.registryFile ?? join(opts.workdir, 'tools', 'monitor-projects.json'), null)
+  const reg = data ? parseRegistry(data, { home, root }) : { projects: [], errors: [] }
+  const projects = reg.projects.some((p) => p.id === own.id) ? reg.projects : [own, ...reg.projects]
+  const items = projects.map((p) => {
+    if (p.id === own.id) return { project: { ...p, problem: null, statusDir: 'propio' }, view: projectView({ ...p, problem: null, statusDir: 'propio' }, payload, now) }
+    return { project: p, view: projectView(p, p.statusDir && !p.problem ? readStatusFile(p.statusDir) : null, now) }
+  })
+  return renderDashboard(items, now, reg.errors)
+}
+
+/**
+ * Junta la foto del momento, guarda status.json (la vista limpia de este proyecto) y reescribe monitor.html. Nunca lanza error (el puente sigue aunque esto falle).
  * opts: { stateDir, workdir, pauseFile, repo, issue, now?, ps?, github?: false }
  */
 export function writeMonitor(opts) {
@@ -146,7 +196,10 @@ export function writeMonitor(opts) {
       bridgeBeatAt: now,
     }
     const view = buildView(snap, now)
-    writeAtomic(join(stateDir, 'monitor.html'), renderHtml(view))
+    const own = { ...OWN_PROJECT, ...(opts.project ?? {}) }
+    const payload = statusPayload(own, view)
+    writeAtomic(join(stateDir, STATUS_FILE), JSON.stringify(payload))
+    writeAtomic(join(stateDir, 'monitor.html'), dashboardHtml(opts, own, payload, now))
     writeAtomic(cacheFile, JSON.stringify({ github, procs: { tests: procs.tests, build: procs.build } }))
     return view
   } catch {

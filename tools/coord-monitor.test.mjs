@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -12,12 +12,17 @@ import {
   inspectProcesses,
   isStale,
   parseEtime,
+  parseRegistry,
+  projectView,
+  renderDashboard,
   renderHtml,
+  resolveInside,
   sanitize,
   stageList,
   stageTitles,
+  statusPayload,
 } from './coord-monitor-core.mjs'
-import { logEvent, writeMonitor } from './coord-monitor.mjs'
+import { logEvent, readStatusFile, writeMonitor } from './coord-monitor.mjs'
 
 const NOW = 1_800_000_000_000
 const plan = { stages: ['1', '2a', '3a', '3b', '3c', '4'], range: { from: '3a', to: '4' }, closed: new Set(['1', '2a', '3a', '3b']), titles: { '3c': 'En personajes y Biblia' } }
@@ -139,7 +144,7 @@ describe('monitor: latido y actualización', () => {
     expect(ago(5 * 60_000)).toBe('hace 5 min')
     const html = renderHtml(buildView(base(), NOW))
     expect(html).toContain('http-equiv="refresh"')
-    expect(html).toContain(`const GEN=${NOW}`)
+    expect(html).toContain(`data-gen="${NOW}"`)
     expect(html).toContain('Sin señal')
   })
 
@@ -167,5 +172,153 @@ describe('monitor: latido y actualización', () => {
     expect(events).toEqual(['tests-start', 'tests-end'])
     logEvent(dir, { type: 'error' })
     expect(writeMonitor({ ...opts, stateDir: join(dir, 'no-existe') })).toBeNull()
+  })
+})
+
+describe('monitor: varios proyectos', () => {
+  const HOME = '/casa'
+  const ROOT = '/casa/Library/Application Support'
+  const src = { type: 'github-issue', repo: 'ikral-studio/coordinacion', issue: 1 }
+  const reg = (projects) => parseRegistry({ projects }, { home: HOME, root: ROOT })
+  const ownView = () => buildView(base({ state: running(), lockAlive: true, procs: { claude: { since: NOW }, tests: false, build: false } }), NOW)
+
+  it('registro: valida ids, expande ~ y rechaza carpetas fuera de la zona del monitor', () => {
+    const r = reg([
+      { id: 'ikral-studio', name: 'IKRAL Studio', source: src, statusDir: '~/Library/Application Support/ikral-coord' },
+      { id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: null },
+      { id: 'otro', name: 'Otro', statusDir: '~/Documents/otro-repo' },
+      { id: 'escapa', name: 'Escapa', statusDir: '~/Library/Application Support/../../Documents/x' },
+      { id: 'Mal Id', name: 'x' },
+      { id: 'plancha-hotel', name: 'repetido' },
+    ])
+    expect(r.projects.map((p) => p.id)).toEqual(['ikral-studio', 'plancha-hotel', 'otro', 'escapa'])
+    expect(r.errors).toHaveLength(2)
+    expect(r.projects[0].statusDir).toBe('/casa/Library/Application Support/ikral-coord')
+    expect(r.projects[2].problem).toMatch(/zona permitida/)
+    expect(r.projects[3].problem).toMatch(/zona permitida/)
+    expect(resolveInside('relativa/x', HOME, ROOT)).toBeNull()
+  })
+
+  it('sin puente o sin datos → «No conectado», nunca actividad', () => {
+    const [sinPuente, sinDatos] = reg([
+      { id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: null },
+      { id: 'plancha-restaurante', name: 'Plancha Restaurante', statusDir: '~/Library/Application Support/plancha' },
+    ]).projects
+    for (const v of [projectView(sinPuente, null, NOW), projectView(sinDatos, null, NOW)]) {
+      expect(v.status).toBe('disconnected')
+      expect(v.connected).toBe(false)
+      expect(v.task).toBeNull()
+      expect(v.timeline).toEqual([])
+    }
+    const html = renderDashboard([{ project: sinPuente, view: projectView(sinPuente, null, NOW) }], NOW)
+    expect(html).toContain('No conectado')
+    expect(html).not.toContain('Trabajando')
+  })
+
+  it('origen verificable: datos de otro proyecto, dañados o sin fecha no se muestran', () => {
+    const [p] = reg([{ id: 'ikral-studio', name: 'IKRAL Studio', source: src, statusDir: '~/Library/Application Support/ikral-coord' }]).projects
+    const good = statusPayload(p, ownView())
+    expect(projectView(p, JSON.stringify(good), NOW).status).toBe('working')
+    expect(projectView(p, { ...good, project: 'plancha-hotel' }, NOW).detail).toMatch(/origen no coincide/)
+    expect(projectView(p, { ...good, source: { ...src, issue: 2 } }, NOW).status).toBe('error')
+    expect(projectView(p, '{roto', NOW).status).toBe('error')
+    expect(projectView(p, { ...good, format: 'otro' }, NOW).status).toBe('error')
+    expect(projectView(p, { ...good, generatedAt: undefined }, NOW).status).toBe('error')
+    // Un puente no puede mandar «Sin señal» ni «No conectado» por su cuenta, ni estados inventados.
+    expect(projectView(p, { ...good, status: 'disconnected' }, NOW).status).toBe('error')
+    expect(projectView(p, { ...good, status: 'fiesta' }, NOW).status).toBe('error')
+  })
+
+  it('datos viejos → Sin señal por proyecto, sin tocar a los demás', () => {
+    const [a, b] = reg([
+      { id: 'ikral-studio', name: 'IKRAL Studio', source: src, statusDir: '~/Library/Application Support/a' },
+      { id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: '~/Library/Application Support/b' },
+    ]).projects
+    const va = projectView(a, statusPayload(a, ownView()), NOW)
+    const vb = projectView(b, statusPayload(b, { ...ownView(), generatedAt: NOW - STALE_MS - 1 }), NOW)
+    expect(va.stale).toBe(false)
+    expect(vb.stale).toBe(true)
+    const html = renderDashboard([{ project: a, view: va }, { project: b, view: vb }], NOW)
+    expect(html).toContain('class="proj stale" id="s-plancha-hotel"')
+    expect(html).toContain('class="proj" id="s-ikral-studio"')
+    expect(html).toContain('href="#p-plancha-hotel"')
+  })
+
+  it('privacidad: un status.json ajeno con rutas, secretos y HTML sale limpio', () => {
+    const [p] = reg([{ id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: '~/Library/Application Support/b' }]).projects
+    const evil = {
+      format: 'ikral-monitor/1',
+      project: 'plancha-hotel',
+      source: null,
+      generatedAt: NOW,
+      status: 'working',
+      detail: 'corre `npm run build` en /Users/kyo/plancha/secreto.ts con sk-abcdefabcdefabcdef',
+      task: { name: '<img src=x onerror=alert(1)> ~/Documents/plancha' },
+      timeline: [{ at: NOW, text: 'ghp_abcdefghijklmnopqrstuvwxyz0123 a@b.com' }],
+      stages: [{ id: '<b>', state: 'closed' }, { id: '1', state: 'closed', title: '/Users/kyo/x' }],
+      github: { ok: true, at: NOW, comments: [{ who: '<script>', at: NOW, title: 'https://x.y/z' }] },
+      statusDir: '/Users/kyo/secreto',
+    }
+    const html = renderDashboard([{ project: p, view: projectView(p, evil, NOW) }], NOW)
+    for (const bad of ['/Users', 'kyo', 'secreto', 'sk-abc', 'npm run', 'ghp_', 'a@b.com', 'https://x', '<img', '&lt;b&gt;', 'Documents']) expect(html).not.toContain(bad)
+    expect(html.split('<script>')).toHaveLength(2) // solo el script propio de la página
+    expect(html).toContain('Trabajando')
+  })
+
+  it('writeMonitor: guarda status.json propio y una sola página con todos los proyectos', () => {
+    const home = mkdtempSync(join(tmpdir(), 'home-'))
+    const root = join(home, 'Library', 'Application Support')
+    const own = join(root, 'ikral-coord')
+    const other = join(root, 'plancha-coord')
+    mkdirSync(own, { recursive: true })
+    mkdirSync(other, { recursive: true })
+    const outside = join(home, 'Documents', 'otro-repo')
+    mkdirSync(outside, { recursive: true })
+    writeFileSync(join(outside, 'status.json'), JSON.stringify({ format: 'ikral-monitor/1', project: 'fuera', source: null, generatedAt: NOW, status: 'working', detail: 'NO DEBE VERSE' }))
+    writeFileSync(join(other, 'status.json'), JSON.stringify({ format: 'ikral-monitor/1', project: 'plancha-restaurante', source: null, generatedAt: NOW - 60_000, status: 'queued', detail: 'Pedido en cola' }))
+    const registry = {
+      projects: [
+        { id: 'ikral-studio', name: 'IKRAL Studio', source: src, statusDir: '~/Library/Application Support/ikral-coord' },
+        { id: 'plancha-restaurante', name: 'Plancha Restaurante', statusDir: '~/Library/Application Support/plancha-coord' },
+        { id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: null },
+        { id: 'fuera', name: 'Fuera', statusDir: '~/Documents/otro-repo' },
+      ],
+    }
+    writeFileSync(join(own, 'state.json'), JSON.stringify({ lastId: 1, ...running() }))
+    writeFileSync(join(own, 'lock.pid'), String(process.pid))
+    const ps = `${process.pid} 1 10:00 node coord-bridge.mjs\n9999 ${process.pid} 05:00 claude -p x`
+    const v = writeMonitor({ stateDir: own, workdir: own, pauseFile: join(own, 'no'), github: false, now: NOW, ps, home, monitorRoot: root, registry })
+    expect(v.status).toBe('working')
+    const status = JSON.parse(readFileSync(join(own, 'status.json'), 'utf8'))
+    expect(status).toMatchObject({ format: 'ikral-monitor/1', project: 'ikral-studio', status: 'working' })
+    const html = readFileSync(join(own, 'monitor.html'), 'utf8')
+    expect(html).toContain('IKRAL Studio')
+    expect(html).toContain('Pedido en cola')
+    expect(html).toContain('No conectado')
+    expect(html).toContain('zona permitida')
+    expect(html).not.toContain('NO DEBE VERSE')
+    expect(html).not.toContain(home)
+    // Un enlace simbólico en lugar de status.json no se sigue.
+    writeFileSync(join(outside, 'x.json'), '{"secreto":1}')
+    rmSync(join(other, 'status.json'))
+    symlinkSync(join(outside, 'status.json'), join(other, 'status.json'))
+    expect(readStatusFile(other)).toBe('{}')
+    rmSync(join(other, 'status.json'))
+    expect(readStatusFile(other)).toBeNull()
+  })
+
+  it('sin registro legible sigue enseñando el proyecto propio', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mon-'))
+    const v = writeMonitor({ stateDir: dir, workdir: dir, pauseFile: join(dir, 'no'), github: false, now: NOW, ps: '' })
+    expect(v).not.toBeNull()
+    expect(readFileSync(join(dir, 'monitor.html'), 'utf8')).toContain('IKRAL Studio')
+  })
+
+  it('el registro real del repo es válido y solo IKRAL Studio tiene puente', () => {
+    const data = JSON.parse(readFileSync(join(process.cwd(), 'tools', 'monitor-projects.json'), 'utf8'))
+    const r = parseRegistry(data, { home: HOME, root: ROOT })
+    expect(r.errors).toEqual([])
+    expect(r.projects.filter((p) => p.statusDir).map((p) => p.id)).toEqual(['ikral-studio'])
+    expect(r.projects.every((p) => !p.problem)).toBe(true)
   })
 })

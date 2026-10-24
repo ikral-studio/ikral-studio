@@ -2,6 +2,7 @@
 // El monitor es una página que el puente reescribe en cada vuelta de launchd. Solo lectura.
 // Solo muestra señales comprobables: procesos vivos, estado del puente, commits, cambios en disco y GitHub.
 // Nunca muestra comandos, rutas, nombres de archivo, registros internos ni credenciales.
+import { isAbsolute, join, resolve, sep } from 'node:path'
 import { chainStep, nextStage } from './coord-bridge-core.mjs'
 
 /** Si la página no se reescribe en este tiempo, el estado que enseña es viejo («Sin señal»). launchd corre cada 45 s. */
@@ -17,6 +18,7 @@ export const STATUS = {
   approval: { label: 'Esperando aprobación', icon: '🟣', color: '#7c3aed' },
   error: { label: 'Error', icon: '🔴', color: '#dc2626' },
   nosignal: { label: 'Sin señal', icon: '⚫', color: '#111827' },
+  disconnected: { label: 'No conectado', icon: '🔌', color: '#9ca3af' },
 }
 
 // ---- Privacidad ----
@@ -296,36 +298,142 @@ export function buildView(snap, now) {
   }
 }
 
-const ts = (at) => (at ? `<span class="ago" data-ts="${Number(at)}">${esc(ago(Date.now() - at))}</span> <small>(${esc(clock(at))})</small>` : '—')
+// ---- Varios proyectos ----
+// Cada puente escribe su propio status.json (la vista ya limpia) en SU carpeta de estado. El monitor solo lee
+// los proyectos del registro (tools/monitor-projects.json), y de cada uno solo ese archivo. Lo vuelve a validar
+// y a limpiar: un archivo ajeno o falso nunca enseña rutas, comandos ni actividad inventada.
 
-/** HTML autónomo. Se recarga solo y el reloj corre en vivo; si deja de actualizarse, enseña «Sin señal». */
-export function renderHtml(v) {
+export const STATUS_FILE = 'status.json'
+export const STATUS_FORMAT = 'ikral-monitor/1'
+/** Un status.json más grande que esto no se lee (nadie legítimo lo necesita). */
+export const MAX_STATUS_BYTES = 512 * 1024
+
+/** El proyecto de este repo (si el registro no se puede leer, el monitor sigue enseñándolo a él). */
+export const OWN_PROJECT = {
+  id: 'ikral-studio',
+  name: 'IKRAL Studio',
+  label: 'Editor de storyboard',
+  source: { type: 'github-issue', repo: 'ikral-studio/coordinacion', issue: 1 },
+  statusDir: 'propio',
+  problem: null,
+}
+
+const PROJECT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
+
+/** «~/x» → ruta absoluta, solo si queda dentro de root (la zona del monitor). Si no, null. */
+export function resolveInside(dir, home, root) {
+  const s = String(dir ?? '')
+  const abs = s.startsWith('~/') ? join(home, s.slice(2)) : s
+  if (!isAbsolute(abs)) return null
+  const r = resolve(abs)
+  return r.startsWith(resolve(root) + sep) ? r : null
+}
+
+const cleanSource = (s) =>
+  s?.type === 'github-issue' && /^[\w.-]+\/[\w.-]+$/.test(s.repo ?? '') && Number.isInteger(s.issue) && s.issue > 0 ? { type: s.type, repo: s.repo, issue: s.issue } : null
+const sameSource = (a, b) => JSON.stringify(cleanSource(a)) === JSON.stringify(cleanSource(b))
+
+/**
+ * Registro de proyectos autorizados → { projects, errors }. Cada proyecto: { id, name, label, source, statusDir, problem }.
+ * statusDir null = sin puente («No conectado»). Una carpeta fuera de root no se lee nunca (problem).
+ */
+export function parseRegistry(data, { home, root }) {
+  const projects = []
+  const errors = []
+  const seen = new Set()
+  for (const raw of Array.isArray(data?.projects) ? data.projects : []) {
+    const id = String(raw?.id ?? '')
+    if (!PROJECT_ID.test(id) || seen.has(id)) {
+      errors.push('Hay un proyecto con identificador no válido o repetido: no se muestra.')
+      continue
+    }
+    seen.add(id)
+    let statusDir = null
+    let problem = null
+    if (raw.statusDir) {
+      statusDir = resolveInside(raw.statusDir, home, root)
+      if (!statusDir) problem = 'Su carpeta de estado no está en la zona permitida del monitor: no se lee.'
+    }
+    projects.push({ id, name: sanitize(raw.name, 40) || id, label: sanitize(raw.label ?? '', 60), source: cleanSource(raw.source), statusDir, problem })
+  }
+  return { projects, errors }
+}
+
+/** Lo que un puente guarda en su status.json: su vista + quién es (para comprobar el origen). */
+export const statusPayload = (project, view) => ({ format: STATUS_FORMAT, project: project.id, source: cleanSource(project.source), ...view })
+
+const num = (x) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : null)
+const arr = (x, max) => (Array.isArray(x) ? x.slice(0, max) : [])
+const STAGE_STATES = new Set(['closed', 'current', 'next', 'later'])
+
+/**
+ * Vista segura de un proyecto a partir de su status.json (texto u objeto; null = no existe).
+ * Todo se vuelve a validar y limpiar. Sin datos → «No conectado»; nunca se finge actividad.
+ */
+export function projectView(project, raw, now) {
+  const off = (status, detail) => ({ connected: false, status, detail, stale: false, generatedAt: null, task: null, progress: null, claude: null, lastSignal: null, dirty: 0, timeline: [], stages: [], github: null })
+  if (project.problem) return off('error', project.problem)
+  if (!project.statusDir) return off('disconnected', 'Este proyecto no tiene puente conectado. No se muestra actividad.')
+  if (raw == null) return off('disconnected', 'Su puente todavía no ha escrito datos. No se muestra actividad.')
+  let d = raw
+  if (typeof raw === 'string')
+    try {
+      d = JSON.parse(raw)
+    } catch {
+      return off('error', 'Sus datos están dañados o incompletos: no se muestran.')
+    }
+  if (d?.format !== STATUS_FORMAT) return off('error', 'Sus datos tienen un formato desconocido: no se muestran.')
+  if (d.project !== project.id || !sameSource(d.source, project.source)) return off('error', 'Los datos no son de este proyecto (el origen no coincide): no se muestran.')
+  const generatedAt = num(d.generatedAt)
+  if (!generatedAt) return off('error', 'Sus datos no dicen cuándo se escribieron: no se muestran.')
+  const status = STATUS[d.status] && !['nosignal', 'disconnected'].includes(d.status) ? d.status : 'error'
+  const item = (x, max) => (num(x?.at) && sanitize(x.text, max) ? { at: x.at, text: sanitize(x.text, max) } : null)
+  return {
+    connected: true,
+    status,
+    detail: sanitize(d.detail, 240) || STATUS[status].label,
+    stale: isStale(generatedAt, now, STALE_MS),
+    generatedAt,
+    bridgeBeatAt: num(d.bridgeBeatAt) ?? generatedAt,
+    task: d.task && sanitize(d.task.name, 100) ? { name: sanitize(d.task.name, 100), startedAt: num(d.task.startedAt), attempt: num(d.task.attempt) ?? 1 } : null,
+    progress: d.progress ? { stalled: d.progress.stalled === true } : null,
+    claude: d.claude ? { since: num(d.claude.since) } : null,
+    lastSignal: item(d.lastSignal, 110),
+    dirty: Math.min(num(d.dirty) ?? 0, 9999),
+    timeline: arr(d.timeline, 14).map((x) => item(x, 110)).filter(Boolean),
+    stages: arr(d.stages, 60)
+      .filter((x) => /^[\w.-]{1,8}$/.test(x?.id ?? '') && STAGE_STATES.has(x.state))
+      .map((x) => ({ id: x.id, title: sanitize(x.title, 70), state: x.state })),
+    github: d.github
+      ? {
+          ok: d.github.ok === true,
+          at: num(d.github.at),
+          comments: arr(d.github.comments, 4)
+            .filter((c) => num(c?.at))
+            .map((c) => ({ who: ['ChatGPT', 'Claude', 'Puente', 'Director'].includes(c.who) ? c.who : 'Director', at: c.at, title: sanitize(c.title, 100) })),
+        }
+      : null,
+  }
+}
+
+/** Última actividad conocida de un proyecto (para la vista general). */
+const lastActivity = (v) => Math.max(0, v.lastSignal?.at ?? 0, ...v.timeline.map((x) => x.at)) || null
+
+const ts = (at) => (at ? `<span class="ago" data-ts="${Number(at)}">${esc(ago(Date.now() - at))}</span> <small>(${esc(clock(at))})</small>` : '—')
+const sourceText = (s) => (s ? `Issue #${s.issue} de ${s.repo}` : 'sin origen registrado')
+
+function renderProject({ project: p, view: v }) {
   const s = STATUS[v.status] ?? STATUS.idle
   const stageIcon = { closed: '✓', current: '▶', next: '→', later: '·' }
-  const rows = (items, fn) => (items.length ? items.map(fn).join('') : '<li class="muted">Todavía nada.</li>')
-  return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="15">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(s.icon)} ${esc(s.label)} · Monitor IKRAL Studio</title>
-<style>
-:root{font-family:-apple-system,system-ui,sans-serif;color:#111827;background:#f3f4f6}
-body{max-width:860px;margin:0 auto;padding:24px;line-height:1.45}
-.card{background:#fff;border-radius:16px;padding:18px 22px;margin:0 0 16px;box-shadow:0 1px 3px #0001}
-.badge{display:flex;align-items:center;gap:14px;font-size:34px;font-weight:700;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:16px}
-.badge small{display:block;font-size:17px;font-weight:500;opacity:.95}
-h1{font-size:15px;margin:0 0 6px;color:#6b7280;font-weight:600}
-h2{font-size:16px;margin:0 0 10px}
-ul{list-style:none;padding:0;margin:0}li{padding:5px 0;border-bottom:1px solid #f1f1f1}li:last-child{border:0}
-.muted,small{color:#6b7280}.warn{color:#b45309;font-weight:600}
-.stages{display:flex;flex-wrap:wrap;gap:8px}.st{border-radius:10px;padding:6px 10px;background:#f3f4f6;font-size:14px}
-.st.closed{background:#dcfce7}.st.current{background:#2563eb;color:#fff;font-weight:700}.st.next{background:#dbeafe}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:640px){.grid{grid-template-columns:1fr}}
-#stale{display:none}
-</style></head><body>
-<h1>Monitor en vivo · IKRAL Studio · solo lectura</h1>
-<div id="stale" class="badge" style="background:${STATUS.nosignal.color}">${STATUS.nosignal.icon}<div>${STATUS.nosignal.label}<small>La página no se actualiza desde <span class="ago" data-ts="${v.generatedAt}"></span>. Puede que el Mac esté dormido, sin red o el puente apagado. Lo de abajo es el último estado conocido.</small></div></div>
-<div id="live" class="badge" style="background:${s.color}">${esc(s.icon)}<div>${esc(s.label)}<small>${esc(v.detail)}</small></div></div>
+  const rows = (items, fn) => items.map(fn).join('')
+  const head = `<h2 class="pname">${esc(p.name)}${p.label ? ` <small>· ${esc(p.label)}</small>` : ''}</h2>`
+  if (!v.connected)
+    return `<section class="proj" id="s-${esc(p.id)}" data-id="${esc(p.id)}" data-title="${esc(`${s.icon} ${s.label} · ${p.name}`)}">${head}
+<div class="badge live" style="background:${s.color}">${esc(s.icon)}<div>${esc(s.label)}<small>${esc(v.detail)}</small></div></div>
+<p class="muted">Origen: ${esc(sourceText(p.source))}.</p></section>`
+  return `<section class="proj${v.stale ? ' stale' : ''}" id="s-${esc(p.id)}" data-id="${esc(p.id)}" data-gen="${v.generatedAt}" data-title="${esc(`${s.icon} ${s.label} · ${p.name}`)}" data-stale-title="${esc(`${STATUS.nosignal.icon} ${STATUS.nosignal.label} · ${p.name}`)}">${head}
+<div class="badge stalebadge" style="background:${STATUS.nosignal.color}">${STATUS.nosignal.icon}<div>${STATUS.nosignal.label}<small>Sus datos no se actualizan desde <span class="ago" data-ts="${v.generatedAt}"></span>. Puede que el Mac esté dormido, sin red o su puente apagado. Lo de abajo es el último estado conocido.</small></div></div>
+<div class="badge live" style="background:${s.color}">${esc(s.icon)}<div>${esc(s.label)}<small>${esc(v.detail)}</small></div></div>
 <div class="card">
 ${v.task ? `<h2>${esc(v.task.name)}</h2>` : '<h2 class="muted">Sin tarea en curso</h2>'}
 ${v.task?.startedAt ? `<div>Empezó ${ts(v.task.startedAt)}${v.task.attempt > 1 ? ` · intento ${v.task.attempt}` : ''}</div>` : ''}
@@ -334,21 +442,77 @@ ${v.task?.startedAt ? `<div>Empezó ${ts(v.task.startedAt)}${v.task.attempt > 1 
 ${v.progress?.stalled ? '<div class="warn">Sigue en ejecución, pero sin avances nuevos.</div>' : ''}
 ${v.dirty ? `<div class="muted">${v.dirty} archivo(s) con cambios todavía sin commit.</div>` : ''}
 </div>
-<div class="card"><h2>Etapas del plan</h2><div class="stages">${v.stages.map((x) => `<span class="st ${x.state}" title="${esc(x.title)}">${stageIcon[x.state]} ${esc(x.id)}${x.title ? ` · ${esc(x.title)}` : ''}</span>`).join('')}</div>
-<p class="muted">✓ cerrada · ▶ en curso · → la siguiente</p></div>
+${v.stages.length ? `<div class="card"><h2>Etapas del plan</h2><div class="stages">${rows(v.stages, (x) => `<span class="st ${x.state}" title="${esc(x.title)}">${stageIcon[x.state]} ${esc(x.id)}${x.title ? ` · ${esc(x.title)}` : ''}</span>`)}</div>
+<p class="muted">✓ cerrada · ▶ en curso · → la siguiente</p></div>` : ''}
 <div class="grid">
-<div class="card"><h2>Historial reciente</h2><ul>${rows(v.timeline, (x) => `<li>${esc(x.text)}<br>${ts(x.at)}</li>`)}</ul></div>
-<div class="card"><h2>Últimos comentarios en GitHub</h2><ul>${rows(v.github.comments, (c) => `<li><b>${esc(c.who)}</b>: ${esc(c.title)}<br>${ts(c.at)}</li>`)}</ul>
-<p class="muted">${v.github.ok ? `Leído ${ts(v.github.at)}` : `<span class="warn">GitHub sin conexión</span>${v.github.at ? ` · último dato ${ts(v.github.at)}` : ''}`}</p></div>
+${v.timeline.length ? `<div class="card"><h2>Historial reciente</h2><ul>${rows(v.timeline, (x) => `<li>${esc(x.text)}<br>${ts(x.at)}</li>`)}</ul></div>` : ''}
+${v.github ? `<div class="card"><h2>Últimos comentarios en GitHub</h2><ul>${v.github.comments.length ? rows(v.github.comments, (c) => `<li><b>${esc(c.who)}</b>: ${esc(c.title)}<br>${ts(c.at)}</li>`) : '<li class="muted">Todavía nada.</li>'}</ul>
+<p class="muted">${v.github.ok ? `Leído ${ts(v.github.at)}` : `<span class="warn">GitHub sin conexión</span>${v.github.at ? ` · último dato ${ts(v.github.at)}` : ''}`}</p></div>` : ''}
 </div>
-<p class="muted">Puente: última vuelta ${ts(v.bridgeBeatAt)} · página escrita ${ts(v.generatedAt)}. Se actualiza sola cada 15 s.</p>
+<p class="muted">Origen: ${esc(sourceText(p.source))} · su puente: última vuelta ${ts(v.bridgeBeatAt)} · datos escritos ${ts(v.generatedAt)}.</p></section>`
+}
+
+function renderCard({ project: p, view: v }) {
+  const s = STATUS[v.status] ?? STATUS.idle
+  const last = lastActivity(v)
+  const what = v.connected ? (v.task?.name ?? v.detail) : v.detail
+  return `<a class="pc${v.stale ? ' stale' : ''}" href="#p-${esc(p.id)}" data-id="${esc(p.id)}"${v.connected ? ` data-gen="${v.generatedAt}"` : ''}>
+<span class="lbl live" style="background:${s.color}">${esc(s.icon)} ${esc(s.label)}</span><span class="lbl stalebadge" style="background:${STATUS.nosignal.color}">${STATUS.nosignal.icon} ${STATUS.nosignal.label}</span>
+<b>${esc(p.name)}</b><small>${esc(what)}</small><small>Última actividad: ${last ? ts(last) : '—'}</small></a>`
+}
+
+/**
+ * Página única para todos los proyectos: vista general arriba (una tarjeta por proyecto) y el detalle del elegido.
+ * items = [{ project, view: projectView(...) }]. Se recarga sola; cada proyecto se marca «Sin señal» por su cuenta.
+ */
+export function renderDashboard(items, now, errors = []) {
+  const first = items[0]
+  const s = first ? (STATUS[first.view.status] ?? STATUS.idle) : STATUS.idle
+  return `<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="15">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(first ? `${s.icon} ${s.label} · ${first.project.name}` : 'Sin proyectos')} · Monitor IKRAL</title>
+<style>
+:root{font-family:-apple-system,system-ui,sans-serif;color:#111827;background:#f3f4f6}
+body{max-width:860px;margin:0 auto;padding:24px;line-height:1.45}
+.card{background:#fff;border-radius:16px;padding:18px 22px;margin:0 0 16px;box-shadow:0 1px 3px #0001}
+.badge{display:flex;align-items:center;gap:14px;font-size:34px;font-weight:700;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:16px}
+.badge small{display:block;font-size:17px;font-weight:500;opacity:.95}
+h1{font-size:15px;margin:0 0 10px;color:#6b7280;font-weight:600}
+h2{font-size:16px;margin:0 0 10px}.pname{font-size:22px;margin:8px 0 12px}
+ul{list-style:none;padding:0;margin:0}li{padding:5px 0;border-bottom:1px solid #f1f1f1}li:last-child{border:0}
+.muted,small{color:#6b7280}.warn{color:#b45309;font-weight:600}.badge small{color:#fff}
+.stages{display:flex;flex-wrap:wrap;gap:8px}.st{border-radius:10px;padding:6px 10px;background:#f3f4f6;font-size:14px}
+.st.closed{background:#dcfce7}.st.current{background:#2563eb;color:#fff;font-weight:700}.st.next{background:#dbeafe}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:20px}
+.pc{display:flex;flex-direction:column;gap:4px;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 1px 3px #0001;color:inherit;text-decoration:none;border:3px solid transparent}
+.pc.on{border-color:#2563eb}.lbl{align-self:flex-start;color:#fff;border-radius:8px;padding:2px 8px;font-size:14px;font-weight:600}
+.stalebadge{display:none}.stale .stalebadge{display:flex}.pc.stale .lbl.live{display:none}.proj.stale .live{opacity:.45}
+</style></head><body>
+<h1>Monitor en vivo · Proyectos IKRAL · solo lectura</h1>
+<nav class="overview">${items.map(renderCard).join('')}</nav>
+${errors.map((e) => `<p class="warn">${esc(e)}</p>`).join('')}
+${items.length ? items.map(renderProject).join('\n') : '<p class="muted">No hay proyectos en el registro.</p>'}
+<p class="muted">Página escrita ${ts(now)}. Se actualiza sola cada 15 s. Elige un proyecto arriba para ver su detalle.</p>
 <script>
-const GEN=${Number(v.generatedAt)},STALE=${STALE_MS};const ago=${ago.toString()};const isStale=${isStale.toString()};
+const STALE=${STALE_MS};const ago=${ago.toString()};const isStale=${isStale.toString()};
+const ids=[...document.querySelectorAll('.proj')].map(s=>s.dataset.id);let cur=null;
+function sel(id){cur=id;document.querySelectorAll('.proj').forEach(s=>s.hidden=s.dataset.id!==id);
+document.querySelectorAll('.pc').forEach(c=>c.classList.toggle('on',c.dataset.id===id));try{localStorage.setItem('monitor-proyecto',id)}catch(e){}}
+function pick(){const h=location.hash.slice(3);let m=null;try{m=localStorage.getItem('monitor-proyecto')}catch(e){}
+sel(ids.includes(h)?h:ids.includes(m)?m:ids[0]);tick()}
 function tick(){const n=Date.now();document.querySelectorAll('.ago').forEach(e=>e.textContent=ago(n-Number(e.dataset.ts)));
-const old=isStale(GEN,n,STALE);document.getElementById('stale').style.display=old?'flex':'none';document.getElementById('live').style.opacity=old?.45:1;
-if(old)document.title='${STATUS.nosignal.icon} ${STATUS.nosignal.label} · Monitor IKRAL Studio'}
-tick();setInterval(tick,1000);
+document.querySelectorAll('[data-gen]').forEach(e=>e.classList.toggle('stale',isStale(Number(e.dataset.gen),n,STALE)));
+const s=document.querySelector('.proj:not([hidden])');if(s)document.title=(s.classList.contains('stale')?s.dataset.staleTitle:s.dataset.title)+' · Monitor IKRAL'}
+window.addEventListener('hashchange',pick);if(ids.length)pick();setInterval(tick,1000);
 </script>
 </body></html>
 `
+}
+
+/** Página de un solo proyecto (el de este repo) a partir de su vista. */
+export function renderHtml(v) {
+  return renderDashboard([{ project: OWN_PROJECT, view: projectView(OWN_PROJECT, statusPayload(OWN_PROJECT, v), v.generatedAt) }], v.generatedAt)
 }

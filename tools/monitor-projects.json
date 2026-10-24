@@ -1,0 +1,26 @@
+{
+  "nota": "Proyectos que enseña el Monitor IKRAL. Agregar o conectar uno solo con autorización del director. statusDir = carpeta donde SU puente escribe status.json (debe estar dentro de ~/Library/Application Support). Sin statusDir = «No conectado». Ver docs/monitor-multiproyecto.md.",
+  "projects": [
+    {
+      "id": "ikral-studio",
+      "name": "IKRAL Studio",
+      "label": "Editor de storyboard",
+      "source": { "type": "github-issue", "repo": "ikral-studio/coordinacion", "issue": 1 },
+      "statusDir": "~/Library/Application Support/ikral-coord"
+    },
+    {
+      "id": "plancha-restaurante",
+      "name": "Plancha Restaurante",
+      "label": "Sin puente todavía",
+      "source": null,
+      "statusDir": null
+    },
+    {
+      "id": "plancha-hotel",
+      "name": "Plancha Hotel",
+      "label": "Sin puente todavía",
+      "source": null,
+      "statusDir": null
+    }
+  ]
+}
