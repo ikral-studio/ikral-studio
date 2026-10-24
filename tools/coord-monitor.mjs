@@ -27,6 +27,7 @@ import {
   stageTitles,
   statusPayload,
 } from './coord-monitor-core.mjs'
+import { MINI_FILE, USAGE_FILE, cleanUsage, countInteractiveClaude, miniView } from './mini-monitor-core.mjs'
 
 const MAX_EVENTS = 300
 
@@ -116,12 +117,12 @@ function githubInfo(repo, issue, prev) {
 export const MONITOR_ROOT = join(homedir(), 'Library', 'Application Support')
 
 /**
- * status.json de otro proyecto: solo ese archivo, sin seguir enlaces y con tamaño acotado. null si no hay.
+ * status.json de otro proyecto (o usage.json de este): solo ese archivo, sin seguir enlaces y con tamaño acotado. null si no hay.
  * Un enlace simbólico se rechaza (podría apuntar a archivos de otro repo).
  */
-export function readStatusFile(statusDir) {
+export function readStatusFile(statusDir, name = STATUS_FILE) {
   try {
-    const file = join(statusDir, STATUS_FILE)
+    const file = join(statusDir, name)
     const st = lstatSync(file)
     if (!st.isFile()) return '{}'
     if (st.size > MAX_STATUS_BYTES) return '{}'
@@ -205,6 +206,10 @@ export function writeMonitor(opts) {
     const payload = statusPayload(own, view)
     writeAtomic(join(stateDir, STATUS_FILE), JSON.stringify(payload))
     writeAtomic(join(stateDir, 'monitor.html'), dashboardHtml(opts, own, payload, now))
+    // Mini Monitor (app de Mac): la misma vista, en corto. La cuota solo si usage.json trae un dato verificable.
+    const ownView = projectView({ ...own, statusDir: 'propio', problem: null }, payload, now)
+    const usage = cleanUsage(readStatusFile(stateDir, USAGE_FILE), now)
+    writeAtomic(join(stateDir, MINI_FILE), JSON.stringify(miniView(own, ownView, now, { usage, interactiveClaude: countInteractiveClaude(psText, lockAlive ? lockPid : null) })))
     writeAtomic(cacheFile, JSON.stringify({ github, procs: { tests: procs.tests, build: procs.build } }))
     return view
   } catch {

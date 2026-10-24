@@ -34,6 +34,10 @@
     {
       "id": "P",
       "titulo": "Puente, monitor y registro en IKRAL"
+    },
+    {
+      "id": "M",
+      "titulo": "IKRAL Mini Monitor para Mac (Issue #4)"
     }
   ],
   "tareas": [
@@ -657,6 +661,87 @@
         "2b"
       ],
       "siguiente": "Compilar e instalar la app de Mac en una sesión interactiva (el puente no tiene permiso de /Applications) y que el director lo vea ahí.",
+      "director": null
+    },
+    {
+      "id": "M1",
+      "fase": "M",
+      "titulo": "Datos del Mini Monitor (mini.json) desde el puente",
+      "criterio": "«Ahora» y «Te necesito» ≤200, «Sin señal» con datos viejos, cuota solo con fuente verificable; pruebas.",
+      "estado": "en curso",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "tools/mini-monitor.test.mjs"
+        }
+      ],
+      "dependeDe": [],
+      "siguiente": "Commit de este paso con tools/mini-monitor.test.mjs en verde.",
+      "director": null,
+      "verificar": {
+        "asunto": "^Mini Monitor M1"
+      }
+    },
+    {
+      "id": "M2",
+      "fase": "M",
+      "titulo": "App «IKRAL Monitor.app» (ventana + barra de menús + voz)",
+      "criterio": "Compila con swiftc; la ventana se cierra, minimiza y restaura; icono arriba con menú y «Abrir ventana»; ▶ Escuchar estado.",
+      "estado": "bloqueado",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [
+        "M1"
+      ],
+      "siguiente": "Compilar (npm run mini-monitor:compilar) y probar desde la sesión interactiva: el puente no tiene permiso para swiftc.",
+      "director": null
+    },
+    {
+      "id": "M3",
+      "fase": "M",
+      "titulo": "Instalada en /Applications, acceso en Escritorio y en el Dock",
+      "criterio": "npm run mini-monitor:instalar sin duplicados; abre y restaura la app desde los tres.",
+      "estado": "bloqueado",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [
+        "M2"
+      ],
+      "siguiente": "Sesión interactiva con permiso de macOS (/Applications, Escritorio, Dock).",
+      "director": null
+    },
+    {
+      "id": "M4",
+      "fase": "M",
+      "titulo": "Cuota de Claude Code (sesión y semana) con fuente autorizada",
+      "criterio": "Solo con dato oficial verificable en usage.json; si no, «Uso no disponible» + «Ver uso en Claude».",
+      "estado": "pendiente",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [
+        "M1"
+      ],
+      "siguiente": "Verificar en la documentación oficial si Claude Code entrega la cuota (p. ej. a la barra de estado) sin leer credenciales.",
+      "director": null
+    },
+    {
+      "id": "M5",
+      "fase": "M",
+      "titulo": "Pruebas de escritorio y capturas",
+      "criterio": "Visible, minimizada y restaurada; sin duplicados; datos viejos → «Sin señal»; voz; pantalla completa oculta la barra.",
+      "estado": "pendiente",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [
+        "M3"
+      ],
+      "siguiente": "Tras M3, en la sesión interactiva.",
       "director": null
     }
   ]

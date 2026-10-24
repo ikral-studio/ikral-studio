@@ -3,7 +3,7 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 18 de 27 hechas · 1 en curso · 6 bloqueadas · 2 pendientes · 0 aprobadas por el director.
+**Avance:** 18 de 32 hechas · 2 en curso · 8 bloqueadas · 4 pendientes · 0 aprobadas por el director.
 **Siguiente:** UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
@@ -132,6 +132,29 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 - [!] **P6 · Respaldo remoto en GitHub (push verificado)** — Director
   - Criterio: Revisión previa limpia (npm run revisar-respaldo) y push con autorización; el remoto tiene el mismo commit que el local.
   - Siguiente: El repositorio es público: subir los commits locales = publicarlos. Necesita autorización expresa del director.
+
+## Fase M · IKRAL Mini Monitor para Mac (Issue #4)
+
+- [~] **M1 · Datos del Mini Monitor (mini.json) desde el puente** — Claude
+  - Criterio: «Ahora» y «Te necesito» ≤200, «Sin señal» con datos viejos, cuota solo con fuente verificable; pruebas.
+  - Evidencia: prueba: tools/mini-monitor.test.mjs
+  - Siguiente: Commit de este paso con tools/mini-monitor.test.mjs en verde.
+- [!] **M2 · App «IKRAL Monitor.app» (ventana + barra de menús + voz)** — Claude
+  - Criterio: Compila con swiftc; la ventana se cierra, minimiza y restaura; icono arriba con menú y «Abrir ventana»; ▶ Escuchar estado.
+  - Depende de: M1
+  - Siguiente: Compilar (npm run mini-monitor:compilar) y probar desde la sesión interactiva: el puente no tiene permiso para swiftc.
+- [!] **M3 · Instalada en /Applications, acceso en Escritorio y en el Dock** — Claude
+  - Criterio: npm run mini-monitor:instalar sin duplicados; abre y restaura la app desde los tres.
+  - Depende de: M2
+  - Siguiente: Sesión interactiva con permiso de macOS (/Applications, Escritorio, Dock).
+- [ ] **M4 · Cuota de Claude Code (sesión y semana) con fuente autorizada** — Claude
+  - Criterio: Solo con dato oficial verificable en usage.json; si no, «Uso no disponible» + «Ver uso en Claude».
+  - Depende de: M1
+  - Siguiente: Verificar en la documentación oficial si Claude Code entrega la cuota (p. ej. a la barra de estado) sin leer credenciales.
+- [ ] **M5 · Pruebas de escritorio y capturas** — Claude
+  - Criterio: Visible, minimizada y restaurada; sin duplicados; datos viejos → «Sin señal»; voz; pantalla completa oculta la barra.
+  - Depende de: M3
+  - Siguiente: Tras M3, en la sesión interactiva.
 
 ## Enlaces
 

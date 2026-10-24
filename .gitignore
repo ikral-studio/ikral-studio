@@ -4,6 +4,7 @@ test-results
 playwright-report
 *.tmp.mjs
 .DS_Store
+mac/ikral-monitor/build
 
 # Videos y audio de prueba: los crea tests-e2e/global-setup.ts
 tests-e2e/fixtures/*.mp4
