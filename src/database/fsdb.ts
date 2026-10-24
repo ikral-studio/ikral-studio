@@ -406,6 +406,21 @@ export async function sendChat(projectId: string, msg: ChatMessage) {
   await writeJson(`${dir}/${CHAT_USER}`, { messages: [...cur, msg] })
 }
 
+// ---- Revisiones con GPT ----
+// Archivo aparte: las propuestas de GPT no tocan proyecto.json hasta que el director acepta una.
+export const GPT_REVIEWS = 'gpt-revisiones.json'
+
+export async function readGptReviews<T>(projectId: string): Promise<T | null> {
+  if (!folders.has(projectId)) await scan()
+  const dir = folders.get(projectId)
+  return dir ? readJson<T>(`${dir}/${GPT_REVIEWS}`) : null
+}
+
+export async function saveGptReviews(projectId: string, data: unknown) {
+  const dir = await dirFor({ id: projectId, title: 'Proyecto' })
+  await writeJson(`${dir}/${GPT_REVIEWS}`, data)
+}
+
 export async function projectFolderPath(projectId: string): Promise<string | null> {
   if (!folders.has(projectId)) await scan()
   return folders.get(projectId) ?? null

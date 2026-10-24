@@ -12,6 +12,7 @@ IKRAL Studio/
       archivos/<id>.mp4  ← los archivos reales (también .png, .jpg, .webp, .mp3…)
       miniaturas/<id>.jpg
       respaldos/<id>.json
+      gpt-revisiones.json ← revisiones de continuidad con GPT (solo propuestas)
 ```
 
 ## Bibliotecas (.ikral), como en Final Cut
@@ -62,3 +63,12 @@ La app escribe `chat-usuario.json`; Claude solo escribe `chat-claude.json`. El b
 2. Al llegar un mensaje, el comando lo imprime (con su `carpeta`) y termina. Avisa con `node tools/claude-chat.mjs trabajando "Haciendo…" <carpeta>`.
 3. Atiende el pedido (ver arriba: antes de editar `proyecto.json`, haz copia de respaldo y escribe de forma atómica).
 4. Contesta con `node tools/claude-chat.mjs responder "texto" <carpeta>` y vuelve al paso 1.
+
+## Revisión de continuidad con GPT
+
+En la Biblia → «Etapas y decisiones», el botón «Revisar con GPT» (solo en la app de Mac) corre `codex exec` en modo solo lectura con la sesión de ChatGPT ya iniciada en la Mac. Manda texto (etapas, decisiones aprobadas, elementos con sus etapas, escenas y planos, avisos locales) y hasta 12 miniaturas de imágenes inicial/final. No manda prompts de generación, intentos, chat ni videos.
+
+- GPT responde con el esquema `src/features/gpt/schemas/continuity.json`; si el formato no sirve, se descarta sin cambiar nada.
+- Las propuestas se guardan en `gpt-revisiones.json` (las 20 revisiones más nuevas). La escribe solo la app: Claude y otros asistentes no la editan.
+- Nada cambia hasta que el director pulsa Aceptar. Aceptar una propuesta con regla crea una decisión de GPT aprobada por el director; Deshacer la quita.
+- Si no hay Codex, no hay sesión, se acabó la cuota o tarda más de 4 min, la app lo dice con calma y no cambia nada.

@@ -9,6 +9,7 @@ import { auditContinuity, type Finding, type Severity } from '../../features/con
 import { selectScene } from '../../features/scene-management/actions'
 import type { Decision, DecisionAuthor } from '../../types'
 import { Section } from './bibleUi'
+import { GptPanel } from '../gpt/GptPanel'
 
 const SEVERITY: Record<Severity, { label: string; cls: string; icon: React.ReactNode }> = {
   high: { label: 'Alta', cls: 'border-bad/50 bg-bad/10 text-[#fecaca]', icon: <CircleAlert size={15} /> },
@@ -235,6 +236,7 @@ export function ContinuitySection({ n }: { n: number }) {
       <DecisionsList />
       <hr className="border-line" />
       <Audit />
+      <GptPanel />
     </Section>
   )
 }

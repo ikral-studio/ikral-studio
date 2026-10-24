@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resumen", "hallazgos"],
+  "properties": {
+    "resumen": { "type": "string" },
+    "hallazgos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["escena", "plano", "imagen", "gravedad", "problema", "evidencia", "correccion", "regla"],
+        "properties": {
+          "escena": { "type": ["integer", "null"] },
+          "plano": { "type": ["integer", "null"] },
+          "imagen": { "type": ["integer", "null"] },
+          "gravedad": { "type": "string", "enum": ["alta", "media", "baja"] },
+          "problema": { "type": "string" },
+          "evidencia": { "type": "string" },
+          "correccion": { "type": "string" },
+          "regla": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

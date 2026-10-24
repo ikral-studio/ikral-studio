@@ -19,6 +19,8 @@ type Backend = typeof idb & {
   readChat?: (projectId: string) => Promise<{ user: ChatMessage[]; claude: { messages: ChatMessage[]; readUpTo?: string; lastSeen?: string; working?: string } }>
   sendChat?: (projectId: string, msg: ChatMessage) => Promise<void>
   onChatChange?: (cb: () => void) => () => void
+  readGptReviews?: <T>(projectId: string) => Promise<T | null>
+  saveGptReviews?: (projectId: string, data: unknown) => Promise<void>
 }
 
 export interface ChatMessage {
@@ -63,7 +65,10 @@ export const readChat = async (pid: string) => (await backend()).readChat?.(pid)
 export const sendChat = async (pid: string, msg: ChatMessage) => (await backend()).sendChat?.(pid, msg)
 export const onChatChange = async (cb: () => void) => (await backend()).onChatChange?.(cb) ?? (() => {})
 export const onMerged = async (cb: () => void) => (await backend()).onMerged?.(cb)
-export const projectFolderPath = async (pid: string) => (await backend()).projectFolderPath?.(pid) ?? null
+/** Revisiones con GPT (solo en la app de Mac; en la web no hay). */
+export const readGptReviews = async <T,>(pid: string): Promise<T | null> => (await (await backend()).readGptReviews?.<T>(pid)) ?? null
+export const saveGptReviews = async (pid: string, data: unknown) => (await backend()).saveGptReviews?.(pid, data)
+export const projectFolderPath =async (pid: string) => (await backend()).projectFolderPath?.(pid) ?? null
 /** Solo escritorio: mueve la biblioteca (.ikral) del proyecto a otra carpeta o disco. */
 export const moveLibrary = async (pid: string, dest: string) => {
   const b = await backend()

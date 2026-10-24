@@ -1,3 +1,5 @@
+mod gpt;
+
 /// Carpeta del código de IKRAL Studio (ahí están tools/claude-chat.mjs y docs/).
 fn repo_dir() -> std::path::PathBuf {
   std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -63,7 +65,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_drag::init())
     .manage(Pendientes::default())
-    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder])
+    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder, gpt::consultar_gpt])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
