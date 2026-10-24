@@ -11,16 +11,16 @@ import { styleSpanish } from '../project-style/style'
 import { emojiFor, parseDialogue, splitEmotions } from '../dialogue/lines'
 import { formatDuration, pad2 } from '../../utils'
 
-// Página carta horizontal, en puntos.
-const W = 792
-const H = 612
-const M = 44
-const PAPER: RGB = [246, 240, 228]
-const INK: RGB = [43, 38, 32]
-const MUTED: RGB = [128, 117, 102]
-const RULE: RGB = [216, 204, 186]
-const ACCENT: RGB = [178, 70, 45]
-type RGB = [number, number, number]
+// Página carta horizontal, en puntos. (La Biblia de Producción usa las mismas medidas y colores.)
+export const W = 792
+export const H = 612
+export const M = 44
+export const PAPER: RGB = [246, 240, 228]
+export const INK: RGB = [43, 38, 32]
+export const MUTED: RGB = [128, 117, 102]
+export const RULE: RGB = [216, 204, 186]
+export const ACCENT: RGB = [178, 70, 45]
+export type RGB = [number, number, number]
 
 const FONTS: [string, string, 'normal' | 'bold' | 'italic'][] = [
   ['DMSerifDisplay-Regular.ttf', 'Display', 'normal'],
@@ -37,7 +37,7 @@ function toBase64(buf: ArrayBuffer): string {
 }
 
 /** Quita emojis y símbolos que las fuentes del PDF no tienen. */
-const clean = (t: string) =>
+export const clean = (t: string) =>
   t
     .replace(/\p{Extended_Pictographic}|‍|️/gu, '')
     .replace(/→/g, '>')
@@ -45,7 +45,7 @@ const clean = (t: string) =>
     .trim()
 
 /** Imagen de una escena como JPEG ligero (máx. 1400 px). Videos: su miniatura. */
-async function imageData(id: string | undefined, cache: Map<string, Img | null>): Promise<Img | null> {
+export async function imageData(id: string | undefined, cache: Map<string, Img | null>): Promise<Img | null> {
   if (!id) return null
   if (cache.has(id)) return cache.get(id)!
   let out: Img | null = null
@@ -67,7 +67,7 @@ async function imageData(id: string | undefined, cache: Map<string, Img | null>)
   cache.set(id, out)
   return out
 }
-interface Img {
+export interface Img {
   data: string
   w: number
   h: number
@@ -75,7 +75,7 @@ interface Img {
 
 /** Las caritas se dibujan con la fuente de emojis del sistema y entran al PDF como imagen. */
 const emojiCache = new Map<string, string>()
-function emojiPng(e: string): string {
+export function emojiPng(e: string): string {
   let d = emojiCache.get(e)
   if (!d) {
     const c = document.createElement('canvas')
@@ -92,7 +92,7 @@ function emojiPng(e: string): string {
 }
 
 /** Color fijo por personaje (el mismo que en la app). */
-function speakerColor(name: string): RGB {
+export function speakerColor(name: string): RGB {
   let h = 0
   for (const c of name.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) % 360
   // hsl(h, 55%, 38%) → rgb, un poco más oscuro para papel claro
@@ -104,7 +104,8 @@ function speakerColor(name: string): RGB {
   return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]
 }
 
-export async function exportPortfolioPdf(project: Project, scenes: Scene[], onProgress?: (msg: string) => void): Promise<Blob> {
+/** Hoja de PDF ya lista: carta horizontal, fuentes cargadas y las piezas de dibujo de siempre. */
+export async function createPdfKit(title: string) {
   const { jsPDF } = await import('jspdf')
   const doc: JsPDF = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter', compress: true })
   const base = import.meta.env.BASE_URL
@@ -113,10 +114,6 @@ export async function exportPortfolioPdf(project: Project, scenes: Scene[], onPr
     doc.addFileToVFS(file, toBase64(buf))
     doc.addFont(file, name, style)
   }
-  const cache = new Map<string, Img | null>()
-  const vertical = project.aspectRatio === '9:16'
-  const total = scenes.reduce((a, s) => a + effectiveDuration(s), 0)
-  const date = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
   let page = 0
 
   const color = (c: RGB) => doc.setTextColor(c[0], c[1], c[2])
@@ -138,7 +135,7 @@ export async function exportPortfolioPdf(project: Project, scenes: Scene[], onPr
       rule(M, H - 30, W - M)
       font('Body', 'normal', 7.5)
       color(MUTED)
-      doc.text(clean(project.title).toUpperCase(), M, H - 18, { charSpace: 1 })
+      doc.text(clean(title).toUpperCase(), M, H - 18, { charSpace: 1 })
       doc.text(String(page), W - M, H - 18, { align: 'right' })
     }
   }
@@ -174,6 +171,17 @@ export async function exportPortfolioPdf(project: Project, scenes: Scene[], onPr
     doc.setTextColor(PAPER[0], PAPER[1], PAPER[2])
     doc.text(t.toUpperCase(), x + 11, y + 15, { charSpace: 1 })
   }
+  /** Página actual (la primera es 1). */
+  const pageNo = () => page
+  return { doc, color, font, rule, newPage, label, framed, tag, pageNo, cache: new Map<string, Img | null>() }
+}
+export type PdfKit = Awaited<ReturnType<typeof createPdfKit>>
+
+export async function exportPortfolioPdf(project: Project, scenes: Scene[], onProgress?: (msg: string) => void): Promise<Blob> {
+  const { doc, color, font, rule, newPage, label, framed, tag, cache } = await createPdfKit(project.title)
+  const vertical = project.aspectRatio === '9:16'
+  const total = scenes.reduce((a, s) => a + effectiveDuration(s), 0)
+  const date = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
 
   // ---------- Portada ----------
   onProgress?.('Portada')
