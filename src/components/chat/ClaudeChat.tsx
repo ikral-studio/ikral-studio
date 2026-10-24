@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageCircle, Mic, MicOff, Send, Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { MessageCircle, Mic, MicOff, Send, Sparkles, Volume2, VolumeX, X } from 'lucide-react'
 import { toast } from '../../stores/uiStore'
 import { useProject } from '../../stores/projectStore'
 import { isDesktop, onChatChange, readChat, sendChat, type ChatMessage } from '../../database/db'
@@ -32,6 +33,57 @@ type Recognition = { lang: string; interimResults: boolean; continuous: boolean;
 const RecognitionCtor = (window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }).SpeechRecognition ??
   (window as unknown as { webkitSpeechRecognition?: new () => Recognition }).webkitSpeechRecognition
 
+/** ¿Se ve el chat? No, si hay una ventana abierta encima o si quedó fuera de la pantalla. */
+function chatHidden(el: HTMLElement | null) {
+  if (document.querySelector('[role="dialog"]')) return true
+  if (!el) return true
+  const r = el.getBoundingClientRect()
+  return r.bottom < 40 || r.top > window.innerHeight - 40
+}
+
+/** Aviso encima de todo con la respuesta de Claude y una cajita para contestar. */
+function ReplyPopup({ msg, onSend, onClose }: { msg: ChatMessage; onSend: (text: string) => void; onClose: () => void }) {
+  const [text, setText] = useState('')
+  const send = () => {
+    if (!text.trim()) return
+    onSend(text.trim())
+    onClose()
+  }
+  return createPortal(
+    <div className="no-print fixed bottom-5 right-5 z-[70] flex w-[min(400px,calc(100vw-32px))] flex-col gap-2 rounded-[14px] border border-[#7c3aed]/70 bg-card p-3 shadow-2xl shadow-black/60" role="alert" aria-label="Mensaje de Claude">
+      <div className="flex items-center gap-2">
+        <Sparkles size={15} className="text-[#c4b5fd]" />
+        <span className="flex-1 text-[13px] font-semibold">Claude te escribió</span>
+        <button className="icon-btn sm" onClick={onClose} aria-label="Cerrar aviso">
+          <X size={15} />
+        </button>
+      </div>
+      <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl bg-card-2 px-3 py-2 text-[13.5px] leading-snug">{msg.text}</div>
+      <div className="flex items-end gap-1.5">
+        <textarea
+          className="field max-h-28 min-h-[40px] flex-1"
+          rows={1}
+          autoFocus
+          placeholder="Contéstale aquí…"
+          aria-label="Respuesta para Claude"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              send()
+            }
+          }}
+        />
+        <button className="btn btn-primary !h-10 !px-3" onClick={send} disabled={!text.trim()} aria-label="Enviar respuesta a Claude">
+          <Send size={16} />
+        </button>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 interface ChatState {
   messages: ChatMessage[]
   readUpTo?: string
@@ -59,6 +111,8 @@ export function ClaudeChat() {
   const seen = useRef<Set<string> | null>(null)
   const [recording, setRecording] = useState(false)
   const rec = useRef<Recognition | null>(null)
+  const panelRef = useRef<HTMLElement>(null)
+  const [popup, setPopup] = useState<ChatMessage | null>(null)
 
   const toggleVoice = () => {
     const v = !voice
@@ -112,6 +166,7 @@ export function ClaudeChat() {
           if (!seen.current.has(m.id)) {
             seen.current.add(m.id)
             if (m.from === 'claude' && voiceRef.current) speak(m.text)
+            if (m.from === 'claude' && chatHidden(panelRef.current)) setPopup(m)
           }
       setChat({ messages, readUpTo: c.claude.readUpTo, lastSeen: c.claude.lastSeen, working: c.claude.working })
     }
@@ -134,8 +189,8 @@ export function ClaudeChat() {
   const userMsgs = chat.messages.filter((m) => m.from === 'user')
   const readIdx = chat.readUpTo ? userMsgs.findIndex((m) => m.id === chat.readUpTo) : -1
 
-  const send = async () => {
-    const t = text.trim()
+  const send = async (fromPopup?: string) => {
+    const t = (fromPopup ?? text).trim()
     if (!t || !projectId) return
     const msg: ChatMessage = {
       id: uid('msg_'),
@@ -144,13 +199,14 @@ export function ClaudeChat() {
       at: new Date().toISOString(),
       ...(attach && selected && sceneLabel ? { sceneId: selected, sceneLabel } : {}),
     }
-    setText('')
+    if (fromPopup === undefined) setText('')
     setChat((c) => ({ ...c, messages: [...c.messages, msg] }))
     await sendChat(projectId, msg)
   }
 
   return (
-    <section className="panel flex min-h-[230px] flex-1 flex-col" aria-label="Chat con Claude">
+    <section ref={panelRef} className="panel flex min-h-[230px] flex-1 flex-col" aria-label="Chat con Claude">
+      {popup && <ReplyPopup msg={popup} onSend={(t) => void send(t)} onClose={() => setPopup(null)} />}
       <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
         <Sparkles size={16} className="text-[#c4b5fd]" />
         <h2 className="flex-1 text-[13px] font-semibold tracking-wide">CLAUDE</h2>
