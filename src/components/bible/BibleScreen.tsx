@@ -45,9 +45,9 @@ function Question({ icon, title, children }: { icon: React.ReactNode; title: str
   )
 }
 
-/** Imagen de portada: la primera locación Canon, o la imagen inicial de la primera escena que tenga. */
+/** Imagen de portada: la locación principal, la primera locación Canon, o la imagen inicial de la primera escena que tenga. */
 function heroImage(p: Project, scenes: Scene[]): string | undefined {
-  return p.locations?.find((l) => l.imageId)?.imageId ?? scenes.map((s) => s.prep?.start?.approvedId ?? s.startImageId).find(Boolean)
+  return p.locations?.find((l) => l.id === p.mainLocationId)?.imageId ?? p.locations?.find((l) => l.imageId)?.imageId ?? scenes.map((s) => s.prep?.start?.approvedId ?? s.startImageId).find(Boolean)
 }
 
 function Hero({ project, scenes, ready }: { project: Project; scenes: Scene[]; ready: boolean }) {

@@ -77,6 +77,8 @@ interface State {
   dismissSuggestion: () => void
   acceptItemSuggestion: (kind: ItemKind, name?: string) => void
   dismissItemSuggestion: (kind: ItemKind) => void
+  /** Marca (o quita, con undefined) la locación principal. */
+  setMainLocation: (id: string | undefined) => void
   updateItemSuggestion: (kind: ItemKind, index: number, patch: Partial<ItemSuggestion>) => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
@@ -621,6 +623,12 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       commit({ ...cur, project: { ...cur.project, itemSuggestions: { ...cur.project.itemSuggestions, [kind]: undefined } } })
+    },
+
+    setMainLocation(id) {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: { ...cur.project, mainLocationId: id } })
     },
 
     updateItemSuggestion(kind, index, patch) {

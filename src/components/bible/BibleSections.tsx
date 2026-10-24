@@ -181,7 +181,9 @@ export function ItemsSection({ kind, n, empty }: { kind: ItemKind; n: number; em
   const project = useProject((s) => s.project)
   const [openId, setOpenId] = useState<string>()
   if (!project) return null
-  const list = project[kind] ?? []
+  const mainId = kind === 'locations' ? project.mainLocationId : undefined
+  // La locación principal va primero.
+  const list = [...(project[kind] ?? [])].sort((a, b) => Number(b.id === mainId) - Number(a.id === mainId))
   const canon = list.filter((it) => itemStatus(it) === 'canon').length
   const who = (it: BibleItem) => project.characters?.find((c) => c.id === it.characterId)?.name
   const canSuggest = kind === 'locations' && isDesktop() && project.sceneIds.length > 0
@@ -218,6 +220,8 @@ export function ItemsSection({ kind, n, empty }: { kind: ItemKind; n: number; em
               generating={it.generating}
               wide={kind === 'locations'}
               onOpen={() => setOpenId(it.id)}
+              main={it.id === mainId}
+              onMain={kind === 'locations' ? () => useProject.getState().setMainLocation(it.id === mainId ? undefined : it.id) : undefined}
             />
           ))}
         </ul>

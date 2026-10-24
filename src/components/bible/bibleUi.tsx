@@ -1,6 +1,6 @@
 // Piezas de diseño de la Biblia: tarjeta de sección numerada, estado (Sin preparar / En pruebas / Canon) y tarjeta de elemento.
 import type { ReactNode } from 'react'
-import { Check, FlaskConical, Loader2 } from 'lucide-react'
+import { Check, FlaskConical, Loader2, Star } from 'lucide-react'
 import { FullScreenButton } from '../common/Overlays'
 import { useMediaUrl } from '../../features/media-library/media'
 import { STATUS_ES, type ItemStatus } from '../../features/bible/items'
@@ -62,6 +62,8 @@ export function ItemCard({
   generating,
   wide,
   onOpen,
+  main,
+  onMain,
 }: {
   name: string
   sub?: string
@@ -70,6 +72,9 @@ export function ItemCard({
   generating?: boolean
   wide?: boolean
   onOpen: () => void
+  /** Locación principal (⭐). Sin onMain no se muestra la estrella. */
+  main?: boolean
+  onMain?: () => void
 }) {
   const url = useMediaUrl(imageId, true)
   return (
@@ -103,6 +108,17 @@ export function ItemCard({
         </div>
       </button>
       <FullScreenButton mediaId={imageId} title={name} className="absolute right-1.5 top-1.5" />
+      {onMain && (
+        <button
+          className={`icon-btn sm absolute left-1.5 top-1.5 !bg-black/55 hover:!bg-black/75 ${main ? '!text-[#facc15]' : '!text-white/80'}`}
+          onClick={onMain}
+          aria-pressed={main}
+          aria-label={main ? `${name} es la locación principal` : `Hacer ${name} la locación principal`}
+          title={main ? 'Locación principal (clic para quitar)' : 'Hacer locación principal: va primero y es la portada'}
+        >
+          <Star size={13} fill={main ? 'currentColor' : 'none'} />
+        </button>
+      )}
     </li>
   )
 }

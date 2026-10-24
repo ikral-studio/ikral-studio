@@ -18,6 +18,8 @@ export interface Project {
   itemSuggestions?: Partial<Record<ItemKind, ItemSuggestion[]>>
   /** Biblia: locaciones (lugares donde pasa la historia). */
   locations?: BibleItem[]
+  /** Locación principal: va primero y es la portada de la Biblia. */
+  mainLocationId?: string
   /** Biblia: objetos importantes. */
   props?: BibleItem[]
   /** Biblia: vestuario (de qué personaje es en `characterId`). */
