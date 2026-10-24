@@ -1,3 +1,12 @@
+2026-10-24 15:50 · IKRAL Studio · GPT revisa la coherencia del guion
+- Agregado: [código] src/features/gpt/context.ts — reglas de guionista (antes/después sin mezclar, objetos, locaciones, diálogos) y fichas de la Biblia en la revisión.
+- Agregado: [diseño] GptPanel — caja «Instrucciones para GPT» (project.bible.reviewNotes); botón «Revisar guion con GPT».
+- Agregado: [código] src/tests/gpt.test.ts — prueba de reglas, instrucciones y fichas.
+- Cambiado: [documento] docs/carpeta-del-proyecto.md — sección de revisión con GPT.
+- Publicado: no.
+- Commit: 3da33a4
+- Pendiente: compilar e instalar la nueva versión para probarla en la Mac.
+
 2026-10-24 14:40 · IKRAL Studio · GPT en Locaciones ya ve el guion guardado
 - Arreglado: «Consultar GPT» en una ficha de la Biblia (locación, objeto, vestuario, personaje, estilo) no recibía ninguna escena; por eso GPT pedía «el guion completo».
 - Cambiado: [código] src/features/gpt/bible.ts — el paquete lleva la historia en orden y las escenas donde aparece la ficha (nombre o alias), con su acción y diálogo.
