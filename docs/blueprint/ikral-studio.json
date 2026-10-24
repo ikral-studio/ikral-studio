@@ -151,6 +151,10 @@
         {
           "tipo": "prueba",
           "ref": "src/tests/setting.test.ts (11) con proyecto inventado; npm test 340/340; npm run build OK; demo lugar (Playwright) OK, captura 16-lugar-guion-vs-biblia.png"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/gptDone.test.ts (6): «Aceptada» ya no se muestra si no cambió nada (propuestas viejas sin cambio guardado); npm test 346/346; build OK"
         }
       ],
       "dependeDe": [

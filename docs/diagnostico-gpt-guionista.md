@@ -143,6 +143,8 @@ IKRAL Studio (app Mac)
 - **Ahora:** la Biblia muestra UNA pregunta: «La historia dice RESTAURANTE, pero ahora la Biblia dice FOOD TRUCK. ¿Qué quieres conservar?» con 3 caminos (adaptar historia, mantener restaurante, definir transformación). Ninguno se escoge solo.
 - Antes de aplicar hay **Vista previa de impacto** (antes/después por campo y lo que queda para el director). Se aplica en un solo paso, con Deshacer y Cmd+Z. Solo textos: imágenes, Canon y diálogos no se tocan.
 - Pruebas con un proyecto **inventado** (`src/tests/setting.test.ts`) y la captura `docs/qa/capturas/16-lugar-guion-vs-biblia.png`.
+- **Guion original de 10 escenas (revisado por ChatGPT):** escenas 1–3 papel, 4 demostración, 5 salto «OTRO DÍA…», 6–10 app en el MISMO restaurante; la escena 7 solo *recuerda* las comandas. No hay food truck en el guion: llegó después en fichas y arte. El problema visual real era la ficha compartida de Escenas 3 y 8 con «papel y luego tablet» en un solo prompt (resuelto con estados por escena).
+- **Las 4 «Aceptada» sin cambios:** se aceptaron cuando «Aceptar» solo guardaba la regla, así que no hay cambio guardado. Ahora todos los paneles GPT (Biblia, guion, cobertura, edición) usan `doneText` (`src/features/gpt/done.ts`): si no cambió nada dicen «Marcada, pero no cambió nada. Pulsa Deshacer para revisarla otra vez», y Deshacer la regresa a pendiente sin tocar nada. Pruebas: `src/tests/gptDone.test.ts`.
 
 ## Riesgos y cuidados
 

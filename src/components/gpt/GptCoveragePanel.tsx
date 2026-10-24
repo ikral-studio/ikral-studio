@@ -29,6 +29,7 @@ import {
 import { shotsOf } from '../../features/coverage/shots'
 import { newThread, setArchived, threadsFor, upsertThread, type StoredThread } from '../../features/gpt/threads'
 import { saveSectionThreads } from '../../features/gpt/threadsFile'
+import { doneText } from '../../features/gpt/done'
 import { pad2, uid } from '../../utils'
 import { ConsultGptButton } from './ConsultGptButton'
 
@@ -37,11 +38,6 @@ const CHIPS = {
   shot: ['Diseñar la cámara', 'Escribir el prompt de imagen', 'Escribir el prompt de video', 'Que combine con el plano anterior'],
 }
 
-const DONE: Record<Exclude<CoverageProposal['status'], 'pending'>, string> = {
-  accepted: '✓ Aceptada',
-  discarded: 'Descartada',
-  'asked-claude': 'Enviada a Claude',
-}
 
 const ops = (): CoverageOps => {
   const s = useProject.getState()
@@ -115,7 +111,7 @@ function ProposalRow({ p, stale, onAccept, onEdit, onDiscard, onAskClaude, onUnd
           </>
         ) : (
           <>
-            <span className="text-[13px] text-ink-2">{DONE[p.status]}</span>
+            <span className="text-[13px] text-ink-2">{doneText(p)}</span>
             <button className="btn btn-sm btn-ghost" onClick={onUndo} aria-label="Deshacer propuesta">
               <RotateCcw size={13} /> Deshacer
             </button>

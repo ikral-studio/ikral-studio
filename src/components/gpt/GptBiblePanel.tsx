@@ -30,6 +30,7 @@ import {
 } from '../../features/gpt/bible'
 import { newThread, setArchived, threadsFor, upsertThread, type StoredThread } from '../../features/gpt/threads'
 import { saveSectionThreads } from '../../features/gpt/threadsFile'
+import { doneText } from '../../features/gpt/done'
 import { uid } from '../../utils'
 import type { Project } from '../../types'
 import { ConsultGptButton } from './ConsultGptButton'
@@ -41,11 +42,6 @@ const CHIPS: Record<BibleGroup, string[]> = {
   item: ['Mejorar la descripción', 'Proponer otros nombres', '¿En qué etapas existe?'],
 }
 
-const DONE: Record<Exclude<BibleProposal['status'], 'pending'>, string> = {
-  accepted: '✓ Aceptada',
-  discarded: 'Descartada',
-  'asked-claude': 'Enviada a Claude',
-}
 
 const ops = (): BibleOps => {
   const s = useProject.getState()
@@ -121,7 +117,7 @@ function ProposalRow({ p, project, stale, onAccept, onEdit, onDiscard, onAskClau
           </>
         ) : (
           <>
-            <span className="text-[13px] text-ink-2">{p.status === 'accepted' && p.kind === 'rule' ? '✓ Regla guardada. No cambió fichas ni imágenes.' : DONE[p.status]}</span>
+            <span className="text-[13px] text-ink-2">{doneText(p)}</span>
             <button className="btn btn-sm btn-ghost" onClick={onUndo} aria-label="Deshacer propuesta">
               <RotateCcw size={13} /> Deshacer
             </button>

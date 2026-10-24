@@ -7,6 +7,7 @@ import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
 import { isDesktop, readGptThreads, sendChat } from '../../database/db'
 import { saveSectionThreads } from '../../features/gpt/threadsFile'
+import { doneText } from '../../features/gpt/done'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { runScriptConsult } from '../../features/gpt/client'
 import {
@@ -28,11 +29,6 @@ import { ConsultGptButton } from './ConsultGptButton'
 
 const CHIPS = ['Mejorar diálogos', 'Desarrollar la acción', 'Hacerlo más corto', 'Revisar que suene natural']
 
-const DONE: Record<Exclude<ScriptProposal['status'], 'pending'>, string> = {
-  accepted: '✓ Aceptada',
-  discarded: 'Descartada',
-  'asked-claude': 'Enviada a Claude',
-}
 
 const ops: ScriptOps = {
   setScriptField: (sceneId, field, value) => {
@@ -107,7 +103,7 @@ function ProposalRow({ p, stale, onAccept, onEdit, onDiscard, onAskClaude, onUnd
           </>
         ) : (
           <>
-            <span className="text-[13px] text-ink-2">{DONE[p.status]}</span>
+            <span className="text-[13px] text-ink-2">{doneText(p)}</span>
             <button className="btn btn-sm btn-ghost" onClick={onUndo} aria-label="Deshacer propuesta">
               <RotateCcw size={13} /> Deshacer
             </button>
