@@ -163,7 +163,7 @@ export function applySuggestion(p: Project, name?: string): Project {
 /** Pasa las locaciones (u objetos, vestuario) que sugirió Claude a la lista: una o todas. Si ya existe, solo llena lo que falte. */
 export function applyItemSuggestion(p: Project, kind: ItemKind, name?: string): Project {
   const all = p.itemSuggestions?.[kind] ?? []
-  const take = all.filter((s) => name === undefined || key(s.name) === key(name))
+  const take = all.filter((s) => s.name.trim() && (name === undefined || key(s.name) === key(name)))
   if (!take.length) return p
   const list: BibleItem[] = [...(p[kind] ?? [])]
   for (const s of take) {

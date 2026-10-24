@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, ItemKind, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import { applyItemSuggestion, applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
 import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
@@ -77,6 +77,7 @@ interface State {
   dismissSuggestion: () => void
   acceptItemSuggestion: (kind: ItemKind, name?: string) => void
   dismissItemSuggestion: (kind: ItemKind) => void
+  updateItemSuggestion: (kind: ItemKind, index: number, patch: Partial<ItemSuggestion>) => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -620,6 +621,13 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       commit({ ...cur, project: { ...cur.project, itemSuggestions: { ...cur.project.itemSuggestions, [kind]: undefined } } })
+    },
+
+    updateItemSuggestion(kind, index, patch) {
+      const cur = snap()
+      if (!cur) return
+      const list = (cur.project.itemSuggestions?.[kind] ?? []).map((it, i) => (i === index ? { ...it, ...patch } : it))
+      commit({ ...cur, project: { ...cur.project, itemSuggestions: { ...cur.project.itemSuggestions, [kind]: list } } }, `sug:${kind}:${index}`, 500)
     },
 
     setCamera(id, camera) {

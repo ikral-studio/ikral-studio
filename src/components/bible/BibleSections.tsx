@@ -109,7 +109,7 @@ export function CharactersSection() {
 function ItemSuggestions({ kind }: { kind: ItemKind }) {
   const list = useProject((s) => s.project?.itemSuggestions?.[kind])
   const waiting = useProject((s) => !!s.project?.bible?.suggestingItems?.includes(kind))
-  const { acceptItemSuggestion, dismissItemSuggestion, setBible } = useProject.getState()
+  const { acceptItemSuggestion, dismissItemSuggestion, updateItemSuggestion, setBible } = useProject.getState()
   const stopWaiting = () => setBible({ suggestingItems: useProject.getState().project?.bible?.suggestingItems?.filter((k) => k !== kind) })
   if (waiting && !list?.length)
     return (
@@ -123,19 +123,31 @@ function ItemSuggestions({ kind }: { kind: ItemKind }) {
   if (!list?.length) return null
   return (
     <div className="flex flex-col gap-2 rounded-[12px] border border-[#7c3aed]/50 bg-[#7c3aed]/10 p-3" aria-label={`Sugerencia de ${KIND_ES[kind].many.toLowerCase()}`}>
-      <div className="text-[14px] font-semibold text-[#ddd6fe]">✨ Claude sugiere {list.length} {KIND_ES[kind].many.toLowerCase()} del guion</div>
+      <div className="text-[14px] font-semibold text-[#ddd6fe]">✨ Claude sugiere {list.length} {KIND_ES[kind].many.toLowerCase()} del guion · puedes cambiar lo que quieras antes de aceptar</div>
       <ul className="flex flex-col gap-1.5">
-        {list.map((it) => (
-          <li key={it.name} className="flex items-start gap-3 rounded-[10px] border border-line bg-card p-2.5">
-            <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-semibold">
-                {it.name}
-                {it.note && <span className="ml-2 text-[12.5px] font-normal text-ink-3">{it.note}</span>}
+        {list.map((it, i) => (
+          <li key={i} className="flex items-start gap-3 rounded-[10px] border border-line bg-card p-2.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  className="field !h-8 min-w-0 flex-1 !text-[15px] font-semibold"
+                  aria-label="Nombre de la sugerencia"
+                  value={it.name}
+                  onChange={(e) => updateItemSuggestion(kind, i, { name: e.target.value })}
+                />
+                {it.note && <span className="text-[12.5px] text-ink-3">{it.note}</span>}
               </div>
-              <p className="text-[13px] leading-snug text-ink-2">{it.description}</p>
+              <textarea
+                className="field !text-[13px] leading-snug"
+                rows={3}
+                aria-label={`Descripción de ${it.name}`}
+                value={it.description}
+                onChange={(e) => updateItemSuggestion(kind, i, { description: e.target.value })}
+              />
             </div>
             <button
               className="btn btn-sm shrink-0"
+              disabled={!it.name.trim()}
               onClick={() => {
                 acceptItemSuggestion(kind, it.name)
                 toast(`${it.name} quedó en la lista`)
