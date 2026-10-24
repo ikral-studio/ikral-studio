@@ -72,7 +72,8 @@ interface State {
   /** Biblia: agregar, cambiar o quitar un personaje, locación, objeto o vestuario. */
   addItem: (kind: BibleKind, name: string, extra?: Partial<BibleItem>) => string | undefined
   updateItem: (kind: BibleKind, id: string, patch: Partial<Omit<BibleItem, 'id'>>) => void
-  removeItem: (kind: BibleKind, id: string) => void
+  /** Manda la ficha a la papelera. Devuelve el id en la papelera (para «Deshacer»). */
+  removeItem: (kind: BibleKind, id: string) => string | undefined
   addRelation: (a: string, b: string, label: string) => void
   removeRelation: (id: string) => void
   /** Aceptar la sugerencia de un personaje (o de todos si no se da nombre). */
@@ -629,8 +630,9 @@ export const useProject = create<State>()((set, get) => {
       // Quitar un personaje también quita sus relaciones (van con él a la papelera).
       const gone = kind === 'characters' ? (cur.project.relations ?? []).filter((r) => r.a === id || r.b === id) : []
       const relations = gone.length ? cur.project.relations?.filter((r) => !gone.includes(r)) : cur.project.relations
-      const trash = addToTrash(cur.project, { kind, item, relations: gone.length ? gone : undefined })
+      const trash = addToTrash(cur.project, { kind, item, relations: gone.length ? gone : undefined, index: all.indexOf(item) })
       commit({ ...cur, project: { ...cur.project, [kind]: list, relations, trash } })
+      return trash[trash.length - 1].id
     },
 
     addRelation(a, b, label) {

@@ -121,7 +121,9 @@ export function restoreFromTrash(project: Project, scenes: Record<string, Scene>
   }
   const list = (p[e.kind] ?? []) as (BibleItem | Character)[]
   if (list.some((x) => x.id === e.item.id)) return { error: 'Ya está en el proyecto.' }
-  const next = { ...p, [e.kind]: [...list, e.item] } as Project
+  const items = [...list]
+  items.splice(Math.min(e.index ?? items.length, items.length), 0, e.item)
+  const next = { ...p, [e.kind]: items } as Project
   // Al regresar un personaje vuelven sus relaciones (si el otro personaje sigue ahí).
   const back = (e.relations ?? []).filter((r) => [r.a, r.b].every((id) => next.characters?.some((c) => c.id === id)))
   if (back.length) next.relations = [...(next.relations ?? []), ...back]

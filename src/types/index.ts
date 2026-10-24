@@ -149,7 +149,8 @@ export interface Relation {
 /** Algo que se borró y está en la papelera. */
 export type TrashEntry = { id: string; deletedAt: string } & (
   | { kind: 'scene'; scene: Scene; index: number }
-  | { kind: BibleKind; item: BibleItem | Character; relations?: Relation[] }
+  /** `index`: dónde estaba en su lista, para que Deshacer la regrese al mismo lugar. */
+  | { kind: BibleKind; item: BibleItem | Character; relations?: Relation[]; index?: number }
   | { kind: 'relation'; relation: Relation }
   /** `shotId`: el video era de un plano (cobertura), no de la escena. */
   | { kind: 'version'; sceneId: string; version: VideoVersion; shotId?: string }

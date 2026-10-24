@@ -6,7 +6,7 @@ import { CropEditor } from './CropEditor'
 import { useProject } from '../../stores/projectStore'
 import { importFiles } from '../../features/scene-management/actions'
 import { getMediaBlob, useMediaMeta } from '../../features/media-library/media'
-import { toast } from '../../stores/uiStore'
+import { dismissToast, toast } from '../../stores/uiStore'
 import { useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
 
@@ -100,6 +100,17 @@ export function Toasts() {
           {t.kind === 'error' && <AlertTriangle size={16} className="text-bad" />}
           {t.kind === 'info' && <Info size={16} className="text-sel-2" />}
           {t.text}
+          {t.action && (
+            <button
+              className="btn pointer-events-auto !h-7 !px-2.5 !text-[12px]"
+              onClick={() => {
+                dismissToast(t.id)
+                t.action!.run()
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

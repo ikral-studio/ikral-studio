@@ -253,9 +253,18 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
               <button
                 className="btn btn-danger !h-9 ml-auto"
                 onClick={async () => {
-                  if (!(await askConfirm({ title: `¿Quitar «${it.name}»?`, body: 'Se quita de la Biblia con sus pruebas. Puedes deshacer con Cmd+Z.', confirmLabel: 'Quitar', danger: true }))) return
-                  useProject.getState().removeItem(kind, itemId)
+                  if (!(await askConfirm({ title: `¿Quitar «${it.name}»?`, body: `Se quita la ficha completa (no solo la imagen) con sus pruebas. Va a la Papelera y puedes pulsar «Deshacer» o Cmd+Z.`, confirmLabel: 'Quitar', danger: true }))) return
+                  const name = it.name.trim() || 'sin nombre'
+                  const trashId = useProject.getState().removeItem(kind, itemId)
                   onRemoved?.()
+                  if (trashId)
+                    toast(`${es.one.charAt(0).toUpperCase() + es.one.slice(1)} «${name}» ${kind === 'locations' ? 'eliminada' : 'eliminado'}`, 'info', {
+                      label: 'Deshacer',
+                      run: () => {
+                        const err = useProject.getState().restoreTrash(trashId)
+                        toast(err ?? `«${name}» regresó`, err ? 'error' : 'ok')
+                      },
+                    })
                 }}
               >
                 <Trash2 size={15} /> Quitar

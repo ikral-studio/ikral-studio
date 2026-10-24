@@ -5,6 +5,8 @@ export interface Toast {
   id: string
   text: string
   kind: 'ok' | 'error' | 'info'
+  /** Botón dentro del aviso (ej.: «Deshacer»). */
+  action?: { label: string; run: () => void }
 }
 
 interface ConfirmRequest {
@@ -96,10 +98,15 @@ export function zoomBy(f: number) {
   useUI.setState((s) => ({ zoom: Math.min(200, Math.max(4, s.zoom * f)) }))
 }
 
-export function toast(text: string, kind: Toast['kind'] = 'ok') {
-  const t = { id: uid(), text, kind }
+export function dismissToast(id: string) {
+  useUI.setState((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }))
+}
+
+/** Con `action` el aviso dura 10 s, para dar tiempo de pulsar el botón. */
+export function toast(text: string, kind: Toast['kind'] = 'ok', action?: Toast['action']) {
+  const t: Toast = { id: uid(), text, kind, ...(action ? { action } : {}) }
   useUI.setState((s) => ({ toasts: [...s.toasts, t].slice(-4) }))
-  setTimeout(() => useUI.setState((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) })), kind === 'error' ? 6000 : 2600)
+  setTimeout(() => dismissToast(t.id), action ? 10000 : kind === 'error' ? 6000 : 2600)
 }
 
 export function askConfirm(opts: Omit<ConfirmRequest, 'resolve'>): Promise<boolean> {

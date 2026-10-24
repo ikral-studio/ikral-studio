@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { useProject } from '../stores/projectStore'
-import { mediaIdsOf } from '../database/idb'
+import { loadProject, mediaIdsOf } from '../database/idb'
 
 describe('papelera', () => {
   beforeAll(async () => {
@@ -42,6 +42,26 @@ describe('papelera', () => {
     st().removeItem('characters', rel.a)
     const relEntry = st().project!.trash!.find((e) => e.kind === 'relation')!
     expect(st().restoreTrash(relEntry.id)).toMatch(/ya no existe/)
+  })
+
+  it('«Deshacer» regresa la locación completa a su lugar y queda guardada', async () => {
+    const sala = st().addItem('locations', 'Sala')!
+    const cocina = st().addItem('locations', 'Cocina', { description: 'Cocina de talavera', note: 'Interior', imageId: 'md_canon', prompt: 'cocina cálida', tries: [{ id: 't1', mediaId: 'md_try', at: '2026-10-24T00:00:00Z' }], onlyIn: ['ph_1'], aliases: ['la cocina'] })!
+    const patio = st().addItem('locations', 'Patio')!
+    st().setMainLocation(cocina)
+    const before = st().project!.locations!.find((l) => l.id === cocina)!
+    const trashId = st().removeItem('locations', cocina)!
+    expect(st().project!.locations!.map((l) => l.id)).toEqual([sala, patio])
+    // la imagen Canon y las pruebas no se limpian mientras está en la papelera
+    expect(mediaIdsOf(st().project!, Object.values(st().scenes))).toEqual(expect.arrayContaining(['md_canon', 'md_try']))
+    st().addItem('locations', 'Azotea')
+    expect(st().restoreTrash(trashId)).toBeNull()
+    expect(st().project!.locations!.map((l) => l.name)).toEqual(['Sala', 'Cocina', 'Patio', 'Azotea'])
+    expect(st().project!.locations!.find((l) => l.id === cocina)).toEqual(before)
+    expect(st().project!.mainLocationId).toBe(cocina)
+    await st().flushSave()
+    const saved = await loadProject(st().project!.id)
+    expect(saved!.project.locations!.find((l) => l.id === cocina)).toEqual(before)
   })
 
   it('vaciar la papelera', () => {
