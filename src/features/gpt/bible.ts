@@ -2,10 +2,10 @@
 // GPT solo propone. Al Aceptar, la app lo aplica con sus acciones de siempre (deshacer + guardado);
 // ningún asistente escribe proyecto.json directo. Una regla nueva entra como decisión de GPT aprobada por el director.
 import { z } from 'zod'
-import type { BibleAnswers, BibleItem, BibleKind, Character, ItemKind, Project } from '../../types'
+import type { BibleAnswers, BibleItem, BibleKind, Character, ItemKind, Project, Scene } from '../../types'
 import { nowIso, uid } from '../../utils'
 import { LOOKS, MOODS, AUDIENCES } from '../bible/bible'
-import { approvedDecisions, phasesOf } from '../continuity/continuity'
+import { approvedDecisions, phaseOf, phasesOf } from '../continuity/continuity'
 import { styleSpanish } from '../project-style/style'
 import { historyForPrompt, patchThread, type GptProposalStatus, type GptThread } from './threads'
 
@@ -175,6 +175,43 @@ function bibleContext(project: Project, key: string) {
   return parts.filter(Boolean).join('\n')
 }
 
+const STORY_MAX = 40
+const STORY_LINE = 160
+const MATCH_MAX = 6
+const MATCH_TEXT = 600
+
+/** ¿La escena nombra al apartado (nombre o alias), en su título, acción o diálogo? */
+function sceneMentions(scene: Scene, names: string[]) {
+  const text = norm([scene.title, scene.script.action, scene.script.dialogue].join('\n'))
+  return names.some((n) => text.includes(n))
+}
+
+/**
+ * La historia ya guardada en el proyecto: todas las escenas en orden (corto) y, si el apartado es una ficha,
+ * las escenas donde aparece con su acción y diálogo. Así GPT no pide que le peguen el guion.
+ */
+export function storyContext(project: Project, t: BibleTarget, scenes: Scene[]): string {
+  if (!scenes.length) return 'Historia: (el proyecto aún no tiene escenas)'
+  const phase = (s: Scene) => phaseOf(project, s)?.name
+  const story = scenes
+    .slice(0, STORY_MAX)
+    .map((s, i) => `${i + 1}. «${s.title.trim() || 'sin título'}»${phase(s) ? ` (${phase(s)})` : ''}${s.script.action.trim() ? `: ${clip(s.script.action, STORY_LINE)}` : ''}`)
+  if (scenes.length > STORY_MAX) story.push(`… y ${scenes.length - STORY_MAX} escenas más`)
+  const parts = [`Historia (escenas del guion guardado, en orden):\n${story.join('\n')}`]
+  if ('item' in t) {
+    const names = [t.item.name, ...('aliases' in t.item ? (t.item.aliases ?? []) : [])].map(norm).filter((n) => n.length > 1)
+    const found = scenes.map((s, i) => ({ s, n: i + 1 })).filter(({ s }) => sceneMentions(s, names))
+    const rows = found.slice(0, MATCH_MAX).map(({ s, n }) =>
+      [`Escena ${n} · «${s.title.trim() || 'sin título'}»`, s.script.action.trim() && `  Acción: ${clip(s.script.action, MATCH_TEXT)}`, s.script.dialogue.trim() && `  Diálogo: ${clip(s.script.dialogue, MATCH_TEXT)}`]
+        .filter(Boolean)
+        .join('\n'),
+    )
+    if (found.length > MATCH_MAX) rows.push(`… y ${found.length - MATCH_MAX} escenas más donde aparece`)
+    parts.push(`Escenas donde aparece ${targetLabel(t)}:\n${rows.join('\n') || '(no se nombra en ninguna escena)'}`)
+  }
+  return parts.join('\n\n')
+}
+
 /** Qué tipos de propuesta valen en cada apartado. */
 export type BibleGroup = 'style' | 'rules' | 'characters' | 'item'
 const ALLOWED: Record<BibleGroup, string[]> = {
@@ -217,10 +254,10 @@ export function bibleChangesSince(seen: BibleSeen | undefined, now: BibleSeen): 
 
 /**
  * Paquete para la Biblia: proyecto, estilo, etapas, decisiones APROBADAS, el apartado completo,
- * el resto de la Biblia en corto, la imagen Canon de la ficha en miniatura, el historial del hilo y el pedido.
+ * el resto de la Biblia en corto, la historia guardada (escenas en orden y dónde aparece la ficha), la imagen Canon de la ficha en miniatura, el historial del hilo y el pedido.
  * No va: decisiones propuestas o rechazadas, prompts de generación, intentos de imagen, chat con Claude, rutas.
  */
-export function buildBiblePacket(project: Project, key: string, thread: BibleThread, request: string): BiblePacket | null {
+export function buildBiblePacket(project: Project, key: string, thread: BibleThread, request: string, scenes: Scene[] = []): BiblePacket | null {
   const t = resolveBibleTarget(project, key)
   if (!t) return null
   const seen = bibleSeenOf(project, key)
@@ -238,6 +275,7 @@ export function buildBiblePacket(project: Project, key: string, thread: BibleThr
     'Respeta las decisiones aprobadas del director, las etapas y lo que ya está en la Biblia: no lo contradigas. No inventes personajes nuevos.',
     `Tipos de propuesta para este apartado: ${KIND_HELP[g]} Pon «con» en null salvo en «relacion».`,
     'En «resumen_hilo» resume en pocas líneas todo lo platicado hasta ahora (para retomarlo otro día).',
+    'El guion ya está guardado en el proyecto: abajo van sus escenas. Úsalas; no pidas que te peguen el guion.',
     '',
     `Proyecto: «${project.title}»`,
     `Etapas en orden: ${phases.length ? phases.map((p) => p.name).join(' → ') : '(sin etapas)'}`,
@@ -247,6 +285,8 @@ export function buildBiblePacket(project: Project, key: string, thread: BibleThr
     '',
     'Resto de la Biblia:',
     seen.context,
+    '',
+    storyContext(project, t, scenes),
     '',
     `Apartado: ${targetLabel(t)}`,
     seen.target,

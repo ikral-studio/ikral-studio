@@ -7,6 +7,7 @@ import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
 import { isDesktop, readGptThreads, sendChat } from '../../database/db'
 import { runBibleConsult } from '../../features/gpt/client'
+import { orderedScenes } from '../../features/script-sync/derive'
 import {
   acceptBibleProposal,
   bibleClaudeText,
@@ -203,7 +204,8 @@ export function GptBiblePanel({ target }: { target: string }) {
     const base = current ?? newThread<BibleProposal, BibleSeen>(target, text.slice(0, 40), undefined, 'bible')
     setBusy(true)
     setMessage(null)
-    const r = await runBibleConsult(project, target, base, text)
+    const st = useProject.getState()
+    const r = await runBibleConsult(project, orderedScenes(st.project, st.scenes), target, base, text)
     setBusy(false)
     if (!r.ok) return setMessage(r.message)
     // Se guarda sobre lo último (pudo cambiar mientras GPT pensaba).

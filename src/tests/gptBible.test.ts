@@ -101,6 +101,31 @@ describe('paquete de la Biblia', () => {
     expect(bibleChangesSince(bibleSeenOf(st().project!, key), bibleSeenOf(st().project!, key))).toEqual([])
   })
 
+  it('lleva el guion ya guardado: la historia en orden y las escenas donde aparece la locación', () => {
+    const cocina = st().addItem('locations', 'Cocina', { aliases: ['fogón'] })!
+    const titles = ['INT. COCINA - DÍA', 'EXT. MERCADO - DÍA', 'INT. SALA - NOCHE']
+    const actions = ['La abuela pone el caldo en la estufa.', 'Beto compra cebollas.', 'Beto vuelve y prende el fogón otra vez.']
+    titles.forEach((title, i) => {
+      const id = st().addScene()!
+      st().updateScene(id, { title })
+      st().updateScript(id, 'action', actions[i])
+    })
+    st().updateScript(st().project!.sceneIds.at(-1)!, 'dialogue', 'BETO: Ya huele a caldo.')
+    const scenes = st().project!.sceneIds.map((id) => st().scenes[id])
+    const key = targetKey('locations', cocina)
+    const { prompt } = buildBiblePacket(st().project!, key, newThread(key, 't', undefined, 'bible'), '¿Cómo pasa del papel a la app?', scenes)!
+    expect(prompt).toContain('no pidas que te peguen el guion')
+    expect(prompt).toContain('Historia (escenas del guion guardado, en orden):')
+    expect(prompt).toContain('«EXT. MERCADO - DÍA»: Beto compra cebollas.')
+    expect(prompt).toContain('Escenas donde aparece Locación «Cocina»:')
+    const where = prompt.split('Escenas donde aparece')[1]
+    expect(where).toContain('Escena 1 · «INT. COCINA - DÍA»')
+    expect(where).toContain('Diálogo: BETO: Ya huele a caldo.')
+    expect(where).not.toContain('MERCADO')
+    // Sin escenas lo dice claro (no inventa ni pide el guion).
+    expect(buildBiblePacket(st().project!, key, newThread(key, 't', undefined, 'bible'), 'x')!.prompt).toContain('(el proyecto aún no tiene escenas)')
+  })
+
   it('el esquema es estricto y el formato malo no se usa', () => {
     const schema = JSON.parse(schemaText)
     expect(schema.additionalProperties).toBe(false)
@@ -263,10 +288,14 @@ describe('consulta con GPT (simulada, sin gastar cuota)', () => {
     const key = targetKey('characters', abuela)
     const before = JSON.stringify(st().project)
     const consult = vi.fn(async () => JSON.stringify(answer([prop({ texto: 'Señora con rebozo azul y trenza.' })])))
-    const r = await runBibleConsult(st().project!, key, newThread(key, 't', undefined, 'bible'), ' Más detalle ', deps(consult))
+    const scenes = st().project!.sceneIds.map((id) => st().scenes[id])
+    const r = await runBibleConsult(st().project!, scenes, key, newThread(key, 't', undefined, 'bible'), ' Más detalle ', deps(consult))
     expect(r.ok).toBe(true)
     if (!r.ok) return
     const args = (consult.mock.calls[0] as unknown as [Parameters<GptDeps['consult']>[0]])[0]
+    // Lo que de verdad le llega a GPT trae el guion guardado.
+    expect(args.prompt).toContain('«INT. COCINA - DÍA»')
+    expect(args.prompt).toContain('Escenas donde aparece Personaje «Abuela»:\nEscena 1')
     expect(args.images).toEqual([])
     expect(args.schema).toBe(schemaText)
     expect(r.thread.messages.map((m) => m.from)).toEqual(['director', 'gpt'])
@@ -282,7 +311,7 @@ describe('consulta con GPT (simulada, sin gastar cuota)', () => {
     const consult = vi.fn(async () => JSON.stringify(answer([])))
     const d: GptDeps = { desktop: () => true, diskPath: async (id) => ({ file: `/orig/${id}.png`, icon: `/mini/${id}.jpg` }), consult }
     const key = targetKey('characters', beto)
-    expect((await runBibleConsult(st().project!, key, newThread(key, 't', undefined, 'bible'), 'x', d)).ok).toBe(true)
+    expect((await runBibleConsult(st().project!, [], key, newThread(key, 't', undefined, 'bible'), 'x', d)).ok).toBe(true)
     expect((consult.mock.calls[0] as unknown as [Parameters<GptDeps['consult']>[0]])[0].images).toEqual(['/mini/img-beto.jpg'])
     st().updateCharacter(beto, { imageId: undefined })
   })
@@ -290,11 +319,11 @@ describe('consulta con GPT (simulada, sin gastar cuota)', () => {
   it('en la web no consulta; formato malo o apartado borrado: el hilo queda igual', async () => {
     const thread = newThread<BibleProposal, BibleSeen>('style', 't', undefined, 'bible')
     const consult = vi.fn(async () => '{"x":1}')
-    expect(await runBibleConsult(st().project!, 'style', thread, 'x', deps(consult, false))).toEqual({ ok: false, kind: 'web', message: GPT_ERROR_TEXT.web })
+    expect(await runBibleConsult(st().project!, [], 'style', thread, 'x', deps(consult, false))).toEqual({ ok: false, kind: 'web', message: GPT_ERROR_TEXT.web })
     expect(consult).not.toHaveBeenCalled()
-    const bad = await runBibleConsult(st().project!, 'style', thread, 'x', deps(consult))
+    const bad = await runBibleConsult(st().project!, [], 'style', thread, 'x', deps(consult))
     expect(bad.ok === false && bad.kind).toBe('bad-format')
-    const gone = await runBibleConsult(st().project!, 'props:nada', thread, 'x', deps(consult))
+    const gone = await runBibleConsult(st().project!, [], 'props:nada', thread, 'x', deps(consult))
     expect(gone.ok).toBe(false)
     expect(consult).toHaveBeenCalledTimes(1)
     expect(thread.messages).toEqual([])

@@ -91,12 +91,19 @@ export async function runScriptConsult(
 export type BibleConsultResult = { ok: true; thread: BibleThread } | { ok: false; kind: GptErrorKind; message: string }
 
 /**
- * Un mensaje del director en un hilo de la Biblia (estilo o una ficha). Devuelve el hilo con el mensaje
+ * Un mensaje del director en un hilo de la Biblia (estilo o una ficha). `scenes`: el guion guardado, en orden. Devuelve el hilo con el mensaje
  * y la respuesta de GPT (propuestas pendientes). Si falla, el hilo queda igual.
  */
-export async function runBibleConsult(project: Project, key: string, thread: BibleThread, request: string, deps: GptDeps = defaultDeps): Promise<BibleConsultResult> {
+export async function runBibleConsult(
+  project: Project,
+  scenes: Scene[],
+  key: string,
+  thread: BibleThread,
+  request: string,
+  deps: GptDeps = defaultDeps,
+): Promise<BibleConsultResult> {
   if (!deps.desktop()) return { ok: false, kind: 'web', message: GPT_ERROR_TEXT.web }
-  const packet = buildBiblePacket(project, key, thread, request)
+  const packet = buildBiblePacket(project, key, thread, request, scenes)
   if (!packet) return { ok: false, kind: 'bad-format', message: 'Ese apartado ya no existe en la Biblia. No se cambió nada.' }
   try {
     // Solo la miniatura de la imagen Canon de la ficha (si no está en disco, va sin imagen).
