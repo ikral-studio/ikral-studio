@@ -668,17 +668,25 @@
       "fase": "M",
       "titulo": "Datos del Mini Monitor (mini.json) desde el puente",
       "criterio": "«Ahora» y «Te necesito» ≤200, «Sin señal» con datos viejos, cuota solo con fuente verificable; pruebas.",
-      "estado": "en curso",
+      "estado": "hecho",
       "responsable": "Claude",
-      "fecha": null,
+      "fecha": "2026-10-24",
       "evidencia": [
         {
           "tipo": "prueba",
           "ref": "tools/mini-monitor.test.mjs"
+        },
+        {
+          "tipo": "commit",
+          "ref": "73ea229"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "npm test y npm run build pasaron (comprobación automática 2026-10-24)"
         }
       ],
       "dependeDe": [],
-      "siguiente": "Commit de este paso con tools/mini-monitor.test.mjs en verde.",
+      "siguiente": null,
       "director": null,
       "verificar": {
         "asunto": "^Mini Monitor M1"

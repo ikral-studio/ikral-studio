@@ -3,7 +3,7 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 18 de 32 hechas · 2 en curso · 8 bloqueadas · 4 pendientes · 0 aprobadas por el director.
+**Avance:** 19 de 32 hechas · 1 en curso · 8 bloqueadas · 4 pendientes · 0 aprobadas por el director.
 **Siguiente:** UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
@@ -135,10 +135,9 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 
 ## Fase M · IKRAL Mini Monitor para Mac (Issue #4)
 
-- [~] **M1 · Datos del Mini Monitor (mini.json) desde el puente** — Claude
+- [x] **M1 · Datos del Mini Monitor (mini.json) desde el puente** — Claude · 2026-10-24
   - Criterio: «Ahora» y «Te necesito» ≤200, «Sin señal» con datos viejos, cuota solo con fuente verificable; pruebas.
-  - Evidencia: prueba: tools/mini-monitor.test.mjs
-  - Siguiente: Commit de este paso con tools/mini-monitor.test.mjs en verde.
+  - Evidencia: prueba: tools/mini-monitor.test.mjs · commit `73ea229` · prueba: npm test y npm run build pasaron (comprobación automática 2026-10-24)
 - [!] **M2 · App «IKRAL Monitor.app» (ventana + barra de menús + voz)** — Claude
   - Criterio: Compila con swiftc; la ventana se cierra, minimiza y restaura; icono arriba con menú y «Abrir ventana»; ▶ Escuchar estado.
   - Depende de: M1
