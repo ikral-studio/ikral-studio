@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { BLUEPRINT_FORMAT, summarize } from './blueprint-core.mjs'
 import { chainRange, closedStages, normalizeState, pidAlive, planStages } from './coord-bridge-core.mjs'
 import {
   MAX_STATUS_BYTES,
@@ -183,6 +184,9 @@ export function writeMonitor(opts) {
     } catch {
       // sin plan o sin git: se enseña lo demás
     }
+    // Blueprint con checklist: solo su resumen (cuántas hechas, la siguiente, los bloqueos).
+    const bp = readJson(join(workdir, 'docs', 'blueprint', 'ikral-studio.json'), null)
+    const blueprint = bp?.formato === BLUEPRINT_FORMAT ? summarize(bp) : null
     const github = opts.github === false ? (cache.github ?? { ok: false, at: null, comments: [] }) : githubInfo(opts.repo, opts.issue, cache.github)
     const snap = {
       state,
@@ -193,6 +197,7 @@ export function writeMonitor(opts) {
       git,
       events: readEvents(stateDir),
       github,
+      blueprint,
       bridgeBeatAt: now,
     }
     const view = buildView(snap, now)

@@ -322,3 +322,49 @@ describe('monitor: varios proyectos', () => {
     expect(r.projects.every((p) => !p.problem)).toBe(true)
   })
 })
+
+describe('monitor: Blueprint y ficha del Panel', () => {
+  const HOME = '/casa'
+  const ROOT = '/casa/Library/Application Support'
+  const src = { type: 'github-issue', repo: 'ikral-studio/coordinacion', issue: 1 }
+  const bp = { total: 23, hechas: 13, enCurso: 1, bloqueadas: 4, pendientes: 5, aprobadas: 0, fase: { id: 'P', titulo: 'Puente' }, siguiente: { id: 'P4', titulo: 'Blueprint con checklist' }, bloqueos: [{ id: 'P6', titulo: 'Respaldo remoto' }] }
+
+  it('el resumen del Blueprint llega a la tarjeta y al detalle; la ficha del Panel se enseña o dice «sin enlazar»', () => {
+    const [a, b] = parseRegistry(
+      {
+        projects: [
+          { id: 'ikral-studio', name: 'IKRAL Studio', source: src, statusDir: '~/Library/Application Support/a', panelFicha: 'IKRAL Studio · Editor de storyboard' },
+          { id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: null },
+        ],
+      },
+      { home: HOME, root: ROOT },
+    ).projects
+    expect(b.panelFicha).toBeNull()
+    const view = buildView({ ...base(), blueprint: bp }, NOW)
+    const va = projectView(a, statusPayload(a, view), NOW)
+    expect(va.blueprint).toMatchObject({ hechas: 13, total: 23, siguiente: { id: 'P4' } })
+    const html = renderDashboard([{ project: a, view: va }, { project: b, view: projectView(b, null, NOW) }], NOW)
+    expect(html).toContain('Blueprint: 13 de 23 hechas · siguiente: P4')
+    expect(html).toContain('Bloqueos: P6 · Respaldo remoto')
+    expect(html).toContain('Ficha en el Panel de IKRAL: IKRAL Studio · Editor de storyboard')
+    expect(html).toContain('Ficha en el Panel de IKRAL: sin enlazar todavía')
+  })
+
+  it('un resumen falso o incoherente no se enseña, y sus textos salen limpios', () => {
+    const [p] = parseRegistry({ projects: [{ id: 'plancha-hotel', name: 'Plancha Hotel', statusDir: '~/Library/Application Support/b' }] }, { home: HOME, root: ROOT }).projects
+    const pay = (blueprint) => projectView(p, statusPayload(p, { ...buildView(base(), NOW), blueprint }), NOW).blueprint
+    expect(pay({ ...bp, hechas: 40 })).toBeNull()
+    expect(pay({ ...bp, total: -1 })).toBeNull()
+    expect(pay('hecho')).toBeNull()
+    const v = pay({ ...bp, siguiente: { id: 'P4', titulo: 'corre npm run build en /Users/kyo/x' }, bloqueos: [{ id: '<b>', titulo: 'x' }] })
+    expect(JSON.stringify(v)).not.toMatch(/Users|npm run/)
+    expect(v.bloqueos).toEqual([])
+  })
+
+  it('writeMonitor lee el Blueprint real del repo', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mon-'))
+    const v = writeMonitor({ stateDir: dir, workdir: process.cwd(), pauseFile: join(dir, 'no'), github: false, now: NOW, ps: '', registry: { projects: [] } })
+    expect(v.blueprint.total).toBeGreaterThan(0)
+    expect(readFileSync(join(dir, 'monitor.html'), 'utf8')).toMatch(/Blueprint: \d+ de \d+ hechas/)
+  })
+})

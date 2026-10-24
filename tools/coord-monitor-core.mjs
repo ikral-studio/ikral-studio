@@ -290,6 +290,7 @@ export function buildView(snap, now) {
     dirty: snap.git?.dirty ?? 0,
     timeline,
     stages: stageList(snap.plan, st.task?.stage ?? null),
+    blueprint: snap.blueprint ?? null,
     github: {
       ok: snap.github?.ok ?? false,
       at: snap.github?.at ?? null,
@@ -315,6 +316,7 @@ export const OWN_PROJECT = {
   label: 'Editor de storyboard',
   source: { type: 'github-issue', repo: 'ikral-studio/coordinacion', issue: 1 },
   statusDir: 'propio',
+  panelFicha: null,
   problem: null,
 }
 
@@ -334,8 +336,10 @@ const cleanSource = (s) =>
 const sameSource = (a, b) => JSON.stringify(cleanSource(a)) === JSON.stringify(cleanSource(b))
 
 /**
- * Registro de proyectos autorizados → { projects, errors }. Cada proyecto: { id, name, label, source, statusDir, problem }.
+ * Registro de proyectos autorizados → { projects, errors }. Cada proyecto: { id, name, label, source, statusDir, panelFicha, problem }.
  * statusDir null = sin puente («No conectado»). Una carpeta fuera de root no se lee nunca (problem).
+ * panelFicha = nombre de su ficha en el Panel de IKRAL (la fuente oficial); null = sin enlazar todavía. El registro
+ * no reemplaza al Panel: solo dice dónde leer el estado en vivo.
  */
 export function parseRegistry(data, { home, root }) {
   const projects = []
@@ -354,7 +358,7 @@ export function parseRegistry(data, { home, root }) {
       statusDir = resolveInside(raw.statusDir, home, root)
       if (!statusDir) problem = 'Su carpeta de estado no está en la zona permitida del monitor: no se lee.'
     }
-    projects.push({ id, name: sanitize(raw.name, 40) || id, label: sanitize(raw.label ?? '', 60), source: cleanSource(raw.source), statusDir, problem })
+    projects.push({ id, name: sanitize(raw.name, 40) || id, label: sanitize(raw.label ?? '', 60), source: cleanSource(raw.source), statusDir, panelFicha: sanitize(raw.panelFicha ?? '', 80) || null, problem })
   }
   return { projects, errors }
 }
@@ -365,13 +369,34 @@ export const statusPayload = (project, view) => ({ format: STATUS_FORMAT, projec
 const num = (x) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : null)
 const arr = (x, max) => (Array.isArray(x) ? x.slice(0, max) : [])
 const STAGE_STATES = new Set(['closed', 'current', 'next', 'later'])
+const count = (x) => (Number.isInteger(x) && x >= 0 && x <= 999 ? x : 0)
+const bpItem = (x) => (/^[\w.-]{1,8}$/.test(x?.id ?? '') && sanitize(x.titulo, 80) ? { id: x.id, titulo: sanitize(x.titulo, 80) } : null)
+
+/** Resumen del Blueprint (de tools/blueprint-core.mjs summarize) validado y limpio; null si no hay o no cuadra. */
+export function cleanBlueprint(b) {
+  if (!b || typeof b !== 'object') return null
+  const total = count(b.total)
+  const hechas = count(b.hechas)
+  if (!total || hechas > total) return null
+  return {
+    total,
+    hechas,
+    enCurso: count(b.enCurso),
+    bloqueadas: count(b.bloqueadas),
+    pendientes: count(b.pendientes),
+    aprobadas: count(b.aprobadas),
+    fase: b.fase && /^[\w.-]{1,8}$/.test(b.fase.id ?? '') ? { id: b.fase.id, titulo: sanitize(b.fase.titulo, 60) } : null,
+    siguiente: bpItem(b.siguiente),
+    bloqueos: arr(b.bloqueos, 8).map(bpItem).filter(Boolean),
+  }
+}
 
 /**
  * Vista segura de un proyecto a partir de su status.json (texto u objeto; null = no existe).
  * Todo se vuelve a validar y limpiar. Sin datos → «No conectado»; nunca se finge actividad.
  */
 export function projectView(project, raw, now) {
-  const off = (status, detail) => ({ connected: false, status, detail, stale: false, generatedAt: null, task: null, progress: null, claude: null, lastSignal: null, dirty: 0, timeline: [], stages: [], github: null })
+  const off = (status, detail) => ({ connected: false, status, detail, stale: false, generatedAt: null, task: null, progress: null, claude: null, lastSignal: null, dirty: 0, timeline: [], stages: [], blueprint: null, github: null })
   if (project.problem) return off('error', project.problem)
   if (!project.statusDir) return off('disconnected', 'Este proyecto no tiene puente conectado. No se muestra actividad.')
   if (raw == null) return off('disconnected', 'Su puente todavía no ha escrito datos. No se muestra actividad.')
@@ -404,6 +429,7 @@ export function projectView(project, raw, now) {
     stages: arr(d.stages, 60)
       .filter((x) => /^[\w.-]{1,8}$/.test(x?.id ?? '') && STAGE_STATES.has(x.state))
       .map((x) => ({ id: x.id, title: sanitize(x.title, 70), state: x.state })),
+    blueprint: cleanBlueprint(d.blueprint),
     github: d.github
       ? {
           ok: d.github.ok === true,
@@ -421,6 +447,18 @@ const lastActivity = (v) => Math.max(0, v.lastSignal?.at ?? 0, ...v.timeline.map
 
 const ts = (at) => (at ? `<span class="ago" data-ts="${Number(at)}">${esc(ago(Date.now() - at))}</span> <small>(${esc(clock(at))})</small>` : '—')
 const sourceText = (s) => (s ? `Issue #${s.issue} de ${s.repo}` : 'sin origen registrado')
+const fichaText = (p) => `Ficha en el Panel de IKRAL: ${p.panelFicha ? esc(p.panelFicha) : 'sin enlazar todavía'}`
+const bpLine = (b) => `Blueprint: ${b.hechas} de ${b.total} hechas${b.siguiente ? ` · siguiente: ${b.siguiente.id}` : ''}`
+
+function renderBlueprint(b) {
+  if (!b) return ''
+  return `<div class="card"><h2>Blueprint (checklist)</h2>
+<div><b>${b.hechas} de ${b.total}</b> hechas · ${b.enCurso} en curso · ${b.bloqueadas} bloqueadas · ${b.pendientes} pendientes · ✅ ${b.aprobadas} aprobadas por el director</div>
+${b.fase ? `<div>Fase actual: ${esc(b.fase.id)} · ${esc(b.fase.titulo)}</div>` : ''}
+<div>Siguiente: ${b.siguiente ? `${esc(b.siguiente.id)} · ${esc(b.siguiente.titulo)}` : 'nada pendiente'}</div>
+${b.bloqueos.length ? `<div class="warn">Bloqueos: ${b.bloqueos.map((x) => `${esc(x.id)} · ${esc(x.titulo)}`).join(' — ')}</div>` : ''}
+<p class="muted">«Hecho» solo con evidencia verificable (commit, prueba, URL o decisión del director).</p></div>`
+}
 
 function renderProject({ project: p, view: v }) {
   const s = STATUS[v.status] ?? STATUS.idle
@@ -430,7 +468,7 @@ function renderProject({ project: p, view: v }) {
   if (!v.connected)
     return `<section class="proj" id="s-${esc(p.id)}" data-id="${esc(p.id)}" data-title="${esc(`${s.icon} ${s.label} · ${p.name}`)}">${head}
 <div class="badge live" style="background:${s.color}">${esc(s.icon)}<div>${esc(s.label)}<small>${esc(v.detail)}</small></div></div>
-<p class="muted">Origen: ${esc(sourceText(p.source))}.</p></section>`
+<p class="muted">Origen: ${esc(sourceText(p.source))}. ${fichaText(p)}.</p></section>`
   return `<section class="proj${v.stale ? ' stale' : ''}" id="s-${esc(p.id)}" data-id="${esc(p.id)}" data-gen="${v.generatedAt}" data-title="${esc(`${s.icon} ${s.label} · ${p.name}`)}" data-stale-title="${esc(`${STATUS.nosignal.icon} ${STATUS.nosignal.label} · ${p.name}`)}">${head}
 <div class="badge stalebadge" style="background:${STATUS.nosignal.color}">${STATUS.nosignal.icon}<div>${STATUS.nosignal.label}<small>Sus datos no se actualizan desde <span class="ago" data-ts="${v.generatedAt}"></span>. Puede que el Mac esté dormido, sin red o su puente apagado. Lo de abajo es el último estado conocido.</small></div></div>
 <div class="badge live" style="background:${s.color}">${esc(s.icon)}<div>${esc(s.label)}<small>${esc(v.detail)}</small></div></div>
@@ -442,6 +480,7 @@ ${v.task?.startedAt ? `<div>Empezó ${ts(v.task.startedAt)}${v.task.attempt > 1 
 ${v.progress?.stalled ? '<div class="warn">Sigue en ejecución, pero sin avances nuevos.</div>' : ''}
 ${v.dirty ? `<div class="muted">${v.dirty} archivo(s) con cambios todavía sin commit.</div>` : ''}
 </div>
+${renderBlueprint(v.blueprint)}
 ${v.stages.length ? `<div class="card"><h2>Etapas del plan</h2><div class="stages">${rows(v.stages, (x) => `<span class="st ${x.state}" title="${esc(x.title)}">${stageIcon[x.state]} ${esc(x.id)}${x.title ? ` · ${esc(x.title)}` : ''}</span>`)}</div>
 <p class="muted">✓ cerrada · ▶ en curso · → la siguiente</p></div>` : ''}
 <div class="grid">
@@ -449,6 +488,7 @@ ${v.timeline.length ? `<div class="card"><h2>Historial reciente</h2><ul>${rows(v
 ${v.github ? `<div class="card"><h2>Últimos comentarios en GitHub</h2><ul>${v.github.comments.length ? rows(v.github.comments, (c) => `<li><b>${esc(c.who)}</b>: ${esc(c.title)}<br>${ts(c.at)}</li>`) : '<li class="muted">Todavía nada.</li>'}</ul>
 <p class="muted">${v.github.ok ? `Leído ${ts(v.github.at)}` : `<span class="warn">GitHub sin conexión</span>${v.github.at ? ` · último dato ${ts(v.github.at)}` : ''}`}</p></div>` : ''}
 </div>
+<p class="muted">${fichaText(p)}.</p>
 <p class="muted">Origen: ${esc(sourceText(p.source))} · su puente: última vuelta ${ts(v.bridgeBeatAt)} · datos escritos ${ts(v.generatedAt)}.</p></section>`
 }
 
@@ -458,7 +498,7 @@ function renderCard({ project: p, view: v }) {
   const what = v.connected ? (v.task?.name ?? v.detail) : v.detail
   return `<a class="pc${v.stale ? ' stale' : ''}" href="#p-${esc(p.id)}" data-id="${esc(p.id)}"${v.connected ? ` data-gen="${v.generatedAt}"` : ''}>
 <span class="lbl live" style="background:${s.color}">${esc(s.icon)} ${esc(s.label)}</span><span class="lbl stalebadge" style="background:${STATUS.nosignal.color}">${STATUS.nosignal.icon} ${STATUS.nosignal.label}</span>
-<b>${esc(p.name)}</b><small>${esc(what)}</small><small>Última actividad: ${last ? ts(last) : '—'}</small></a>`
+<b>${esc(p.name)}</b><small>${esc(what)}</small>${v.blueprint ? `<small>${esc(bpLine(v.blueprint))}</small>` : ''}<small>Última actividad: ${last ? ts(last) : '—'}</small></a>`
 }
 
 /**

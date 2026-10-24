@@ -12,6 +12,8 @@
     "test:e2e": "playwright test",
     "monitor": "node tools/coord-monitor.mjs",
     "acceso-monitor": "node tools/monitor-shortcut.mjs",
+    "blueprint": "node tools/blueprint.mjs",
+    "revisar-respaldo": "node tools/backup-check.mjs",
     "build:web": "tsc -b && vite build",
     "app:dev": "tauri dev",
     "app:build": "tauri build"

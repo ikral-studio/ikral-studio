@@ -1,0 +1,366 @@
+{
+  "formato": "ikral-blueprint/1",
+  "proyecto": "ikral-studio",
+  "nombre": "IKRAL Studio",
+  "nota": "Borrador del Blueprint con checklist. La fuente oficial es la ficha en el Panel de IKRAL; este archivo es lo que la sesión del Panel registra (DS-010). «hecho» solo con evidencia verificable (commit que existe, prueba, URL o decisión del director); un comentario o un acuse nunca cuentan. La casilla «director» solo la marca el director. Validar: npm run blueprint. Ver docs/blueprint/README.md.",
+  "enlaces": {
+    "repositorio": "https://github.com/ikral-studio/ikral-studio",
+    "coordinacion": "https://github.com/ikral-studio/coordinacion/issues/1",
+    "plan": "docs/plan-maestro-ikral-studio.md",
+    "bitacora": "../BITACORA.md",
+    "publicado": "https://ikral.com/studio/"
+  },
+  "fases": [
+    { "id": "1", "titulo": "Continuidad narrativa" },
+    { "id": "2", "titulo": "Cobertura cinematográfica" },
+    { "id": "3", "titulo": "ChatGPT integrado" },
+    { "id": "4", "titulo": "Biblia de Producción PDF" },
+    { "id": "P", "titulo": "Puente, monitor y registro en IKRAL" }
+  ],
+  "tareas": [
+    {
+      "id": "1.1",
+      "fase": "1",
+      "titulo": "Tipos, auditor sin IA y pruebas",
+      "criterio": "Auditor con 5 reglas; caso «papelitos en DESPUÉS» = aviso alto; «ya no hay comandas» = revisar.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "cf9dbef" },
+        { "tipo": "prueba", "ref": "src/tests/continuity.test.ts (20 pruebas)" }
+      ],
+      "dependeDe": [],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "1.2",
+      "fase": "1",
+      "titulo": "Etapas y decisiones en el store (Deshacer, unir por id)",
+      "criterio": "Quitar una etapa limpia sus referencias y Deshacer las devuelve; una decisión de Claude no se pierde al editar a la vez.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "cf9dbef" },
+        { "tipo": "prueba", "ref": "src/tests/continuityStore.test.ts (10 pruebas)" }
+      ],
+      "dependeDe": ["1.1"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "1.3",
+      "fase": "1",
+      "titulo": "Interfaz «Etapas y decisiones» y «Revisar continuidad»",
+      "criterio": "Solo el director aprueba decisiones; proyecto viejo abre igual y sin avisos.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "cf9dbef" },
+        { "tipo": "prueba", "ref": "tests-e2e/acceptance.spec.ts (prueba «papelitos»)" }
+      ],
+      "dependeDe": ["1.2"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "1.4",
+      "fase": "1",
+      "titulo": "Fase 1 publicada y probada en la página real",
+      "criterio": "Respaldo verificado antes; Playwright pasa en la página publicada.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "url", "ref": "https://ikral.com/studio/" },
+        { "tipo": "prueba", "ref": "34/34 Playwright en la página publicada (bitácora 2026-10-24 00:15)" }
+      ],
+      "dependeDe": ["1.3"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "2a",
+      "fase": "2",
+      "titulo": "Planos: datos, shotsOf y JSON v2",
+      "criterio": "Escena sin planos = 1 plano implícito; JSON v1 igual que hoy; v2 ida y vuelta; exportar v1 avisa qué se pierde.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "52c670f" },
+        { "tipo": "prueba", "ref": "src/tests/coverage.test.ts (19 pruebas)" }
+      ],
+      "dependeDe": ["1.3"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "2b",
+      "fase": "2",
+      "titulo": "Panel «Cobertura de escena» y «Pasar a cobertura»",
+      "criterio": "Respaldo automático y Deshacer; ninguna imagen ni video se pierde.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [{ "tipo": "commit", "ref": "ec1abf6" }],
+      "dependeDe": ["2a"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "2c",
+      "fase": "2",
+      "titulo": "Edición, línea de tiempo, reproductor y NLE por plano",
+      "criterio": "Duración de la escena = suma de planos; NLE un clip por plano.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "320a936" },
+        { "tipo": "prueba", "ref": "src/tests/coveragePlayback.test.ts (8) y 1 Playwright" }
+      ],
+      "dependeDe": ["2b"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "2d",
+      "fase": "2",
+      "titulo": "Imagen inicial y final por plano con Claude (shot-preview)",
+      "criterio": "Pedido shot-preview documentado; imágenes ligadas al id del plano.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "3c2b696" },
+        { "tipo": "prueba", "ref": "src/tests/shotFrames.test.ts (7) y 1 Playwright" }
+      ],
+      "dependeDe": ["2c"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "2.pub",
+      "fase": "2",
+      "titulo": "Publicar Fase 2 y probar en la página real",
+      "criterio": "Autorización expresa del director, respaldo verificado y Playwright en la página publicada.",
+      "estado": "pendiente",
+      "responsable": "Director",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["2d"],
+      "siguiente": "Esperar autorización del director para publicar.",
+      "director": null
+    },
+    {
+      "id": "3a",
+      "fase": "3",
+      "titulo": "Revisión de continuidad con GPT (texto + imágenes)",
+      "criterio": "Codex solo lectura; propuestas no destructivas; en la web avisa «Disponible en la app de Mac».",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "ae80fed" },
+        { "tipo": "prueba", "ref": "src/tests/gpt.test.ts (14 con mocks)" }
+      ],
+      "dependeDe": ["2d"],
+      "siguiente": null,
+      "director": null,
+      "verificar": { "asunto": "^Fase 3a " }
+    },
+    {
+      "id": "3b",
+      "fase": "3",
+      "titulo": "«Consultar GPT» en guion y diálogos",
+      "criterio": "Hilos con historial; propuestas con Aceptar/Editar/Descartar/Pedir a Claude y Deshacer.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "824587b" },
+        { "tipo": "prueba", "ref": "src/tests/gptScript.test.ts (16 con mocks) y 1 e2e" }
+      ],
+      "dependeDe": ["3a"],
+      "siguiente": null,
+      "director": null,
+      "verificar": { "asunto": "^Fase 3b " }
+    },
+    {
+      "id": "3c",
+      "fase": "3",
+      "titulo": "«Consultar GPT» en personajes y Biblia",
+      "criterio": "Paquete por apartado con solo decisiones aprobadas; reglas de GPT aprobadas por el director.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "5c55e8d" },
+        { "tipo": "prueba", "ref": "src/tests/gptBible.test.ts (16 con mocks) y 1 e2e" }
+      ],
+      "dependeDe": ["3b"],
+      "siguiente": null,
+      "director": null,
+      "verificar": { "asunto": "^Fase 3c " }
+    },
+    {
+      "id": "3d",
+      "fase": "3",
+      "titulo": "«Consultar GPT» en cobertura y planos",
+      "criterio": "Proponer planos (cámara y duración) y diseñar cámara y prompts por plano; nada cambia sin «Aceptar».",
+      "estado": "pendiente",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["3c"],
+      "siguiente": "Siguiente etapa del encadenamiento 3a → 4 (la toma el puente).",
+      "director": null,
+      "verificar": { "asunto": "^Fase 3d " }
+    },
+    {
+      "id": "3e",
+      "fase": "3",
+      "titulo": "«Consultar GPT» en edición",
+      "criterio": "Ritmo, orden y duración como propuestas que decide el director.",
+      "estado": "pendiente",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["3d"],
+      "siguiente": null,
+      "director": null,
+      "verificar": { "asunto": "^Fase 3e " }
+    },
+    {
+      "id": "3.real",
+      "fase": "3",
+      "titulo": "Prueba real con Codex en la app de Mac",
+      "criterio": "Los casos de examples.ts dan los hallazgos esperados con GPT de verdad (pocas veces, sin gastar límite).",
+      "estado": "bloqueado",
+      "responsable": "Director",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["3a"],
+      "siguiente": "Requiere instalar la app de Mac y una sesión con Codex: autorización del director.",
+      "director": null
+    },
+    {
+      "id": "4",
+      "fase": "4",
+      "titulo": "Biblia de Producción PDF",
+      "criterio": "El Portafolio actual no cambia; la Biblia incluye todas las secciones con datos; proyectos viejos también la generan.",
+      "estado": "pendiente",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["3e"],
+      "siguiente": null,
+      "director": null,
+      "verificar": { "asunto": "^Fase 4 " }
+    },
+    {
+      "id": "4.pub",
+      "fase": "4",
+      "titulo": "Descargar la Biblia en la página publicada (Playwright)",
+      "criterio": "La Biblia descargada en https://ikral.com/studio/ abre bien.",
+      "estado": "bloqueado",
+      "responsable": "Director",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["4"],
+      "siguiente": "Requiere autorización expresa para publicar.",
+      "director": null
+    },
+    {
+      "id": "P1",
+      "fase": "P",
+      "titulo": "Puente ChatGPT → Claude con cola, reintento y encadenamiento",
+      "criterio": "Una tarea por vez, candado con PID, 1 reintento, deduplicación, paro ante fallo.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "e04b574" },
+        { "tipo": "commit", "ref": "f5c5a0c" },
+        { "tipo": "prueba", "ref": "tools/coord-bridge.test.mjs" }
+      ],
+      "dependeDe": [],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "P2",
+      "fase": "P",
+      "titulo": "Monitor IKRAL multiproyecto (solo lectura)",
+      "criterio": "Estados reales, Sin señal por proyecto, No conectado sin puente, origen verificable, sin rutas ni llaves.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        { "tipo": "commit", "ref": "cf4228d" },
+        { "tipo": "commit", "ref": "da82e93" },
+        { "tipo": "prueba", "ref": "tools/coord-monitor.test.mjs" }
+      ],
+      "dependeDe": ["P1"],
+      "siguiente": null,
+      "director": null
+    },
+    {
+      "id": "P3",
+      "fase": "P",
+      "titulo": "Acceso «Monitor IKRAL» en el Escritorio real",
+      "criterio": "Enlace creado en ~/Desktop que abre el monitor real.",
+      "estado": "bloqueado",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [{ "tipo": "commit", "ref": "6286fe0" }],
+      "dependeDe": ["P2"],
+      "siguiente": "Correr una vez `npm run acceso-monitor` desde una sesión con permiso de escribir en el Escritorio.",
+      "director": null
+    },
+    {
+      "id": "P4",
+      "fase": "P",
+      "titulo": "Blueprint con checklist y validador de evidencia",
+      "criterio": "«hecho» solo con evidencia verificable; un comentario o acuse nunca cuenta; resumen en el monitor.",
+      "estado": "en curso",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [{ "tipo": "prueba", "ref": "tools/blueprint.test.mjs" }],
+      "dependeDe": ["P2"],
+      "siguiente": "Pasa a «hecho» con el commit de esta tarea (npm run blueprint lo comprueba).",
+      "director": null,
+      "verificar": { "asunto": "^Puente: Blueprint con checklist" }
+    },
+    {
+      "id": "P5",
+      "fase": "P",
+      "titulo": "Ficha de IKRAL Studio en el Panel",
+      "criterio": "La sesión del Panel registra la ficha (Blueprint, inventario, bitácora) con el «sí» del director.",
+      "estado": "pendiente",
+      "responsable": "Panel ikral",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": ["P4"],
+      "siguiente": "Dejar NOTA para «Panel ikral» con docs/panel/traspaso-ikral-studio.md.",
+      "director": null
+    },
+    {
+      "id": "P6",
+      "fase": "P",
+      "titulo": "Respaldo remoto en GitHub (push verificado)",
+      "criterio": "Revisión previa limpia (npm run revisar-respaldo) y push con autorización; el remoto tiene el mismo commit que el local.",
+      "estado": "bloqueado",
+      "responsable": "Director",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [],
+      "siguiente": "El repositorio es público: subir los commits locales = publicarlos. Necesita autorización expresa del director.",
+      "director": null
+    }
+  ]
+}
