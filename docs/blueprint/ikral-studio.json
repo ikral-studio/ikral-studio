@@ -629,6 +629,35 @@
       "dependeDe": [],
       "siguiente": "El repositorio es público: subir los commits locales = publicarlos. Necesita autorización expresa del director.",
       "director": null
+    },
+    {
+      "id": "UX1",
+      "fase": "2",
+      "titulo": "«🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)",
+      "criterio": "En Edición y Preproducción: bloque visible con explicación llana, botón destacado «Dividir escena en tomas», luego «Agregar toma», contador y «Ver/editar tomas»; nada cambia hasta el clic; Deshacer y datos intactos. El director lo ve en la app instalada.",
+      "estado": "en curso",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "tests-e2e/acceptance.spec.ts «planos de cámara a la vista en Edición» (43 de 43 e2e en verde)"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "capturas docs/qa/2026-10-24-planos-de-camara/ (antes de dividir y con 2 tomas)"
+        },
+        {
+          "tipo": "decision",
+          "ref": "Issue #1, 2026-10-24: «lo modificamos de una vez» (nombre «🎬 Planos de cámara» y botón grande)",
+          "por": "director"
+        }
+      ],
+      "dependeDe": [
+        "2b"
+      ],
+      "siguiente": "Compilar e instalar la app de Mac en una sesión interactiva (el puente no tiene permiso de /Applications) y que el director lo vea ahí.",
+      "director": null
     }
   ]
 }

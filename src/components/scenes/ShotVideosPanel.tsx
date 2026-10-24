@@ -18,7 +18,7 @@ export function ShotVideosPanel({ sceneId }: { sceneId: string }) {
           {done} de {shots.length} con video · {formatDuration(shots.reduce((a, s) => a + shotLength(s), 0))}
         </span>
       </div>
-      <p className="mb-2 text-[11.5px] text-ink-3">Esta escena tiene cobertura: el reproductor y la línea de tiempo tocan los videos plano por plano.</p>
+      <p className="mb-2 text-[11.5px] text-ink-3">Esta escena está dividida en tomas: el reproductor y la línea de tiempo tocan los videos toma por toma.</p>
       <ol className="flex flex-col gap-3">
         {shots.map((sh, i) => (
           <li key={sh.id} className="rounded-xl border border-line bg-[#0f1828] p-2.5">

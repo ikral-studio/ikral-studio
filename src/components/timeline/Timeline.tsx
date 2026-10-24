@@ -26,7 +26,7 @@ const AUDIO_ACCEPT = 'audio/*,.mp3,.m4a,.wav,.aac,.ogg'
 const MUSIC_COLORS = ['#0d9488', '#db2777']
 const EMPTY_TRACKS: AudioTrack[] = []
 const TRACK_PAD = 12
-const COVERAGE_CUT = 'Esta escena tiene planos: para dividirla, agrega o duplica un plano en «Cobertura de escena»'
+const COVERAGE_CUT = 'Esta escena ya está dividida en tomas: agrega o duplica una toma en «🎬 Planos de cámara»'
 
 interface Layout {
   x: number

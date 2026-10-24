@@ -3,8 +3,8 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 18 de 26 hechas · 0 en curso · 6 bloqueadas · 2 pendientes · 0 aprobadas por el director.
-**Siguiente:** C2 · Respaldo único verificado antes de publicar
+**Avance:** 18 de 27 hechas · 1 en curso · 6 bloqueadas · 2 pendientes · 0 aprobadas por el director.
+**Siguiente:** UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 
@@ -48,6 +48,11 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Criterio: Autorización expresa del director, respaldo verificado y Playwright en la página publicada.
   - Depende de: 2d
   - Siguiente: Publicar no está autorizado aún. La web publicada tiene solo la Fase 1; las Fases 2–4 se publicarían juntas, con el respaldo C2 antes.
+- [~] **UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)** — Claude · 2026-10-24
+  - Criterio: En Edición y Preproducción: bloque visible con explicación llana, botón destacado «Dividir escena en tomas», luego «Agregar toma», contador y «Ver/editar tomas»; nada cambia hasta el clic; Deshacer y datos intactos. El director lo ve en la app instalada.
+  - Evidencia: prueba: tests-e2e/acceptance.spec.ts «planos de cámara a la vista en Edición» (43 de 43 e2e en verde) · prueba: capturas docs/qa/2026-10-24-planos-de-camara/ (antes de dividir y con 2 tomas) · decisión del director: Issue #1, 2026-10-24: «lo modificamos de una vez» (nombre «🎬 Planos de cámara» y botón grande)
+  - Depende de: 2b
+  - Siguiente: Compilar e instalar la app de Mac en una sesión interactiva (el puente no tiene permiso de /Applications) y que el director lo vea ahí.
 
 ## Fase 3 · ChatGPT integrado
 

@@ -127,7 +127,17 @@ function ProposalRow({ p, stale, onAccept, onEdit, onDiscard, onAskClaude, onUnd
 }
 
 /** Botón «Consultar GPT» que abre y cierra el panel de la cobertura de una escena o de un plano. */
-export function GptCoverageToggle({ sceneId, shotId, className = 'btn btn-sm btn-ghost' }: { sceneId: string; shotId?: string; className?: string }) {
+export function GptCoverageToggle({
+  sceneId,
+  shotId,
+  className = 'btn btn-sm btn-ghost',
+  label = 'Consultar GPT',
+}: {
+  sceneId: string
+  shotId?: string
+  className?: string
+  label?: string
+}) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -137,7 +147,7 @@ export function GptCoverageToggle({ sceneId, shotId, className = 'btn btn-sm btn
         aria-expanded={open}
         title={shotId ? 'GPT propone cámara y prompts para este plano; tú decides' : 'GPT propone los planos de esta escena; tú decides'}
       >
-        <MessagesSquare size={14} /> Consultar GPT
+        <MessagesSquare size={14} /> {label}
       </button>
       {open && (
         <div className="basis-full">
@@ -186,7 +196,7 @@ export function GptCoveragePanel({ sceneId, shotId }: { sceneId: string; shotId?
   const archived = threadsFor(threads, key, true, 'coverage')
   const current = threads.find((x) => x.id === currentId && x.sceneId === key) ?? active[0]
   const chips = CHIPS[shotId ? 'shot' : 'coverage']
-  const label = shotId ? `el plano ${shotIndex + 1}` : 'la cobertura'
+  const label = shotId ? `el plano ${shotIndex + 1}` : 'los planos de cámara'
 
   const persist = (next: StoredThread[]) =>
     void saveSectionThreads(project.id, 'coverage', next).catch(() => toast('No se pudo guardar la conversación con GPT', 'error'))
@@ -240,12 +250,12 @@ export function GptCoveragePanel({ sceneId, shotId }: { sceneId: string; shotId?
     if (needsCoverage(now)) {
       // La escena aún es un solo plano: para cambiar planos pasa a cobertura (respaldo antes + Deshacer).
       const ok = await askConfirm({
-        title: '¿Pasar la escena a cobertura?',
-        body: 'Para aplicar esto, la escena pasa a tener planos propios. Antes se hace un respaldo y no se pierde ninguna imagen. Puedes deshacer.',
-        confirmLabel: 'Pasar y aplicar',
+        title: '¿Dividir la escena en tomas?',
+        body: 'Para aplicar esto, la escena se divide en tomas. Antes se hace un respaldo y no se pierde ninguna imagen. Puedes deshacer.',
+        confirmLabel: 'Dividir y aplicar',
       })
       if (!ok) return
-      if (!(await useProject.getState().convertToCoverage(sceneId))) return toast('No se pudo pasar a cobertura. No se cambió nada.', 'error')
+      if (!(await useProject.getState().convertToCoverage(sceneId))) return toast('No se pudo dividir la escena en tomas. No se cambió nada.', 'error')
     }
     const r = acceptCoverageProposal(threads, ref, sceneId, ops())
     if (!r.ok) return toast(r.error === 'not-pending' ? 'Esta propuesta ya no está pendiente.' : 'Ese plano ya no existe. No se cambió nada.', 'info')

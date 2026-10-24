@@ -193,7 +193,7 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
           </span>
         )}
         {coverage ? (
-          <span className="chip bg-white/5 text-ink-2 tabular-nums" title="Con cobertura, la duración es la suma de sus planos">
+          <span className="chip bg-white/5 text-ink-2 tabular-nums" title="Dividida en tomas: la duración es la suma de sus tomas">
             <Clock3 size={11} /> {formatTime(effectiveDuration(scene))} · {scene.shots!.length} planos
           </span>
         ) : (

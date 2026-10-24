@@ -8,7 +8,7 @@ const REASON: Record<Snapshot['reason'], string> = {
   auto: 'Automático',
   'before-restore': 'Antes de restaurar',
   'before-import': 'Antes de importar guion',
-  'before-coverage': 'Antes de pasar a cobertura',
+  'before-coverage': 'Antes de dividir en tomas',
 }
 
 /** Respaldos automáticos del proyecto (ver y restaurar). */

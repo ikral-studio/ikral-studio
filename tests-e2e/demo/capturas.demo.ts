@@ -32,11 +32,11 @@ test('novedades de las Fases 2–4', async ({ page }) => {
   await shot(page, '04-preproduccion')
   const scenes = page.getByRole('region', { name: 'Escenas del proyecto' })
   await scenes.getByRole('button', { name: /Escena 01/ }).click()
-  const cov = scenes.getByRole('region', { name: 'Cobertura de escena' })
+  const cov = scenes.getByRole('region', { name: 'Planos de cámara' })
   await cov.scrollIntoViewIfNeeded()
   await shot(page, '05-escena-un-plano')
-  await cov.getByRole('button', { name: 'Pasar a cobertura' }).click()
-  for (let i = 0; i < 2; i++) await cov.getByRole('button', { name: 'Agregar plano' }).click()
+  await cov.getByRole('button', { name: 'Dividir escena en tomas' }).click()
+  for (let i = 0; i < 2; i++) await cov.getByRole('button', { name: 'Agregar toma' }).click()
   const list = cov.getByRole('list', { name: 'Planos de la escena' })
   const names = ['Plano general', 'Detalle de manos', 'Primer plano del rostro']
   for (let i = 0; i < 3; i++) {
@@ -68,7 +68,7 @@ test('novedades de las Fases 2–4', async ({ page }) => {
 
   // Edición: línea de tiempo con planos y GPT de edición
   await page.getByRole('button', { name: 'Ir a Edición' }).click()
-  await expect(c1.getByText(/Cobertura: 3 planos/)).toBeVisible()
+  await expect(c1.getByRole('region', { name: 'Planos de cámara' })).toContainText('3 tomas ·')
   await shot(page, '10-edicion-con-cobertura')
   const tl = page.locator('[aria-label="Línea de tiempo"]')
   await tl.getByRole('button', { name: 'Consultar GPT', exact: true }).first().click()
@@ -80,12 +80,15 @@ test('novedades de las Fases 2–4', async ({ page }) => {
   await shot(page, '12-biblia-produccion-pdf')
   await page.keyboard.press('Escape')
 
-  // Después del arreglo: la cobertura se abre en la misma escena de Edición
+  // Después del arreglo: «🎬 Planos de cámara» a la vista en la misma escena de Edición
   await page.reload()
   const c2 = page.locator('article[data-scene-id]').nth(1)
   if (await c2.getByRole('button', { name: 'Expandir escena' }).isVisible()) await c2.getByRole('button', { name: 'Expandir escena' }).click()
-  await c2.getByRole('button', { name: /Cobertura: un solo plano/ }).click()
-  await c2.getByRole('region', { name: 'Cobertura de escena' }).getByRole('button', { name: 'Pasar a cobertura' }).click()
-  await c2.getByRole('region', { name: 'Cobertura de escena' }).scrollIntoViewIfNeeded()
-  await shot(page, '13-despues-cobertura-en-edicion')
+  const cov2 = c2.getByRole('region', { name: 'Planos de cámara' })
+  await cov2.scrollIntoViewIfNeeded()
+  await shot(page, '13-planos-de-camara-antes')
+  await cov2.getByRole('button', { name: 'Dividir escena en tomas' }).click()
+  await cov2.getByRole('button', { name: 'Agregar toma' }).click()
+  await cov2.scrollIntoViewIfNeeded()
+  await shot(page, '14-planos-de-camara-2-tomas')
 })
