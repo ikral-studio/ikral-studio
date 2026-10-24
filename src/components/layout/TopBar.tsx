@@ -30,6 +30,7 @@ import { exportNleFolder, exportNleZip } from '../../features/projects/nleExport
 import { exportPortfolioPdf } from '../../features/projects/portfolio'
 import { masterScriptMarkdown, orderedScenes } from '../../features/script-sync/derive'
 import { downloadBlob, downloadText, safeFilename } from '../../utils'
+import { ClaudeLight } from '../chat/ClaudeLight'
 
 const SUGGEST_URL = 'https://github.com/ikral-studio/ikral-studio/discussions/new?category=ideas'
 
@@ -267,6 +268,7 @@ export function TopBar() {
         <button className="icon-btn" onClick={exportScript} title="Exportar guion (Markdown)" aria-label="Exportar guion">
           <FileDown size={17} />
         </button>
+        <ClaudeLight />
         <a
           className="icon-btn"
           href={SUGGEST_URL}

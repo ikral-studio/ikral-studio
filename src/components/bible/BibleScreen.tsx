@@ -11,6 +11,7 @@ import { Section, Tile } from './bibleUi'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
 import { bibleProgress, type ProgressRow } from '../../features/bible/items'
 import type { Project, Scene } from '../../types'
+import { ClaudeLight } from '../chat/ClaudeLight'
 
 /** «🎥 Personas reales» → ícono y texto por separado. */
 const split = (c: Choice) => {
@@ -163,6 +164,7 @@ export function BibleScreen() {
           Biblia del proyecto
         </h1>
         <span className="min-w-0 flex-1 truncate text-[13.5px] uppercase tracking-wide text-ink-3">{project.title}</span>
+        <ClaudeLight />
         <ImportScriptButton />
         <CopyFormatButton className="btn-hero !h-9" />
         <button className="btn !h-9" onClick={() => useUI.setState({ view: 'studio' })}>

@@ -27,3 +27,12 @@ Puedes editar `proyecto.json` mientras la app está abierta: la app detecta el c
 - Biblia: `project.locations`, `project.props` (objetos) y `project.wardrobe` (vestuario, con `characterId`) = `[{ id, name, note?, description, imageId?, prompt?, tries?, generating? }]`; `project.relations` = `[{ id, a, b, label }]` (ids de personajes). Estados: sin `imageId` ni pruebas = Sin preparar; con pruebas o descripción = En pruebas; con `imageId` = Canon (aprobado oficialmente). Pedido `item-preview` (trae `kind`, `itemId`, `prompt`) → igual que `character-preview` pero en esa lista. Personajes también pueden tener `role` (papel corto).
 - Imagen inicial y final (panel «Escenas del proyecto» en Preproducción): cada escena puede tener `prep` = `{ start?, end? }`, cada uno `{ prompt?, tries?, approvedId?, generating? }`. Pedido `frame-preview` (trae `sceneId`, `slot`, `prompt` y `characterImageIds` de referencia) → genera la imagen, agrégala a `scenes[].prep[slot].tries` como `{ id, mediaId, prompt, at }`, pon `approvedId` solo si no tenía, quita `generating` y actualiza `updatedAt` de la escena. La persona la aprueba y con «Pasar a Edición» se copia a `startImageId` / `endImageId`.
 - Sugerencia (paso 5 de la Biblia): pedido `character-suggestions` del chat → escribe `project.suggestion` = `[{ name, description, imageId? }]` (description en español, con el estilo de `project.bible` y la idea `project.bible.castIdea`). Al terminar quita `project.bible.suggesting`. La persona la acepta en la app y pasa sola a las fichas.
+
+## Chat con Claude
+
+La app escribe `chat-usuario.json`; Claude solo escribe `chat-claude.json`. El botón «Empezar a escuchar» abre la Terminal con `claude` en la carpeta del código y le pide seguir este ciclo:
+
+1. `node tools/claude-chat.mjs escuchar` en segundo plano (escucha todos los proyectos). Mientras corre, renueva `lastSeen` cada 20 s: eso prende el foquito 🟢 en la app (se apaga si pasan 90 s sin señal, o 10 min si hay `working`).
+2. Al llegar un mensaje, el comando lo imprime (con su `carpeta`) y termina. Avisa con `node tools/claude-chat.mjs trabajando "Haciendo…" <carpeta>`.
+3. Atiende el pedido (ver arriba: antes de editar `proyecto.json`, haz copia de respaldo y escribe de forma atómica).
+4. Contesta con `node tools/claude-chat.mjs responder "texto" <carpeta>` y vuelve al paso 1.

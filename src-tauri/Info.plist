@@ -6,5 +6,7 @@
   <string>IKRAL Studio usa el micrófono para que le hables a Claude en el chat.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>IKRAL Studio convierte tu voz en texto para el chat con Claude.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>IKRAL Studio abre la Terminal para que Claude empiece a escuchar el chat.</string>
 </dict>
 </plist>

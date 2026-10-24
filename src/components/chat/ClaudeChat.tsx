@@ -5,8 +5,8 @@ import { useProject } from '../../stores/projectStore'
 import { isDesktop, onChatChange, readChat, sendChat, type ChatMessage } from '../../database/db'
 import { selectScene } from '../../features/scene-management/actions'
 import { pad2, uid } from '../../utils'
+import { ClaudeLight, useClaudeStatus } from './ClaudeLight'
 
-const ONLINE_MS = 90_000
 const VOICE_KEY = 'ikral-studio:chat-voz'
 
 function loadVoice() {
@@ -51,7 +51,6 @@ export function ClaudeChat() {
   const [chat, setChat] = useState<ChatState>({ messages: [] })
   const [text, setText] = useState('')
   const [attach, setAttach] = useState(true)
-  const [now, setNow] = useState(Date.now())
   const listRef = useRef<HTMLDivElement>(null)
   const desktop = isDesktop()
   const [voice, setVoice] = useState(loadVoice)
@@ -115,7 +114,6 @@ export function ClaudeChat() {
             if (m.from === 'claude' && voiceRef.current) speak(m.text)
           }
       setChat({ messages, readUpTo: c.claude.readUpTo, lastSeen: c.claude.lastSeen, working: c.claude.working })
-      setNow(Date.now())
     }
     void load()
     let off: (() => void) | undefined
@@ -132,7 +130,7 @@ export function ClaudeChat() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [chat.messages.length])
 
-  const online = !!chat.lastSeen && now - Date.parse(chat.lastSeen) < ONLINE_MS
+  const { online } = useClaudeStatus()
   const userMsgs = chat.messages.filter((m) => m.from === 'user')
   const readIdx = chat.readUpTo ? userMsgs.findIndex((m) => m.id === chat.readUpTo) : -1
 
@@ -167,12 +165,7 @@ export function ClaudeChat() {
             {voice ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
         )}
-        {desktop && (
-          <span className={`chip ${online ? 'bg-ok/15 text-[#86efac]' : 'bg-white/5 text-ink-3'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${online ? 'bg-ok' : 'bg-ink-3'}`} />
-            {online ? 'Escuchando' : 'No conectado'}
-          </span>
-        )}
+        <ClaudeLight />
       </div>
 
       {!desktop ? (
@@ -214,7 +207,7 @@ export function ClaudeChat() {
           </div>
           {!online && (
             <p className="mx-3 mb-2 rounded-lg bg-warn/10 px-2.5 py-1.5 text-[11.5px] text-[#fcd34d]">
-              Claude no está escuchando. En la terminal de Claude Code dile: «escucha IKRAL Studio». Tus mensajes se guardan y los leerá al conectarse.
+              Claude no está escuchando. Toca «Empezar a escuchar» arriba. Tus mensajes se guardan y los leerá al conectarse.
             </p>
           )}
           <div className="border-t border-line p-2">
