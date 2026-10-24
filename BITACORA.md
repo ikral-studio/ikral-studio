@@ -1,3 +1,12 @@
+2026-10-24 14:40 · IKRAL Studio · GPT en Locaciones ya ve el guion guardado
+- Arreglado: «Consultar GPT» en una ficha de la Biblia (locación, objeto, vestuario, personaje, estilo) no recibía ninguna escena; por eso GPT pedía «el guion completo».
+- Cambiado: [código] src/features/gpt/bible.ts — el paquete lleva la historia en orden y las escenas donde aparece la ficha (nombre o alias), con su acción y diálogo.
+- Cambiado: [código] src/components/gpt/GptBiblePanel.tsx — manda las escenas del proyecto a GPT.
+- Agregado: [código] src/tests/gptBible.test.ts — prueba aislada con locación «Cocina» y 3 escenas.
+- Publicado: no.
+- Commit: 9053a7b
+- Pendiente: que el director lo pruebe en la app de Mac (nueva versión sin instalar).
+
 2026-10-24 14:00 · IKRAL Studio · «Deshacer» al quitar una locación
 - Agregado: [código] src/stores/uiStore.ts — avisos con botón (10 s); «Locación «X» eliminada · Deshacer».
 - Cambiado: [código] src/features/trash/trash.ts — la ficha regresa a su mismo lugar, con imagen Canon, pruebas y notas.
