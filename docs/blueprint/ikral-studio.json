@@ -741,19 +741,23 @@
       "fase": "M",
       "titulo": "Cuota de Claude Code (sesión y semana) con fuente autorizada",
       "criterio": "Solo con dato oficial verificable en usage.json (rate_limits de la statusLine de Claude Code); dos barras sesión/semana con reinicio y «última lectura»; si no, lo dice + «Ver uso en Claude».",
-      "estado": "en curso",
+      "estado": "hecho",
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
         {
           "tipo": "prueba",
           "ref": "tools/mini-monitor.test.mjs: statusLine→usage.json (ausencia, JSON malo, lectura antigua, reinicio, cuenta, sesión nueva, privacidad 600, encadenado) en verde; app compila con swiftc"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "Sesión interactiva 14:05: conectar-uso (respaldo /Volumes/c/respaldos/ikral-studio/claude-settings-antes-de-M4.json), app recompilada e instalada; mini.json: «Sesión 97% (reinicia 15:10) · Semana 9% (reinicia jue 01:00)», igual que claude.ai/settings/usage"
         }
       ],
       "dependeDe": [
         "M1"
       ],
-      "siguiente": "Sesión interactiva: npm run mini-monitor:conectar-uso (respaldo en C), npm run mini-monitor:instalar y comprobar % reales en la ventana.",
+      "siguiente": "Nada.",
       "director": null
     },
     {

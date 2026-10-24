@@ -12,3 +12,10 @@
 - Publicado: no.
 - Commit: a2fe04f
 - Pendiente: M5, probar a mano ventana, menú y voz del Mini Monitor.
+
+2026-10-24 14:07 · IKRAL Studio · Barras de uso en el Mini Monitor
+- Cambiado: [código] /Applications/IKRAL Monitor.app — recompilada con barras de sesión y semana.
+- Cambiado: [código] ~/.claude/settings.json — la barra de estado también guarda el uso (respaldo en C).
+- Publicado: no.
+- Commit: ver «Blueprint: M4 hecha».
+- Pendiente: M5, probar a mano ventana, menú y voz.
