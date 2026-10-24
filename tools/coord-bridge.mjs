@@ -43,7 +43,7 @@ const saveState = (s) => writeFileSync(STATE, JSON.stringify(s, null, 2))
 const taskPrompt = (id, url) => `Eres Claude Code trabajando en IKRAL Studio, despertado por el puente automático de coordinación.
 ChatGPT dejó una tarea en el comentario ${id} del Issue #1 (${url}).
 1. Léela con: gh api repos/${REPO}/issues/comments/${id} --jq .body
-2. Lee docs/plan-maestro-ikral-studio.md y tu CLAUDE.md global. Ejecuta SOLO lo que esté dentro del plan maestro aprobado.
+2. Arma tu contexto desde cero: docs/plan-maestro-ikral-studio.md, las últimas entradas de ../BITACORA.md, git log -10 y los últimos comentarios del Issue (gh issue view 1 -R ${REPO} --comments | tail -120). Ejecuta SOLO lo que esté dentro del plan maestro aprobado.
 3. Prohibido: git push, publicar o desplegar, borrar datos o proyectos, gastar dinero, tocar ikral-studio-codex o proyectos reales («SIN CEBOLLA»), trabajar fuera de esta carpeta. Si la tarea lo pide, repórtalo como bloqueo.
 4. Al final: npm test y npm run build, commit de trabajo, entrada en ../BITACORA.md y un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
 
