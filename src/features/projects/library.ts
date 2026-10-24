@@ -1,6 +1,7 @@
 // Bibliotecas (como en Final Cut): cada proyecto es un paquete «Nombre.ikral» con todo adentro,
 // que se puede guardar en cualquier carpeta o disco y abrir desde ahí (también con doble clic en Finder).
-import { isDesktop, moveLibrary, openLibrary, projectFolderPath } from '../../database/db'
+import { exportImagesFolder, isDesktop, moveLibrary, openLibrary, projectFolderPath } from '../../database/db'
+import { orderedScenes } from '../script-sync/derive'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
 import { releaseAllUrls } from '../media-library/media'
@@ -66,4 +67,60 @@ export async function listenFinderOpen() {
   await listen('open-library', () => void drain())
   // Las que llegaron antes de que la ventana estuviera lista (la app se abrió con doble clic).
   await drain()
+}
+
+/** Nombres claros para cada imagen del proyecto: «Personajes/Doña Chuy», «Escenas/Escena 01 - Título - inicial»… */
+export function friendlyImageNames(): { id: string; path: string }[] {
+  const { project, scenes } = useProject.getState()
+  if (!project) return []
+  const out: { id: string; path: string }[] = []
+  const seen = new Set<string>()
+  const used = new Set<string>()
+  const clean = (t: string) => safeFilename(t.trim() || 'Sin nombre')
+  const add = (id: string | undefined, path: string) => {
+    if (!id || seen.has(id)) return
+    let p = path
+    for (let n = 2; used.has(p.toLowerCase()); n++) p = `${path} (${n})`
+    seen.add(id)
+    used.add(p.toLowerCase())
+    out.push({ id, path: p })
+  }
+  const items = (folder: string, list: { name: string; imageId?: string; tries?: { mediaId: string }[] }[] | undefined) =>
+    list?.forEach((it) => {
+      add(it.imageId, `${folder}/${clean(it.name)}`)
+      it.tries?.forEach((t, i) => add(t.mediaId, `${folder}/${clean(it.name)} - prueba ${i + 1}`))
+    })
+  items('Personajes', project.characters)
+  items('Locaciones', project.locations)
+  items('Objetos', project.props)
+  items('Vestuario', project.wardrobe)
+  orderedScenes(project, scenes).forEach((s, i) => {
+    const base = `Escenas/Escena ${String(i + 1).padStart(2, '0')} - ${clean(s.title)}`
+    add(s.startImageId, `${base} - inicial`)
+    add(s.endImageId, `${base} - final`)
+    for (const slot of ['start', 'end'] as const) {
+      const plan = s.prep?.[slot]
+      plan?.tries?.forEach((t, n) => add(t.mediaId, `${base} - ${slot === 'start' ? 'inicial' : 'final'} prueba ${n + 1}`))
+    }
+    s.storyboardFrames.forEach((f, n) => add(f.mediaId, `${base} - fotograma ${n + 1}`))
+  })
+  project.suggestion?.forEach((sg) => add(sg.imageId, `Sugerencias/${clean(sg.name)}`))
+  return out
+}
+
+/** «Ver en Finder»: copia las imágenes con nombres claros a una carpeta normal y la abre. */
+export async function showImagesInFinder() {
+  const { project, flushSave } = useProject.getState()
+  if (!project || !isDesktop()) return
+  await flushSave()
+  try {
+    const entries = friendlyImageNames()
+    if (!entries.length) return toast('Este proyecto todavía no tiene imágenes', 'info')
+    const dir = await exportImagesFolder(project.title, entries)
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('mostrar_en_finder', { path: dir })
+    toast(`Listo: ${entries.length} imágenes en Documentos/IKRAL Studio/Imágenes`)
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'No se pudo abrir la carpeta', 'error')
+  }
 }

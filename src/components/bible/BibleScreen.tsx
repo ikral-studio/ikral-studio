@@ -12,7 +12,7 @@ import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } f
 import { bibleProgress, type ProgressRow } from '../../features/bible/items'
 import type { Project, Scene } from '../../types'
 import { ClaudeLight } from '../chat/ClaudeLight'
-import { TrashButton } from '../layout/TrashModal'
+import { FinderButton, TrashButton } from '../layout/TrashModal'
 import { ClaudeChat } from '../chat/ClaudeChat'
 import { isDesktop } from '../../database/db'
 
@@ -170,6 +170,7 @@ export function BibleScreen() {
         <ClaudeLight />
         <ImportScriptButton />
         <CopyFormatButton className="btn-hero !h-9" />
+        <FinderButton label />
         <TrashButton label />
         <button className="btn !h-9" onClick={() => useUI.setState({ view: 'studio' })}>
           <Clapperboard size={16} /> Ir a Edición

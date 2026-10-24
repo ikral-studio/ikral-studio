@@ -474,3 +474,21 @@ export async function openLibrary(path: string): Promise<string> {
   if (!dir.startsWith(PROJECTS + '/')) await setLibraries([...(await libraries()), dir])
   return f.project.id
 }
+
+/**
+ * Copia las imágenes del proyecto a una carpeta normal (fuera de la biblioteca) con nombres claros,
+ * para usarlas en otras apps. No borra nada de lo que ya haya ahí. Devuelve la carpeta.
+ */
+export async function exportImagesFolder(title: string, entries: { id: string; path: string }[]): Promise<string> {
+  await ready
+  const dest = `${ROOT}/Imágenes/${safeFilename(title)}`
+  for (const { id, path } of entries) {
+    const m = await findMedia(id)
+    if (!m || m.asset.kind !== 'image' || !(await exists(mediaPath(m.dir, m.asset), BASE))) continue
+    const file = `${dest}/${path}.${extFromMime(m.asset.mimeType)}`
+    await ensureDir(file.slice(0, file.lastIndexOf('/')))
+    await copyFile(mediaPath(m.dir, m.asset), file)
+  }
+  await ensureDir(dest)
+  return dest
+}

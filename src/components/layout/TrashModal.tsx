@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { History, ImageOff, RotateCcw, Trash2, X } from 'lucide-react'
+import { History, ImageOff, RotateCcw, Trash2, X, Images } from 'lucide-react'
+import { isDesktop } from '../../database/db'
+import { showImagesInFinder } from '../../features/projects/library'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -122,6 +124,22 @@ export function TrashButton({ label = false }: { label?: boolean }) {
       {count > 0 && (
         <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-sel px-1 text-center text-[10px] font-semibold leading-4 text-white">{count > 99 ? '99+' : count}</span>
       )}
+    </button>
+  )
+}
+
+/** Botón «Ver en Finder»: tus imágenes con nombres claros en una carpeta normal (solo app de escritorio). */
+export function FinderButton({ label = false }: { label?: boolean }) {
+  if (!isDesktop()) return null
+  return (
+    <button
+      className={label ? 'btn !h-9' : 'icon-btn'}
+      onClick={() => void showImagesInFinder()}
+      title="Ver mis imágenes en Finder (copia con nombres claros, para usarlas en otras apps)"
+      aria-label="Ver mis imágenes en Finder"
+    >
+      <Images size={label ? 16 : 17} />
+      {label && 'Ver en Finder'}
     </button>
   )
 }

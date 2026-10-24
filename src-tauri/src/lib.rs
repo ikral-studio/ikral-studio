@@ -36,6 +36,16 @@ fn empezar_a_escuchar() -> Result<(), String> {
   }
 }
 
+/// Abre una carpeta en Finder.
+#[tauri::command]
+fn mostrar_en_finder(path: String) -> Result<(), String> {
+  if !std::path::Path::new(&path).is_dir() {
+    return Err(format!("No existe la carpeta {}", path));
+  }
+  std::process::Command::new("open").arg(&path).status().map_err(|e| e.to_string())?;
+  Ok(())
+}
+
 /// Bibliotecas .ikral abiertas desde Finder antes de que la ventana estuviera lista.
 #[derive(Default)]
 struct Pendientes(std::sync::Mutex<Vec<String>>);
@@ -53,7 +63,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_drag::init())
     .manage(Pendientes::default())
-    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes])
+    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
