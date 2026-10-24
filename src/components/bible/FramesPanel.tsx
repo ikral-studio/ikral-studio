@@ -142,6 +142,7 @@ export function FramesPanel() {
   const [confirm, setConfirm] = useState(false)
   if (!project) return null
   const scenes = orderedScenes(project, scenesMap)
+  const phases = project.phases ?? []
   const { approved, total } = framesProgress(scenes)
   const pending = framesToApply(scenes)
   const replaces = pending.filter((x) => x.replaces).length
@@ -185,6 +186,7 @@ export function FramesPanel() {
                     <div className="truncate text-[14px] font-semibold">{s.title || 'Sin título'}</div>
                     <div className="text-[12.5px] text-ink-3">
                       {Math.round(effectiveDuration(s))} s · {done} de 2
+                      {phases.length > 0 && <> · {phases.find((p) => p.id === s.phaseId)?.name ?? <span className="text-warn">sin etapa</span>}</>}
                     </div>
                   </div>
                   <span
@@ -195,6 +197,24 @@ export function FramesPanel() {
                 </button>
                 {open && (
                   <div className="flex flex-col gap-4 border-t border-line px-3 pb-3 pt-3">
+                    {phases.length > 0 && (
+                      <label className="flex items-center gap-2 text-[14px]">
+                        <span className="font-semibold">Etapa</span>
+                        <select
+                          className="field !h-9 min-w-0 flex-1 !text-[14px]"
+                          aria-label={`Etapa de escena ${pad2(i + 1)}`}
+                          value={phases.some((p) => p.id === s.phaseId) ? s.phaseId : ''}
+                          onChange={(e) => useProject.getState().setScenePhase(s.id, e.target.value || undefined)}
+                        >
+                          <option value="">— Sin etapa —</option>
+                          {phases.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                     <FrameBox sceneId={s.id} slot="start" n={i + 1} />
                     <FrameBox sceneId={s.id} slot="end" n={i + 1} />
                   </div>

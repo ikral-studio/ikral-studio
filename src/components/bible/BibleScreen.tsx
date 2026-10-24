@@ -6,6 +6,7 @@ import { CopyFormatButton, ImportScriptButton } from '../sidebar/Sidebar'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { SuggestionStep } from './SuggestionStep'
 import { FramesPanel } from './FramesPanel'
+import { ContinuitySection } from './ContinuitySection'
 import { CharactersSection, ItemsSection, RelationsSection } from './BibleSections'
 import { Section, Tile } from './bibleUi'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
@@ -244,6 +245,7 @@ export function BibleScreen() {
                 <ItemsSection kind="wardrobe" n={5} empty="Aún no hay vestuario. Agrega la ropa fija de cada personaje (ej.: Delantal de Doña Chuy)." />
               </div>
               <RelationsSection />
+              <ContinuitySection n={8} />
               {isDesktop() && (
                 <div className="flex h-[520px] flex-col">
                   <ClaudeChat />

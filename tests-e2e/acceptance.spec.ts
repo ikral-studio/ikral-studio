@@ -804,3 +804,43 @@ test('extra · papelera: borrar una escena y recuperarla', async ({ page }) => {
   await page.getByRole('tab', { name: 'Respaldos' }).click()
   await expect(page.getByText('Respaldos automáticos de este proyecto')).toBeVisible()
 })
+
+test('extra · continuidad: etapas, objeto solo en ANTES y aviso de «papelitos»', async ({ page }) => {
+  await freshProject(page, 'Continuidad')
+  await addScenes(page, 1)
+  await card(page, 1).getByLabel('Acción visual').fill('Beto cuelga los papelitos junto a la plancha.')
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  const sec = page.getByRole('region', { name: 'Etapas y decisiones' })
+  for (const name of ['ANTES', 'DESPUÉS']) {
+    await sec.getByLabel('Nueva etapa').fill(name)
+    await sec.getByRole('button', { name: 'Agregar etapa' }).click()
+  }
+  await expect(sec.getByLabel('Nombre de la etapa 2')).toHaveValue('DESPUÉS')
+  // Objeto que solo va en ANTES, con otros nombres
+  await page.getByRole('button', { name: 'Nuevo objeto' }).click()
+  await page.getByLabel('Nombre del nuevo objeto').fill('Comandas de papel')
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: /Comandas de papel/ })
+  await sheet.getByRole('group', { name: 'Etapas donde aparece Comandas de papel' }).getByRole('button', { name: 'ANTES' }).click()
+  await sheet.getByLabel('Otros nombres de Comandas de papel').fill('papelitos, tickets')
+  await sheet.getByLabel('Otros nombres de Comandas de papel').press('Enter')
+  await page.getByRole('button', { name: 'Cerrar' }).click()
+  // La escena pasa en DESPUÉS
+  const scenes = page.getByRole('region', { name: 'Escenas del proyecto' })
+  await scenes.getByRole('button', { name: /Escena 01/ }).click()
+  await scenes.getByLabel('Etapa de escena 01').selectOption({ label: 'DESPUÉS' })
+  // Revisar: aviso alto con la cita exacta
+  await sec.getByRole('button', { name: 'Revisar continuidad' }).click()
+  const avisos = sec.getByRole('list', { name: 'Avisos de continuidad' })
+  await expect(avisos).toContainText('Alta')
+  await expect(avisos).toContainText('«papelitos»')
+  // Al corregir el texto, el aviso desaparece
+  await page.getByRole('button', { name: 'Ir a Edición' }).click()
+  await card(page, 1).getByLabel('Acción visual').fill('Beto toca la tablet de pedidos.')
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  await sec.getByRole('button', { name: 'Revisar continuidad' }).click()
+  await expect(sec.getByText('Sin avisos de continuidad')).toBeVisible()
+  // Se guardó: al recargar siguen las etapas
+  await page.reload()
+  await expect(page.getByRole('region', { name: 'Etapas y decisiones' }).getByLabel('Nombre de la etapa 1')).toHaveValue('ANTES')
+})

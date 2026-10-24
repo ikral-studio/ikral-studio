@@ -11,7 +11,7 @@ import { orderedScenes } from '../../features/script-sync/derive'
 import { requestCharacterPreview, requestItemPreview } from '../../features/chat/requests'
 import { IMAGE_ACCEPT } from '../scenes/MediaSlot'
 import { uid } from '../../utils'
-import type { BibleItem, BibleKind, Character, CharacterTry } from '../../types'
+import type { BibleItem, BibleKind, Character, CharacterTry, ItemKind, Phase } from '../../types'
 import { StatusPill } from './bibleUi'
 import { FullScreenButton } from '../common/Overlays'
 
@@ -56,6 +56,51 @@ export function TryThumb({
 }
 
 /** Ficha de un elemento de la Biblia: descripción, prompt editable, pruebas de imagen y la Canon. */
+/** Continuidad: en qué etapas puede aparecer y con qué otros nombres se le encuentra en el guion. */
+function ContinuityFields({ kind, it, phases }: { kind: ItemKind; it: BibleItem; phases: Phase[] }) {
+  const { updateItem } = useProject.getState()
+  const only = (it.onlyIn ?? []).filter((id) => phases.some((p) => p.id === id))
+  const toggle = (id: string) => {
+    const next = only.includes(id) ? only.filter((x) => x !== id) : phases.map((p) => p.id).filter((x) => x === id || only.includes(x))
+    updateItem(kind, it.id, { onlyIn: next.length ? next : undefined })
+  }
+  const saveAliases = (text: string) => {
+    const list = [...new Set(text.split(',').map((t) => t.trim()).filter(Boolean))]
+    updateItem(kind, it.id, { aliases: list.length ? list : undefined })
+  }
+  return (
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {phases.length > 0 && (
+        <div className="flex flex-col gap-1" role="group" aria-label={`Etapas donde aparece ${it.name}`}>
+          <span className="text-[13px] text-ink-2">Aparece en: {only.length ? '' : <span className="text-ink-3">todas las etapas</span>}</span>
+          <div className="flex flex-wrap gap-1.5">
+            {phases.map((p) => {
+              const on = only.includes(p.id)
+              return (
+                <button key={p.id} className={`btn btn-sm ${on ? '!border-sel !bg-sel/20 !text-white' : ''}`} aria-pressed={on} onClick={() => toggle(p.id)}>
+                  {on && <Check size={12} />} {p.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      <label className="flex flex-col gap-1">
+        <span className="text-[13px] text-ink-2">Otros nombres (separados por coma)</span>
+        <input
+          key={`${it.id}:${(it.aliases ?? []).join(',')}`}
+          className="field !text-[14px]"
+          aria-label={`Otros nombres de ${it.name}`}
+          placeholder="Ej.: papelitos, tickets"
+          defaultValue={(it.aliases ?? []).join(', ')}
+          onBlur={(e) => saveAliases(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+      </label>
+    </div>
+  )
+}
+
 export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId: string; onRemoved?: () => void }) {
   const project = useProject((s) => s.project)
   const scenes = useProject((s) => s.scenes)
@@ -165,6 +210,7 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
               </label>
             )}
           </div>
+          {kind !== 'characters' && <ContinuityFields kind={kind} it={it as BibleItem} phases={project.phases ?? []} />}
           <label className="flex flex-col gap-1">
             <span className="text-[14px] font-semibold">¿Cómo se ve?</span>
             <textarea

@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import { applyItemSuggestion, applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
 import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
@@ -10,6 +10,7 @@ import * as store from '../database/db'
 import { cloneScene, createProjectData, createScene, defaultTracks } from '../features/scene-management/factory'
 import { clipAt, deriveStatus, placedClips, versionClips, withClips } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
+import { cleanContinuity } from '../features/continuity/continuity'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 interface Snapshot {
@@ -80,6 +81,21 @@ interface State {
   /** Marca (o quita, con undefined) la locación principal. */
   setMainLocation: (id: string | undefined) => void
   updateItemSuggestion: (kind: ItemKind, index: number, patch: Partial<ItemSuggestion>) => void
+  /** Etapas de la historia (ANTES / DESPUÉS). Devuelve el id de la nueva. */
+  addPhase: (name: string, note?: string) => string | undefined
+  renamePhase: (id: string, name: string, note?: string) => void
+  /** Mueve la etapa a la posición `to` (0 = primera). */
+  movePhase: (id: string, to: number) => void
+  /** Quita la etapa y sus referencias en escenas y en la Biblia (Deshacer las devuelve). */
+  removePhase: (id: string) => void
+  setScenePhase: (sceneId: string, phaseId: string | undefined) => void
+  /** Propone una decisión. Si la propone el director, puede quedar aprobada de una vez. Devuelve su id. */
+  addDecision: (text: string, opts?: { proposedBy?: DecisionAuthor; approve?: boolean } & Pick<Decision, 'sceneIds' | 'itemIds' | 'allowsBackstep'>) => string | undefined
+  updateDecision: (id: string, patch: Partial<Pick<Decision, 'text' | 'sceneIds' | 'itemIds' | 'allowsBackstep'>>) => void
+  /** Solo el director aprueba o rechaza (la app es el director; Claude y GPT solo proponen). */
+  approveDecision: (id: string) => void
+  rejectDecision: (id: string) => void
+  removeDecision: (id: string) => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -185,6 +201,14 @@ export const useProject = create<State>()((set, get) => {
     commit({ ...cur, project: { ...cur.project, audioTracks } }, coalesce, coalesce ? 400 : 0)
   }
 
+  /** Cambia la lista de decisiones de una sola. */
+  function patchDecision(id: string, fn: (d: Decision) => Decision, coalesce?: string, delay = 0) {
+    const cur = snap()
+    if (!cur?.project.decisions?.some((d) => d.id === id)) return
+    const decisions = cur.project.decisions.map((d) => (d.id === id ? { ...fn(d), updatedAt: nowIso() } : d))
+    commit({ ...cur, project: { ...cur.project, decisions } }, coalesce, delay)
+  }
+
   function snap(): Snapshot | null {
     const { project, scenes } = get()
     return project ? { project, scenes } : null
@@ -201,6 +225,7 @@ export const useProject = create<State>()((set, get) => {
   }
 
   async function loadInto(project: Project, scenes: Scene[], opts: { cleanup?: boolean } = { cleanup: true }) {
+    ;({ project, scenes } = cleanContinuity(project, scenes))
     const map: Record<string, Scene> = {}
     scenes.forEach((s) => (map[s.id] = s))
     // Reparar: escenas huérfanas o IDs sin escena
@@ -629,6 +654,98 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       commit({ ...cur, project: { ...cur.project, mainLocationId: id } })
+    },
+
+    addPhase(name, note) {
+      const cur = snap()
+      const n = name.trim()
+      if (!cur || !n) return
+      const id = uid('et_')
+      const phases = [...(cur.project.phases ?? []), { id, name: n, ...(note?.trim() ? { note: note.trim() } : {}) }]
+      commit({ ...cur, project: { ...cur.project, phases } })
+      return id
+    },
+
+    renamePhase(id, name, note) {
+      const cur = snap()
+      const n = name.trim()
+      if (!cur || !n || !cur.project.phases?.some((p) => p.id === id)) return
+      const phases = cur.project.phases.map((p) => (p.id === id ? { ...p, name: n, ...(note !== undefined ? { note: note.trim() || undefined } : {}) } : p))
+      commit({ ...cur, project: { ...cur.project, phases } }, `phase:${id}`, 500)
+    },
+
+    movePhase(id, to) {
+      const cur = snap()
+      const list = cur?.project.phases ?? []
+      const from = list.findIndex((p) => p.id === id)
+      if (!cur || from < 0) return
+      const target = clamp(to, 0, list.length - 1)
+      if (target === from) return
+      const phases = [...list]
+      phases.splice(target, 0, ...phases.splice(from, 1))
+      commit({ ...cur, project: { ...cur.project, phases } })
+    },
+
+    removePhase(id) {
+      const cur = snap()
+      if (!cur || !cur.project.phases?.some((p) => p.id === id)) return
+      const project = { ...cur.project, phases: cur.project.phases.filter((p) => p.id !== id) }
+      const clean = cleanContinuity(project, Object.values(cur.scenes))
+      // Las escenas que pierden su etapa cuentan como editadas (para unir bien con lo que escribe Claude).
+      const t = nowIso()
+      const scenes = { ...cur.scenes }
+      for (const s of clean.scenes) if (s !== cur.scenes[s.id]) scenes[s.id] = { ...s, updatedAt: t }
+      commit({ project: clean.project, scenes })
+    },
+
+    setScenePhase(sceneId, phaseId) {
+      const cur = snap()
+      if (!cur?.scenes[sceneId]) return
+      if (phaseId && !cur.project.phases?.some((p) => p.id === phaseId)) return
+      if (cur.scenes[sceneId].phaseId === phaseId) return
+      patchScene(sceneId, (s) => {
+        const { phaseId: _old, ...rest } = s
+        return phaseId ? { ...rest, phaseId } : rest
+      })
+    },
+
+    addDecision(text, opts = {}) {
+      const cur = snap()
+      const t = text.trim()
+      if (!cur || !t) return
+      const { proposedBy = 'director', approve = proposedBy === 'director', ...links } = opts
+      const now = nowIso()
+      const decision: Decision = {
+        id: uid('dec_'),
+        text: t,
+        proposedBy,
+        proposedAt: now,
+        status: 'proposed',
+        updatedAt: now,
+        ...links,
+      }
+      // Solo el director aprueba: lo que propone Claude o GPT queda pendiente.
+      if (approve && proposedBy === 'director') Object.assign(decision, { status: 'approved', approvedBy: 'director', approvedAt: now })
+      commit({ ...cur, project: { ...cur.project, decisions: [...(cur.project.decisions ?? []), decision] } })
+      return decision.id
+    },
+
+    updateDecision(id, patch) {
+      patchDecision(id, (d) => ({ ...d, ...patch, ...(patch.text !== undefined ? { text: patch.text.trim() || d.text } : {}) }), `decision:${id}`, 500)
+    },
+
+    approveDecision(id) {
+      patchDecision(id, (d) => ({ ...d, status: 'approved', approvedBy: 'director', approvedAt: nowIso() }))
+    },
+
+    rejectDecision(id) {
+      patchDecision(id, ({ approvedBy: _a, approvedAt: _b, ...d }) => ({ ...d, status: 'rejected' }))
+    },
+
+    removeDecision(id) {
+      const cur = snap()
+      if (!cur?.project.decisions?.some((d) => d.id === id)) return
+      commit({ ...cur, project: { ...cur.project, decisions: cur.project.decisions.filter((d) => d.id !== id) } })
     },
 
     updateItemSuggestion(kind, index, patch) {

@@ -10,6 +10,29 @@ export interface ProjectData {
 
 const later = (a?: string, b?: string) => (a ?? '') >= (b ?? '')
 
+/**
+ * Une una lista por id (etapas, decisiones): lo que uno agregó o borró se respeta.
+ * Si los dos tienen el mismo elemento, gana el de `updatedAt` más reciente (o el del lado preferido si no tiene).
+ * El orden es el del lado preferido, y lo nuevo del otro lado va al final.
+ */
+export function mergeById<T extends { id: string; updatedAt?: string }>(base: T[] | undefined, disk: T[] | undefined, local: T[] | undefined, preferLocal: boolean): T[] | undefined {
+  if (!disk && !local) return undefined
+  const baseIds = new Set((base ?? []).map((x) => x.id))
+  const d = new Map((disk ?? []).map((x) => [x.id, x]))
+  const l = new Map((local ?? []).map((x) => [x.id, x]))
+  const [first, second] = preferLocal ? [local ?? [], disk ?? []] : [disk ?? [], local ?? []]
+  const out: T[] = []
+  for (const x of [...first, ...second.filter((y) => !first.some((f) => f.id === y.id))]) {
+    const a = d.get(x.id)
+    const b = l.get(x.id)
+    // Estaba en la base y uno de los dos lo borró: se queda borrado.
+    if (baseIds.has(x.id) && (!a || !b)) continue
+    if (a && b) out.push(a.updatedAt || b.updatedAt ? (later(b.updatedAt, a.updatedAt) ? b : a) : preferLocal ? b : a)
+    else out.push(x)
+  }
+  return out
+}
+
 export function mergeProjects(base: ProjectData | null, disk: ProjectData, local: ProjectData): ProjectData {
   if (!base) return local
   const baseIds = new Set(base.project.sceneIds)
@@ -44,6 +67,10 @@ export function mergeProjects(base: ProjectData | null, disk: ProjectData, local
   })
 
   // Datos del proyecto (título, estilo, música…): gana el más reciente, pero con el orden unido.
-  const proj = later(local.project.updatedAt, disk.project.updatedAt) ? local.project : disk.project
-  return { project: { ...proj, sceneIds: ids }, scenes }
+  const localWins = later(local.project.updatedAt, disk.project.updatedAt)
+  const proj = localWins ? local.project : disk.project
+  // Etapas y decisiones se unen una por una, para que lo que agregó Claude no se pierda.
+  const phases = mergeById(base.project.phases, disk.project.phases, local.project.phases, localWins)
+  const decisions = mergeById(base.project.decisions, disk.project.decisions, local.project.decisions, localWins)
+  return { project: { ...proj, sceneIds: ids, ...(phases ? { phases } : {}), ...(decisions ? { decisions } : {}) }, scenes }
 }

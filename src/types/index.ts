@@ -32,6 +32,10 @@ export interface Project {
   audioTracks?: AudioTrack[]
   /** Papelera: lo que se borró y se puede recuperar. */
   trash?: TrashEntry[]
+  /** Etapas de la historia, en orden (ej.: ANTES → TRANSICIÓN → DESPUÉS). Sin etapas = como siempre. */
+  phases?: Phase[]
+  /** Reglas del director que Claude y GPT deben respetar. Solo cuentan las aprobadas. */
+  decisions?: Decision[]
   createdAt: string
   updatedAt: string
 }
@@ -88,6 +92,40 @@ export interface BibleItem {
   generating?: boolean
   /** Vestuario: personaje que lo usa. */
   characterId?: string
+  /** Etapas donde SÍ puede aparecer. Vacío o sin dato = en todas. */
+  onlyIn?: string[]
+  /** Otros nombres para encontrarlo en el guion (ej.: «papelitos», «tickets»). */
+  aliases?: string[]
+}
+
+/** Etapa de la historia (ej.: «ANTES (comandas de papel)»). */
+export interface Phase {
+  id: string
+  name: string
+  note?: string
+}
+
+/** Quién puede proponer una decisión. Aprobar, solo el director. */
+export type DecisionAuthor = 'director' | 'claude' | 'gpt'
+
+/** Regla de continuidad: cualquiera la propone, solo el director la aprueba. */
+export interface Decision {
+  id: string
+  text: string
+  proposedBy: DecisionAuthor
+  proposedAt: string
+  status: 'proposed' | 'approved' | 'rejected'
+  /** Solo el director puede aprobar. */
+  approvedBy?: 'director'
+  approvedAt?: string
+  /** Escenas a las que aplica. */
+  sceneIds?: string[]
+  /** Elementos de la Biblia a los que aplica. */
+  itemIds?: string[]
+  /** Permite volver a una etapa anterior en esas escenas (ej.: un flashback). */
+  allowsBackstep?: boolean
+  /** Para unir cambios cuando Claude y la app editan a la vez. */
+  updatedAt: string
 }
 
 export type BibleKind = 'characters' | 'locations' | 'props' | 'wardrobe'
@@ -230,6 +268,8 @@ export interface Scene {
   endImageId?: string
   /** Preproducción: propuestas de imagen inicial y final (pruebas y la aprobada) antes de pasarlas a Edición. */
   prep?: { start?: FramePlan; end?: FramePlan }
+  /** Etapa de la historia donde ocurre (id de `project.phases`). */
+  phaseId?: string
   storyboardFrames: StoryboardFrame[]
   script: SceneScript
   videoVersions: VideoVersion[]
