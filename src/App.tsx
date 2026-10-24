@@ -11,7 +11,7 @@ import { Preview } from './components/preview/Preview'
 import { Timeline } from './components/timeline/Timeline'
 import { Splitter } from './components/layout/Splitter'
 import { Modals } from './components/layout/Modals'
-import { ConfirmDialog, Lightbox, Toasts } from './components/common/Overlays'
+import { ConfirmDialog, FullScreenImage, Lightbox, Toasts } from './components/common/Overlays'
 import { useShortcuts } from './hooks/useShortcuts'
 import { PausedOverlay } from './components/layout/PausedOverlay'
 import { ClaudeChat } from './components/chat/ClaudeChat'
@@ -229,6 +229,7 @@ export default function App() {
       <Modals />
       <ConfirmDialog />
       <Lightbox />
+      <FullScreenImage />
       <Toasts />
       <PausedOverlay />
     </>

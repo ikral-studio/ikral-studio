@@ -25,6 +25,8 @@ interface UIState {
   toasts: Toast[]
   confirm: ConfirmRequest | null
   lightbox: LightboxItem | null
+  /** Imagen vista en pantalla completa (encima de todo). */
+  fullscreen: { mediaId: string; title?: string } | null
   modal: ModalName
   leftCollapsed: boolean
   rightCollapsed: boolean
@@ -60,6 +62,7 @@ export const useUI = create<UIState>()(() => ({
   toasts: [],
   confirm: null,
   lightbox: null,
+  fullscreen: null,
   modal: null,
   leftCollapsed: false,
   rightCollapsed: false,

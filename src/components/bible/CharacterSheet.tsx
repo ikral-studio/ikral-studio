@@ -13,6 +13,7 @@ import { IMAGE_ACCEPT } from '../scenes/MediaSlot'
 import { uid } from '../../utils'
 import type { BibleItem, BibleKind, Character, CharacterTry } from '../../types'
 import { StatusPill } from './bibleUi'
+import { FullScreenButton } from '../common/Overlays'
 
 export function TryThumb({
   t,
@@ -36,6 +37,7 @@ export function TryThumb({
     <li className={`flex shrink-0 flex-col gap-1 rounded-[10px] border p-1 ${wide ? 'w-[150px]' : 'w-[104px]'} ${approved ? 'border-ok' : 'border-line'}`}>
       <div className={`relative overflow-hidden rounded-[8px] bg-bg ${wide ? 'aspect-video' : 'aspect-[3/4]'}`}>
         {url && <img src={url} alt={`Prueba ${n}`} title={t.prompt} className="h-full w-full object-cover" />}
+        <FullScreenButton mediaId={t.mediaId} title={`Prueba ${n}`} className="absolute left-1 top-1" />
         {!approved && (
           <button className="icon-btn sm absolute right-1 top-1 !bg-black/60 !text-white" onClick={onRemove} aria-label={`Quitar prueba ${n}`} title="Quitar esta prueba">
             <Trash2 size={12} />
@@ -99,7 +101,10 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
             {busy ? (
               <Loader2 size={22} className="animate-spin text-ink-3" />
             ) : url ? (
-              <img src={url} alt={`Imagen aprobada de ${it.name}`} className="h-full w-full object-cover" />
+              <>
+                <img src={url} alt={`Imagen aprobada de ${it.name}`} className="h-full w-full object-cover" />
+                <FullScreenButton mediaId={it.imageId} title={it.name} className="absolute right-1.5 top-1.5" />
+              </>
             ) : (
               <button className="flex flex-col items-center gap-1.5 p-2 text-center text-[13px] text-ink-3" onClick={() => void pickFiles(IMAGE_ACCEPT).then(accept)}>
                 <ImagePlus size={22} />

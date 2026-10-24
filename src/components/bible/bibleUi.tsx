@@ -1,6 +1,7 @@
 // Piezas de diseño de la Biblia: tarjeta de sección numerada, estado (Sin preparar / En pruebas / Canon) y tarjeta de elemento.
 import type { ReactNode } from 'react'
-import { Check, FlaskConical, Loader2, MoreHorizontal } from 'lucide-react'
+import { Check, FlaskConical, Loader2 } from 'lucide-react'
+import { FullScreenButton } from '../common/Overlays'
 import { useMediaUrl } from '../../features/media-library/media'
 import { STATUS_ES, type ItemStatus } from '../../features/bible/items'
 
@@ -72,7 +73,7 @@ export function ItemCard({
 }) {
   const url = useMediaUrl(imageId, true)
   return (
-    <li className="min-w-0">
+    <li className="relative min-w-0">
       <button
         className="group flex w-full flex-col overflow-hidden rounded-[12px] border border-line bg-card text-left transition hover:border-[#7c3aed]/70 hover:shadow-[0_0_0_1px_#7c3aed55]"
         onClick={onOpen}
@@ -91,9 +92,6 @@ export function ItemCard({
               <Loader2 size={20} className="animate-spin text-white" />
             </div>
           )}
-          <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-[6px] bg-black/50 text-white/80 opacity-0 transition group-hover:opacity-100">
-            <MoreHorizontal size={14} />
-          </span>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
         </div>
         <div className="flex flex-col gap-1.5 px-2.5 pb-2.5 pt-1">
@@ -104,6 +102,7 @@ export function ItemCard({
           <StatusPill status={status} full />
         </div>
       </button>
+      <FullScreenButton mediaId={imageId} title={name} className="absolute right-1.5 top-1.5" />
     </li>
   )
 }

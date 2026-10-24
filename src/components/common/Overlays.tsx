@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useState as useStateL } from 'react'
-import { AlertTriangle, CheckCircle2, Crop, Info, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Crop, Info, Maximize2, X } from 'lucide-react'
 import { CropEditor } from './CropEditor'
 import { useProject } from '../../stores/projectStore'
 import { importFiles } from '../../features/scene-management/actions'
@@ -24,7 +25,8 @@ export function Modal({
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Con una imagen en pantalla completa, Esc cierra solo esa imagen.
+      if (e.key === 'Escape' && !useUI.getState().fullscreen) {
         e.stopPropagation()
         onClose()
       }
@@ -170,5 +172,58 @@ export function Lightbox() {
       </>
       )}
     </Modal>
+  )
+}
+
+/** Botón ⛶ que abre una imagen en pantalla completa. */
+export function FullScreenButton({ mediaId, title, className = '' }: { mediaId?: string; title?: string; className?: string }) {
+  if (!mediaId) return null
+  return (
+    <button
+      className={`icon-btn sm !bg-black/55 !text-white hover:!bg-black/75 ${className}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        useUI.setState({ fullscreen: { mediaId, title } })
+      }}
+      title="Ver en pantalla completa"
+      aria-label={`Ver en pantalla completa${title ? ` ${title}` : ''}`}
+    >
+      <Maximize2 size={13} />
+    </button>
+  )
+}
+
+/** Imagen en pantalla completa: Esc o un clic la cierran. */
+export function FullScreenImage() {
+  const item = useUI((s) => s.fullscreen)
+  const url = useMediaUrl(item?.mediaId)
+  useEffect(() => {
+    if (!item) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        useUI.setState({ fullscreen: null })
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [item])
+  if (!item) return null
+  const close = () => useUI.setState({ fullscreen: null })
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Pantalla completa${item.title ? ` · ${item.title}` : ''}`}
+      className="no-print fixed inset-0 z-[90] flex cursor-zoom-out items-center justify-center bg-black"
+      onClick={close}
+    >
+      {url && <img src={url} alt={item.title ?? ''} className="max-h-full max-w-full object-contain" />}
+      <button className="icon-btn absolute right-3 top-3 !bg-black/60 !text-white" onClick={close} aria-label="Cerrar pantalla completa" title="Cerrar (Esc)">
+        <X size={18} />
+      </button>
+      {item.title && <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md bg-black/60 px-3 py-1 text-[13px] text-white/90">{item.title}</div>}
+    </div>,
+    document.body,
   )
 }
