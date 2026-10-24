@@ -13,7 +13,7 @@ IKRAL Studio/
       miniaturas/<id>.jpg
       respaldos/<id>.json
       gpt-revisiones.json ← revisiones de continuidad con GPT (solo propuestas)
-      gpt-hilos.json      ← conversaciones con GPT sobre guion, diálogos y Biblia (historial y propuestas)
+      gpt-hilos.json      ← conversaciones con GPT sobre guion, diálogos, Biblia y cobertura (historial y propuestas)
 ```
 
 ## Bibliotecas (.ikral), como en Final Cut
@@ -93,3 +93,13 @@ En la Biblia (Preproducción), «Consultar GPT» está en «Estilo y tono visual
 - GPT responde con el esquema `src/features/gpt/schemas/bible.json` (máximo 8 propuestas). Según el apartado: estilo → notas de estilo, época, lugar, cómo se ve, colores; personaje → cómo se ve, papel, relación con otro personaje; locación/objeto/vestuario → cómo se ve, nota corta, alias, etapas; etapas y decisiones → solo reglas. En todos, «regla». Los tipos que no valen en ese apartado se ignoran.
 - Aceptar aplica el cambio con las acciones de siempre (⌘Z y guardado). Una regla entra como decisión de GPT (`proposedBy: 'gpt'`) aprobada por el director. Deshacer la quita (o regresa el campo, salvo que lo hayas editado después). También: Editar, Descartar y Pedir a Claude.
 - Si el campo cambió desde que GPT lo vio, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. Nunca cambia imágenes: el Canon (imagen aprobada) se queda igual.
+
+## Consultar GPT en cobertura y planos
+
+En Preproducción → «Cobertura de escena», «Consultar GPT» propone planos (lista con nombre, cámara, duración, acción y sonido); dentro de cada plano, diseña cámara, prompt de imagen inicial/final y prompt de video (solo en la app de Mac; en la web avisa «Disponible en la app de Mac.»).
+
+- Hilos en el mismo `gpt-hilos.json` con `section: 'coverage'`. Clave: el id de la escena (cobertura) o `escena#plano` (un plano). Guion, Biblia y cobertura no se pisan.
+- Cada consulta manda: proyecto, estilo, etapas, decisiones APROBADAS, personajes, la escena (acción, diálogos, sonido, duración) con sus planos numerados, «esto cambió desde la última vez» y el historial (resumen + últimos 6). Solo al diseñar un plano manda sus prompts de imagen y de video de hoy. Sin imágenes ni chat con Claude.
+- GPT responde con el esquema `src/features/gpt/schemas/coverage.json` (máximo 10 propuestas): agregar un plano en un lugar, o cambiar un campo de un plano. Lo que no vale en ese apartado, planos que no existen o duraciones malas se ignoran.
+- Si la escena aún es un solo plano, Aceptar pregunta si pasarla a cobertura (con respaldo antes). Un plano agregado se puede Deshacer (va a la Papelera). Deshacer no pisa lo que editaste después. También: Editar, Descartar y Pedir a Claude.
+- Si el plano o la lista de planos cambió desde que GPT la vio, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. Nunca genera imágenes ni videos.

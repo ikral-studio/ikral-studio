@@ -895,6 +895,32 @@ test('extra · consultar GPT en personajes y Biblia: en la web avisa con calma y
   await expect(page.getByRole('button', { name: /^Ana · / })).toBeVisible()
 })
 
+test('extra · consultar GPT en cobertura y planos: en la web avisa con calma y no cambia nada', async ({ page }) => {
+  await freshProject(page, 'GPT Cobertura')
+  await addScenes(page, 1)
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  const scenes = page.getByRole('region', { name: 'Escenas del proyecto' })
+  await scenes.getByRole('button', { name: /Escena 01/ }).click()
+  const cov = scenes.getByRole('region', { name: 'Cobertura de escena' })
+  // Proponer planos: se puede pedir aunque la escena aún sea un solo plano
+  await cov.getByRole('button', { name: 'Consultar GPT', exact: true }).click()
+  const gc = cov.getByLabel('Consultar GPT sobre la cobertura')
+  await expect(gc.getByRole('button', { name: 'Consultar GPT' })).toBeDisabled()
+  await expect(gc.getByText('Disponible en la app de Mac.')).toBeVisible()
+  await expect(cov.getByText('Esta escena es un solo plano.')).toBeVisible()
+  await cov.getByRole('button', { name: 'Consultar GPT', exact: true }).first().click()
+  await expect(gc).toHaveCount(0)
+  // Diseñar un plano
+  await cov.getByRole('button', { name: 'Pasar a cobertura' }).click()
+  const list = cov.getByRole('list', { name: 'Planos de la escena' })
+  await list.getByRole('button', { name: 'Abrir plano 1' }).click()
+  await list.getByRole('button', { name: 'Consultar GPT', exact: true }).click()
+  const gp = list.getByLabel('Consultar GPT sobre el plano 1')
+  await expect(gp.getByRole('button', { name: 'Consultar GPT' })).toBeDisabled()
+  await expect(gp.getByText('Disponible en la app de Mac.')).toBeVisible()
+  await expect(list.getByRole('listitem')).toHaveCount(1)
+})
+
 test('extra · cobertura: pasar a cobertura, 4 planos de Doña Chuy, deshacer, papelera y recargar', async ({ page }) => {
   await freshProject(page, 'Cobertura')
   await addScenes(page, 1)

@@ -219,8 +219,7 @@ export function buildCoveragePacket(project: Project, ordered: Scene[], scene: S
     '',
     hasCoverage(scene) ? 'Planos de la escena:' : 'Planos de la escena (aún es un solo plano):',
     shots.map((s, n) => shotLine(s, n, !shot)).join('\n'),
-    shot && '',
-    shot && `Plano a diseñar: ${k + 1} «${shot.name ?? ''}»`,
+    shot && `\nPlano a diseñar: ${k + 1} «${shot.name ?? ''}»`,
     shot && `Prompt de imagen inicial: ${clip(shot.prep?.start?.prompt, 600) || '(vacío)'}`,
     shot && `Prompt de imagen final: ${clip(shot.prep?.end?.prompt, 600) || '(vacío)'}`,
     shot && `Prompt de video: ${clip(shot.generationPrompt, 600) || '(vacío)'}`,
@@ -229,7 +228,7 @@ export function buildCoveragePacket(project: Project, ordered: Scene[], scene: S
     '',
     `Pedido del director: ${request.trim()}`,
   ]
-    .filter((x) => x !== false && x !== '' && x !== undefined)
+    .filter((x): x is string => typeof x === 'string' && x !== '')
     .join('\n')
 
   return { prompt, seen }
