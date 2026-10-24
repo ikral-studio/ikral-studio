@@ -33,7 +33,10 @@ export function trashLabel(e: TrashEntry, project: Project, scenes: Record<strin
     const name = (id: string) => project.characters?.find((c) => c.id === id)?.name ?? '¿?'
     return `${name(e.relation.a)} ↔ ${name(e.relation.b)}${e.relation.label ? ' · ' + e.relation.label : ''}`
   }
-  if (e.kind === 'version') return `De la escena «${scenes[e.sceneId]?.title ?? 'que ya no existe'}»`
+  if (e.kind === 'version') {
+    const shot = e.shotId ? scenes[e.sceneId]?.shots?.find((s) => s.id === e.shotId) : undefined
+    return `${e.shotId ? `Del plano «${shot?.name ?? 'que ya no existe'}» · ` : 'De la '}escena «${scenes[e.sceneId]?.title ?? 'que ya no existe'}»`
+  }
   if (e.kind === 'shot') return `${e.shot.name || 'Plano sin nombre'} · escena «${scenes[e.sceneId]?.title ?? 'que ya no existe'}»`
   return e.item.name || 'Sin nombre'
 }
@@ -88,6 +91,14 @@ export function restoreFromTrash(project: Project, scenes: Record<string, Scene>
   if (e.kind === 'version') {
     const sc = scenes[e.sceneId]
     if (!sc) return { error: 'La escena de ese video ya no existe. Recupera primero la escena.' }
+    if (e.shotId) {
+      const shot = sc.shots?.find((s) => s.id === e.shotId)
+      if (!shot) return { error: 'El plano de ese video ya no existe. Recupera primero el plano.' }
+      if (shot.videoVersions?.some((v) => v.id === e.version.id)) return { error: 'Ese video ya está en el plano.' }
+      const at = nowIso()
+      const shots = sc.shots!.map((s) => (s.id === shot.id ? { ...s, videoVersions: [...(s.videoVersions ?? []), e.version], activeVideoVersionId: s.activeVideoVersionId ?? e.version.id, updatedAt: at } : s))
+      return { project: p, scenes: { ...scenes, [sc.id]: { ...sc, shots, updatedAt: at } } }
+    }
     if (sc.videoVersions.some((v) => v.id === e.version.id)) return { error: 'Ese video ya está en la escena.' }
     return { project: p, scenes: { ...scenes, [sc.id]: { ...sc, videoVersions: [...sc.videoVersions, e.version], activeVideoVersionId: sc.activeVideoVersionId ?? e.version.id } } }
   }

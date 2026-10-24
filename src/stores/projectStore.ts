@@ -8,7 +8,7 @@ import type { ImportedScene, ScriptFile } from '../features/script-exchange/sche
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
 import { cloneScene, createProjectData, createScene, defaultTracks } from '../features/scene-management/factory'
-import { clipAt, deriveStatus, placedClips, versionClips, withClips } from '../features/script-sync/derive'
+import { clipAt, deriveStatus, placedClips, trimEdge, versionClips, withClips } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
 import { cleanContinuity } from '../features/continuity/continuity'
 import { applyShotText, convertToCoverage, copyShots, hasCoverage, moveShot, renumberShots, shotsFromText } from '../features/coverage/shots'
@@ -132,6 +132,13 @@ interface State {
   duplicateShot: (sceneId: string, shotId: string) => string | undefined
   /** Quita el plano y lo manda a la papelera. */
   removeShot: (sceneId: string, shotId: string) => void
+  /** Video de un plano: `new` = versión nueva, `replace` = cambia la activa, `clip` = otro video seguido en la activa. */
+  addShotVideo: (sceneId: string, shotId: string, v: Omit<VideoVersion, 'id' | 'createdAt'>, mode?: 'new' | 'replace' | 'clip') => void
+  setShotActiveVersion: (sceneId: string, shotId: string, versionId: string) => void
+  /** Quita una versión de video del plano (va a la papelera). */
+  removeShotVersion: (sceneId: string, shotId: string, versionId: string) => void
+  /** Recorta (sin dañar el archivo) la orilla del video activo de un plano. */
+  trimShotVideo: (sceneId: string, shotId: string, edge: 'left' | 'right', fileTime: number) => void
 
   /** Regresa algo de la papelera a su lugar. Devuelve el error si no se pudo. */
   restoreTrash: (entryId: string) => string | null
@@ -235,6 +242,14 @@ export const useProject = create<State>()((set, get) => {
     updated.updatedAt = nowIso()
     updated.status = deriveStatus(updated)
     commit({ project: cur.project, scenes: { ...cur.scenes, [id]: updated } }, coalesce, delay)
+  }
+
+  /** Cambia un plano de la escena (y su `updatedAt`, para unir cambios plano por plano). */
+  function patchShot(sceneId: string, shotId: string, fn: (s: Shot) => Shot, coalesce?: string, delay = 0) {
+    const sc = snap()?.scenes[sceneId]
+    if (!sc?.shots?.some((x) => x.id === shotId)) return
+    const at = nowIso()
+    patchScene(sceneId, (s) => ({ ...s, shots: s.shots!.map((x) => (x.id === shotId ? { ...fn(x), updatedAt: at } : x)) }), coalesce, delay)
   }
 
   async function loadInto(project: Project, scenes: Scene[], opts: { cleanup?: boolean } = { cleanup: true }) {
@@ -697,6 +712,50 @@ export const useProject = create<State>()((set, get) => {
       commit({ project: { ...cur.project, trash }, scenes: { ...cur.scenes, [sceneId]: updated } })
     },
 
+    addShotVideo(sceneId, shotId, v, mode = 'new') {
+      patchShot(sceneId, shotId, (sh) => {
+        const list = sh.videoVersions ?? []
+        const active = list.find((x) => x.id === sh.activeVideoVersionId)
+        if (mode === 'clip' && active) {
+          const clips = [...versionClips(active), { id: uid('vc_'), mediaId: v.mediaId, duration: v.duration, width: v.width, height: v.height }]
+          return { ...sh, videoVersions: list.map((x) => (x.id === active.id ? withClips(x, clips) : x)) }
+        }
+        if (mode === 'replace' && active) return { ...sh, videoVersions: list.map((x) => (x.id === active.id ? { ...x, ...v, clips: undefined, trimIn: undefined, trimOut: undefined, createdAt: nowIso() } : x)) }
+        const version: VideoVersion = { ...v, id: uid('vv_'), createdAt: nowIso() }
+        return { ...sh, videoVersions: [...list, version], activeVideoVersionId: version.id }
+      })
+    },
+
+    setShotActiveVersion(sceneId, shotId, versionId) {
+      patchShot(sceneId, shotId, (sh) => (sh.videoVersions?.some((v) => v.id === versionId) ? { ...sh, activeVideoVersionId: versionId } : sh))
+    },
+
+    removeShotVersion(sceneId, shotId, versionId) {
+      const cur = snap()
+      const sc = cur?.scenes[sceneId]
+      const shot = sc?.shots?.find((x) => x.id === shotId)
+      const version = shot?.videoVersions?.find((v) => v.id === versionId)
+      if (!cur || !sc || !shot || !version) return
+      const trash = addToTrash(cur.project, { kind: 'version', sceneId, shotId, version })
+      const videoVersions = shot.videoVersions!.filter((v) => v.id !== versionId)
+      const activeVideoVersionId = shot.activeVideoVersionId === versionId ? videoVersions[videoVersions.length - 1]?.id : shot.activeVideoVersionId
+      const now = nowIso()
+      const shots = sc.shots!.map((x) => (x.id === shotId ? { ...x, videoVersions, activeVideoVersionId, updatedAt: now } : x))
+      const updated = { ...sc, shots, updatedAt: now }
+      updated.status = deriveStatus(updated)
+      commit({ project: { ...cur.project, trash }, scenes: { ...cur.scenes, [sceneId]: updated } })
+    },
+
+    trimShotVideo(sceneId, shotId, edge, fileTime) {
+      patchShot(
+        sceneId,
+        shotId,
+        (sh) => ({ ...sh, videoVersions: sh.videoVersions?.map((v) => (v.id === sh.activeVideoVersionId ? trimEdge(v, edge, fileTime) : v)) }),
+        `vtrim:${sceneId}:${shotId}`,
+        400,
+      )
+    },
+
     restoreTrash(entryId) {
       const cur = snap()
       if (!cur) return 'No hay proyecto abierto.'
@@ -924,7 +983,8 @@ export const useProject = create<State>()((set, get) => {
     splitSceneAt(sceneId, localT) {
       const cur = snap()
       const scene = cur?.scenes[sceneId]
-      if (!cur || !scene) return null
+      // Con cobertura se divide por planos (en «Cobertura de escena»), no con la tijera.
+      if (!cur || !scene || hasCoverage(scene)) return null
       const v = scene.videoVersions.find((x) => x.id === scene.activeVideoVersionId)
       const second = cloneScene(scene)
       second.title = `${scene.title} (parte 2)`
@@ -960,21 +1020,7 @@ export const useProject = create<State>()((set, get) => {
     trimVideo(sceneId, edge, fileTime) {
       patchScene(
         sceneId,
-        (s) => ({
-          ...s,
-          videoVersions: s.videoVersions.map((v) => {
-            if (v.id !== s.activeVideoVersionId) return v
-            // Orilla izquierda = primer video; orilla derecha = último video.
-            const clips = versionClips(v)
-            const i = edge === 'left' ? 0 : clips.length - 1
-            const c = clips[i]
-            const from = c.trimIn ?? 0
-            const to = c.trimOut ?? c.duration
-            const r = (x: number) => Math.round(x * 100) / 100
-            clips[i] = edge === 'left' ? { ...c, trimIn: r(clamp(fileTime, 0, to - 0.3)) } : { ...c, trimOut: r(clamp(fileTime, from + 0.3, c.duration)) }
-            return withClips(v, clips)
-          }),
-        }),
+        (s) => ({ ...s, videoVersions: s.videoVersions.map((v) => (v.id === s.activeVideoVersionId ? trimEdge(v, edge, fileTime) : v)) }),
         `vtrim:${sceneId}`,
         400,
       )

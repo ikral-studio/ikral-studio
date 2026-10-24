@@ -5,7 +5,8 @@
 import JSZip from 'jszip'
 import type { MediaRecord, Project, Scene } from '../../types'
 import { getMediaBlob } from '../media-library/media'
-import { buildSegments, placedClips, storyboardMediaIds } from '../script-sync/derive'
+import { buildSegments, placedClips, shotStoryboardIds, storyboardMediaIds } from '../script-sync/derive'
+import { hasCoverage } from '../coverage/shots'
 import { extFromMime, safeFilename } from '../../utils'
 
 export const FPS = 30
@@ -74,26 +75,31 @@ export async function buildNleTimeline(project: Project, scenes: Scene[]): Promi
   const audio: AItem[] = []
   const segments = buildSegments(scenes)
   for (const seg of segments) {
-    const start = fr(seg.start)
-    const len = fr(seg.end) - start
-    const name = `Escena ${seg.index + 1} · ${seg.scene.title}`
-    if (seg.video) {
-      // Cada video de la escena es un clip seguido del anterior.
-      const parts = placedClips(seg.video)
-      for (const [i, pc] of parts.entries()) {
-        const file = await fileFor(pc.clip.mediaId, 'video', pc.clip.duration)
-        if (!file) continue
-        const cStart = fr(seg.start + pc.start)
-        const cLen = i === parts.length - 1 ? start + len - cStart : fr(seg.start + pc.start + pc.length) - cStart
-        const cname = parts.length > 1 ? `${name} (${i + 1}/${parts.length})` : name
-        video.push({ name: cname, file, start: cStart, len: cLen, srcIn: fr(pc.from), hasAudio: true })
-        audio.push({ name: cname, file, start: cStart, len: cLen, srcIn: fr(pc.from), track: 1 })
+    const coverage = hasCoverage(seg.scene)
+    // Un clip por plano (sin cobertura, la escena es un solo plano).
+    for (const part of seg.parts) {
+      const at = seg.start + part.start
+      const start = fr(at)
+      const len = fr(at + part.duration) - start
+      const name = `Escena ${seg.index + 1}${coverage ? ` · Plano ${part.index + 1} · ${part.shot.name}` : ` · ${seg.scene.title}`}`
+      if (part.video) {
+        // Cada video del plano es un clip seguido del anterior.
+        const clips = placedClips(part.video)
+        for (const [i, pc] of clips.entries()) {
+          const file = await fileFor(pc.clip.mediaId, 'video', pc.clip.duration)
+          if (!file) continue
+          const cStart = fr(at + pc.start)
+          const cLen = i === clips.length - 1 ? start + len - cStart : fr(at + pc.start + pc.length) - cStart
+          const cname = clips.length > 1 ? `${name} (${i + 1}/${clips.length})` : name
+          video.push({ name: cname, file, start: cStart, len: cLen, srcIn: fr(pc.from), hasAudio: true })
+          audio.push({ name: cname, file, start: cStart, len: cLen, srcIn: fr(pc.from), track: 1 })
+        }
+      } else {
+        const still = (coverage ? shotStoryboardIds(part.shot) : storyboardMediaIds(seg.scene))[0]
+        if (!still) continue // hueco
+        const file = await fileFor(still, 'image', part.duration)
+        if (file) video.push({ name: `${name} (storyboard)`, file, start, len, srcIn: 0, hasAudio: false })
       }
-    } else {
-      const still = storyboardMediaIds(seg.scene)[0]
-      if (!still) continue // hueco
-      const file = await fileFor(still, 'image', seg.duration)
-      if (file) video.push({ name: `${name} (storyboard)`, file, start, len, srcIn: 0, hasAudio: false })
     }
   }
   const tracks = project.audioTracks ?? []

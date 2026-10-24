@@ -1,6 +1,7 @@
 // Funciones puras: todo lo que se ve en guion maestro, timeline y reproductor
 // se calcula desde las escenas. No hay copias del guion.
-import type { CustomField, Project, Scene, SceneStatus, VideoClip, VideoVersion } from '../../types'
+import type { CustomField, Project, Scene, SceneStatus, Shot, VideoClip, VideoVersion } from '../../types'
+import { hasCoverage, shotsOf } from '../coverage/shots'
 import { formatDuration, pad2 } from '../../utils'
 import { numbersToWordsInText } from '../../utils/numberWords'
 import { cameraPrompt, cameraSpanish } from '../camera/camera'
@@ -27,6 +28,19 @@ export function withClips(v: VideoVersion, clips: VideoClip[]): VideoVersion {
   // El id de la versión es del primer video; si otro lo traía (por reordenar), recibe uno nuevo.
   const others = rest.map((c) => (c.id === v.id ? { ...c, id: `vc_${Math.random().toString(36).slice(2, 10)}` } : c))
   return { ...v, mediaId: first.mediaId, previewMediaId: first.previewMediaId, duration: first.duration, width: first.width, height: first.height, trimIn: first.trimIn, trimOut: first.trimOut, clips: others.length ? others : undefined }
+}
+
+/** Recorta una orilla de la versión (izquierda = primer video; derecha = último). No daña el archivo. */
+export function trimEdge(v: VideoVersion, edge: 'left' | 'right', fileTime: number): VideoVersion {
+  const clips = versionClips(v)
+  const i = edge === 'left' ? 0 : clips.length - 1
+  const c = clips[i]
+  const from = c.trimIn ?? 0
+  const to = c.trimOut ?? c.duration
+  const r = (x: number) => Math.round(x * 100) / 100
+  const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))
+  clips[i] = edge === 'left' ? { ...c, trimIn: r(clamp(fileTime, 0, to - 0.3)) } : { ...c, trimOut: r(clamp(fileTime, from + 0.3, c.duration)) }
+  return withClips(v, clips)
 }
 
 export interface PlacedClip {
@@ -68,16 +82,74 @@ export function videoRange(v: { duration: number; trimIn?: number; trimOut?: num
   return { from, to, length: to - from }
 }
 
-/** Duración que ocupa la escena en timeline y reproducción. */
-export function effectiveDuration(scene: Scene): number {
-  const v = activeVideo(scene)
+/** Video activo de un plano. */
+export function shotVideo(shot: Pick<Shot, 'videoVersions' | 'activeVideoVersionId'>): VideoVersion | undefined {
+  if (!shot.activeVideoVersionId) return undefined
+  return shot.videoVersions?.find((v) => v.id === shot.activeVideoVersionId)
+}
+
+/** Duración que ocupa un plano: la de su video, o la planeada. */
+export function shotLength(shot: Shot): number {
+  const v = shotVideo(shot)
   if (v && v.duration > 0) return Math.max(0.1, versionLength(v))
-  return Math.max(0.5, scene.plannedDuration)
+  return Math.max(0.5, shot.duration || 0)
+}
+
+/** Un plano con su lugar dentro de la escena (en la línea de tiempo y el reproductor). */
+export interface ShotPart {
+  shot: Shot
+  /** Número del plano dentro de la escena (0, 1, 2…). */
+  index: number
+  /** Dónde empieza dentro de la escena (segundos). */
+  start: number
+  duration: number
+  video?: VideoVersion
+}
+
+/**
+ * Los planos de la escena uno tras otro. Escena sin cobertura = un solo tramo
+ * con el video y la duración de la escena (igual que siempre).
+ */
+export function shotParts(scene: Scene): ShotPart[] {
+  if (!hasCoverage(scene)) {
+    const [shot] = shotsOf(scene)
+    const v = activeVideo(scene)
+    const duration = v && v.duration > 0 ? Math.max(0.1, versionLength(v)) : Math.max(0.5, scene.plannedDuration)
+    return [{ shot, index: 0, start: 0, duration, video: v }]
+  }
+  let t = 0
+  return shotsOf(scene).map((shot, index) => {
+    const duration = shotLength(shot)
+    const part: ShotPart = { shot, index, start: t, duration, video: shotVideo(shot) }
+    t += duration
+    return part
+  })
+}
+
+/** Duración que ocupa la escena en timeline y reproducción (con cobertura: suma de sus planos). */
+export function effectiveDuration(scene: Scene): number {
+  return shotParts(scene).reduce((a, p) => a + p.duration, 0)
+}
+
+/** ¿Qué plano toca en un instante dentro de la escena? */
+export function partAt(parts: ShotPart[], offset: number): ShotPart {
+  return parts.find((p) => offset < p.start + p.duration) ?? parts[parts.length - 1]
+}
+
+/**
+ * Qué plano y qué video tocan en un instante dentro de la escena.
+ * `placed.start` se cuenta desde el inicio de la ESCENA (no del plano). Sin video: `placed` vacío.
+ */
+export function placeInScene(seg: Pick<Segment, 'parts'>, offset: number): { part: ShotPart; placed?: PlacedClip } {
+  const part = partAt(seg.parts, offset)
+  if (!part.video) return { part }
+  const p = clipAt(part.video, offset - part.start)
+  return { part, placed: { ...p, start: part.start + p.start } }
 }
 
 export function deriveStatus(scene: Scene): SceneStatus {
   if (scene.reviewed) return 'reviewed'
-  if (activeVideo(scene)) return 'video-imported'
+  if (hasCoverage(scene) ? scene.shots!.every((s) => shotVideo(s)) : activeVideo(scene)) return 'video-imported'
   const hasImages = !!(scene.startImageId || scene.endImageId || scene.storyboardFrames.length)
   const s = scene.script
   const hasScript = !!(s.action.trim() || s.generationPrompt.trim())
@@ -102,14 +174,18 @@ export interface Segment {
   start: number
   end: number
   duration: number
+  /** Video de la escena (solo sin cobertura; con planos, cada plano trae el suyo en `parts`). */
   video?: VideoVersion
+  /** Planos de la escena con su lugar (siempre al menos uno). */
+  parts: ShotPart[]
 }
 
 export function buildSegments(scenes: Scene[]): Segment[] {
   let t = 0
   return scenes.map((scene, index) => {
-    const duration = effectiveDuration(scene)
-    const seg: Segment = { scene, index, start: t, end: t + duration, duration, video: activeVideo(scene) }
+    const parts = shotParts(scene)
+    const duration = parts.reduce((a, p) => a + p.duration, 0)
+    const seg: Segment = { scene, index, start: t, end: t + duration, duration, video: hasCoverage(scene) ? undefined : activeVideo(scene), parts }
     t += duration
     return seg
   })
@@ -128,6 +204,17 @@ export function locateTime(segments: Segment[], t: number): { index: number; off
   }
   const last = segments[segments.length - 1]
   return { index: last.index, offset: last.duration }
+}
+
+/** Imágenes de storyboard de un plano: inicial (o la aprobada), referencias, final. */
+export function shotStoryboardIds(shot: Shot): string[] {
+  const ids: string[] = []
+  const start = shot.startImageId ?? shot.prep?.start?.approvedId
+  const end = shot.endImageId ?? shot.prep?.end?.approvedId
+  if (start) ids.push(start)
+  ;[...(shot.references ?? [])].sort((a, b) => a.order - b.order).forEach((f) => ids.push(f.mediaId))
+  if (end) ids.push(end)
+  return ids
 }
 
 /** Imágenes de storyboard en orden: inicial, intermedias, final. */

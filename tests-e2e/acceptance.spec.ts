@@ -897,3 +897,48 @@ test('extra · cobertura: pasar a cobertura, 4 planos de Doña Chuy, deshacer, p
   await again.getByRole('button', { name: 'Abrir plano 2' }).click()
   await expect(again.getByLabel('Continuidad del plano 2')).toHaveValue('La carne ya está volteada')
 })
+
+test('extra · cobertura 2c: video por plano, línea de tiempo y reproducción plano por plano', async ({ page }) => {
+  await freshProject(page, 'Cobertura 2c')
+  await addScenes(page, 2)
+  const dur = card(page, 2).getByLabel('Duración planificada en segundos')
+  await dur.fill('2')
+  await dur.press('Enter')
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  const scenes = page.getByRole('region', { name: 'Escenas del proyecto' })
+  await scenes.getByRole('button', { name: /Escena 01/ }).click()
+  const cov = scenes.getByRole('region', { name: 'Cobertura de escena' })
+  await cov.getByRole('button', { name: 'Pasar a cobertura' }).click()
+  await cov.getByRole('button', { name: 'Agregar plano' }).click()
+  const list = cov.getByRole('list', { name: 'Planos de la escena' })
+  await list.getByRole('button', { name: 'Abrir plano 1' }).click()
+  await list.getByLabel('Duración del plano 1').fill('2')
+  await page.getByRole('button', { name: 'Ir a Edición' }).click()
+
+  // En Edición: un video por plano (el plano 2 recibe un clip de 2 s)
+  const c1 = card(page, 1)
+  if (await c1.getByRole('button', { name: 'Expandir escena' }).isVisible()) await c1.getByRole('button', { name: 'Expandir escena' }).click()
+  await expect(c1.getByText('Videos por plano')).toBeVisible()
+  await chooseFile(page, () => c1.getByRole('button', { name: 'Agregar video al plano 2' }).click(), 'clip3.mp4')
+  await expect(c1.getByLabel('Video del plano 2').locator('video')).toBeVisible({ timeout: 15000 })
+
+  // Línea de tiempo: cada plano es un bloque dentro de su escena
+  await expect(page.locator('[aria-label="Plano 1 de la escena 1 sin video"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Video del plano 2 de la escena 1, 2 s"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Escena 2 sin video"]')).toBeVisible()
+  const preview = page.locator('[aria-label="Vista previa"]')
+  await expect(preview.getByText('00:00 / 00:06')).toBeVisible()
+
+  // Reproductor: toca plano por plano y luego la escena 2
+  await page.locator('[aria-label="Línea de tiempo"]').getByRole('switch').click() // loop off
+  await preview.getByRole('button', { name: 'Reproducir' }).click()
+  await expect(preview.getByText(/Plano 1 de 2/).first()).toBeVisible({ timeout: 3000 })
+  await expect(preview.getByText(/Plano 2 de 2/).first()).toBeVisible({ timeout: 5000 })
+  await expect(preview.getByText('Escena 02 ·').first()).toBeVisible({ timeout: 6000 })
+  await expect(preview.getByRole('button', { name: 'Reproducir' })).toBeVisible({ timeout: 5000 })
+  expect(await seconds(page)).toBe(6)
+
+  // Al recargar, el video del plano sigue ahí
+  await page.reload()
+  await expect(page.locator('[aria-label="Video del plano 2 de la escena 1, 2 s"]')).toBeVisible()
+})

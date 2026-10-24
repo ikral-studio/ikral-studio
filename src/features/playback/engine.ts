@@ -1,7 +1,7 @@
 // Motor de reproducción centralizado: un solo <video> para toda la película.
 // Calcula qué escena toca en cada instante y salta entre clips sin solaparlos.
 import { create } from 'zustand'
-import { buildSegments, clipAt, locateTime, orderedScenes, totalDuration, type PlacedClip, type Segment } from '../script-sync/derive'
+import { buildSegments, locateTime, orderedScenes, placeInScene, totalDuration, type PlacedClip, type Segment, type ShotPart } from '../script-sync/derive'
 import { useProject } from '../../stores/projectStore'
 import { getMediaUrl } from '../media-library/media'
 import type { AudioTrack } from '../../types'
@@ -13,6 +13,8 @@ interface PlaybackState {
   volume: number
   muted: boolean
   index: number
+  /** Plano (dentro de la escena) que se está viendo: 0, 1, 2… */
+  shot: number
   mode: 'video' | 'frames' | 'empty'
   error: string | null
   /** Reproduciendo hacia atrás. */
@@ -28,6 +30,7 @@ export const usePlayback = create<PlaybackState>()(() => ({
   volume: 1,
   muted: false,
   index: -1,
+  shot: 0,
   mode: 'empty',
   error: null,
   reverse: false,
@@ -52,6 +55,8 @@ class PlaybackController {
   private lastSeek = 0
   /** Video (dentro de la escena) que está cargado en el reproductor. */
   private clip: PlacedClip | null = null
+  /** Plano que está en el reproductor. */
+  private part: ShotPart | null = null
 
   constructor() {
     const sync = () => {
@@ -268,18 +273,22 @@ class PlaybackController {
     const { index, offset } = locateTime(this.segments, t)
     const seg = this.segments[index]
     if (!seg) {
-      usePlayback.setState({ index: -1, mode: 'empty', time: 0, error: null })
+      this.part = null
+      usePlayback.setState({ index: -1, shot: 0, mode: 'empty', time: 0, error: null })
       this.video?.pause()
       return
     }
-    usePlayback.setState({ index, time: t, error: null })
+    // Plano por plano: cada plano trae su propio video (o su storyboard si no tiene).
+    const { part, placed } = placeInScene(seg, offset)
+    this.part = part
+    usePlayback.setState({ index, shot: part.index, time: t, error: null })
     const video = this.video
-    if (!seg.video || !video) {
+    if (!placed || !video) {
+      this.clip = null
       video?.pause()
       usePlayback.setState({ mode: 'frames' })
       return
     }
-    const placed = clipAt(seg.video, offset)
     this.clip = placed
     const url = await getMediaUrl(placed.clip.previewMediaId ?? placed.clip.mediaId)
     if (token !== this.token) return
@@ -366,7 +375,11 @@ class PlaybackController {
       usePlayback.setState({ time: t })
       const c = this.clip
       const local = t - seg.start
-      if (st.mode === 'video' && c && local < c.start) {
+      const p = this.part
+      if (st.mode !== 'video' && p && local < p.start) {
+        // pasar al plano anterior de la misma escena
+        void this.enter(t, false)
+      } else if (st.mode === 'video' && c && local < c.start) {
         // pasar al video anterior de la misma escena
         void this.enter(t, false)
       } else if (st.mode === 'video' && this.video && c && now - this.lastSeek > 50) {
@@ -408,7 +421,9 @@ class PlaybackController {
     } else {
       const dt = ((now - this.last) / 1000) * st.speed
       const t = st.time + dt
+      const p = this.part
       if (t >= seg.end) this.next()
+      else if (p && t - seg.start >= p.start + p.duration) void this.enter(t, true) // siguiente plano
       else usePlayback.setState({ time: t })
     }
     this.last = now

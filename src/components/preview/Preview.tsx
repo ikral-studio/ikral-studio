@@ -4,19 +4,24 @@ import { useProject } from '../../stores/projectStore'
 import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
 import { useMediaUrl } from '../../features/media-library/media'
-import { storyboardMediaIds, totalDuration } from '../../features/script-sync/derive'
+import { shotStoryboardIds, storyboardMediaIds, totalDuration } from '../../features/script-sync/derive'
+import { hasCoverage } from '../../features/coverage/shots'
 import { formatTime, pad2 } from '../../utils'
 
 function FrameView({ fit }: { fit: 'contain' | 'cover' }) {
   const segments = useSegments()
   const index = usePlayback((s) => s.index)
+  const shotIdx = usePlayback((s) => s.shot)
   const seg = segments[index]
-  const ids = seg ? storyboardMediaIds(seg.scene) : []
+  // Con cobertura, se ven las imágenes del plano que toca; sin cobertura, las de la escena.
+  const part = seg && hasCoverage(seg.scene) ? seg.parts[Math.min(shotIdx, seg.parts.length - 1)] : undefined
+  const ids = part ? shotStoryboardIds(part.shot) : seg ? storyboardMediaIds(seg.scene) : []
+  const from = (seg?.start ?? 0) + (part?.start ?? 0)
+  const span = part?.duration ?? seg?.duration ?? 1
   // Con varias imágenes, se reparten a lo largo de la duración provisional.
   const frameIdx = usePlayback((s) => {
-    const sg = segments[s.index]
-    if (!sg || ids.length < 2) return 0
-    const p = (s.time - sg.start) / sg.duration
+    if (!seg || ids.length < 2) return 0
+    const p = (s.time - from) / span
     return Math.min(ids.length - 1, Math.max(0, Math.floor(p * ids.length)))
   })
   const url = useMediaUrl(ids[frameIdx])
@@ -27,6 +32,7 @@ function FrameView({ fit }: { fit: 'contain' | 'cover' }) {
         <Clapperboard size={28} />
         <span className="text-[13px]">
           Escena {pad2(index + 1)} · {seg.scene.title}
+          {part && ` · Plano ${part.index + 1}`}
         </span>
         <span className="text-[11.5px]">Sin imágenes ni video</span>
       </div>
@@ -37,7 +43,7 @@ function FrameView({ fit }: { fit: 'contain' | 'cover' }) {
 export function Preview() {
   const aspect = useProject((s) => s.project?.aspectRatio ?? '16:9')
   const fit = useProject((s) => s.settings.fit)
-  const { playing, loop, volume, muted, mode, error, index } = usePlayback()
+  const { playing, loop, volume, muted, mode, error, index, shot } = usePlayback()
   const time = usePlayback((s) => s.time)
   const segments = useSegments()
   const total = totalDuration(segments)
@@ -71,6 +77,7 @@ export function Preview() {
         {seg && (
           <span className="ml-auto min-w-0 truncate text-[11.5px] text-ink-2">
             Escena {pad2(index + 1)} · {seg.scene.title}
+            {hasCoverage(seg.scene) && seg.parts[shot] && ` · Plano ${shot + 1} de ${seg.parts.length}`}
           </span>
         )}
         {provisional && (

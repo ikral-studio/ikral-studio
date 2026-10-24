@@ -7,7 +7,9 @@ import { useProject } from '../../stores/projectStore'
 import { useSegments } from '../../stores/selectors'
 import { playback, usePlayback } from '../../features/playback/engine'
 import { useMediaUrl } from '../../features/media-library/media'
-import { locateTime, placedClips, storyboardMediaIds, totalDuration, type Segment } from '../../features/script-sync/derive'
+import { locateTime, placedClips, shotStoryboardIds, storyboardMediaIds, totalDuration, type Segment, type ShotPart } from '../../features/script-sync/derive'
+import { hasCoverage } from '../../features/coverage/shots'
+import type { VideoVersion } from '../../types'
 import { addSceneAndFocus, selectScene } from '../../features/scene-management/actions'
 import { clamp, formatDuration, formatTime } from '../../utils'
 import { importFiles } from '../../features/scene-management/actions'
@@ -23,6 +25,7 @@ const AUDIO_ACCEPT = 'audio/*,.mp3,.m4a,.wav,.aac,.ogg'
 const MUSIC_COLORS = ['#0d9488', '#db2777']
 const EMPTY_TRACKS: AudioTrack[] = []
 const TRACK_PAD = 12
+const COVERAGE_CUT = 'Esta escena tiene planos: para dividirla, agrega o duplica un plano en «Cobertura de escena»'
 
 interface Layout {
   x: number
@@ -75,10 +78,12 @@ function Mini({ mediaId }: { mediaId: string }) {
 
 const StoryBlock = memo(function StoryBlock({ seg, w, selected, playing }: { seg: Segment; w: number; selected: boolean; playing: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: seg.scene.id, disabled: playing || useUI.getState().tool === 'razor' })
+  const coverage = hasCoverage(seg.scene)
   const ids = storyboardMediaIds(seg.scene)
   const maxThumbs = Math.max(1, Math.floor(w / 46))
   const shown = ids.length <= maxThumbs ? ids : ids.filter((_, i) => i % Math.ceil(ids.length / maxThumbs) === 0 || i === ids.length - 1)
   const color = accentFor(seg.index)
+  const planned = coverage ? seg.duration : seg.scene.plannedDuration
   return (
     <div
       ref={setNodeRef}
@@ -91,22 +96,48 @@ const StoryBlock = memo(function StoryBlock({ seg, w, selected, playing }: { seg
         onClick={() => selectScene(seg.scene.id, { seek: true })}
         className={`flex h-full w-full flex-col overflow-hidden rounded-lg border text-left ${selected ? 'border-white ring-2 ring-sel-2' : 'border-black/30'} ${isDragging ? 'opacity-80 shadow-xl' : ''} ${playing ? '' : 'cursor-grab active:cursor-grabbing'}`}
         style={{ background: color }}
-        aria-label={`Storyboard escena ${seg.index + 1}: ${seg.scene.title}, ${formatDuration(seg.scene.plannedDuration)} planeados`}
-        title={`${seg.scene.title} · planeado ${formatDuration(seg.scene.plannedDuration)}${playing ? '' : ' · arrastra para reordenar'}`}
+        aria-label={`Storyboard escena ${seg.index + 1}: ${seg.scene.title}, ${formatDuration(planned)}${coverage ? ` en ${seg.parts.length} planos` : ' planeados'}`}
+        title={`${seg.scene.title} · ${coverage ? `${seg.parts.length} planos · ${formatDuration(planned)}` : `planeado ${formatDuration(planned)}`}${playing ? '' : ' · arrastra para reordenar'}`}
       >
-        <div className="flex min-h-0 flex-1 gap-px">
-          {shown.length ? shown.map((id, i) => <Mini key={id + i} mediaId={id} />) : (
-            <div className="flex flex-1 items-center justify-center bg-black/25 text-white/60"><ImageIcon size={15} /></div>
-          )}
-        </div>
+        {coverage ? (
+          <div className="flex min-h-0 flex-1">
+            {seg.parts.map((p) => (
+              <ShotStory key={p.shot.id} part={p} pct={(p.duration / seg.duration) * 100} px={(p.duration / seg.duration) * w} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 gap-px">
+            {shown.length ? shown.map((id, i) => <Mini key={id + i} mediaId={id} />) : (
+              <div className="flex flex-1 items-center justify-center bg-black/25 text-white/60"><ImageIcon size={15} /></div>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-1 px-1.5 py-[3px] text-[11px] font-medium text-white">
-          <span className="truncate">Escena {seg.index + 1} · {seg.scene.title}</span>
-          <span className="ml-auto shrink-0 tabular-nums text-white/75">{formatDuration(seg.scene.plannedDuration)}</span>
+          <span className="truncate">Escena {seg.index + 1} · {seg.scene.title}{coverage ? ` · ${seg.parts.length} planos` : ''}</span>
+          <span className="ml-auto shrink-0 tabular-nums text-white/75">{formatDuration(planned)}</span>
         </div>
       </button>
     </div>
   )
 })
+
+/** Un plano dentro del bloque de storyboard de su escena. */
+function ShotStory({ part, pct, px }: { part: ShotPart; pct: number; px: number }) {
+  const ids = shotStoryboardIds(part.shot)
+  const max = Math.max(1, Math.floor(px / 46))
+  const shown = ids.slice(0, max)
+  return (
+    <div
+      className="relative flex min-w-0 gap-px border-l border-white/60 first:border-l-0"
+      style={{ width: `${pct}%` }}
+      data-shot={part.shot.id}
+      title={`Plano ${part.index + 1} · ${part.shot.name} · ${formatDuration(part.duration)}`}
+    >
+      {shown.length ? shown.map((id, i) => <Mini key={id + i} mediaId={id} />) : <div className="flex-1 bg-black/25" />}
+      <span className="pointer-events-none absolute left-0.5 top-0.5 rounded bg-black/60 px-1 text-[10px] font-semibold tabular-nums text-white">{part.index + 1}</span>
+    </div>
+  )
+}
 
 /** Orilla que se jala para estirar o encoger (recorte sin dañar el archivo). */
 function EdgeHandle({ side, label, onPointerDown }: { side: 'left' | 'right'; label: string; onPointerDown: (e: React.PointerEvent) => void }) {
@@ -123,32 +154,14 @@ function EdgeHandle({ side, label, onPointerDown }: { side: 'left' | 'right'; la
   )
 }
 
-const VideoBlock = memo(function VideoBlock({ seg, w, selected, pps }: { seg: Segment; w: number; selected: boolean; pps: number }) {
-  const url = useMediaUrl(seg.video?.mediaId, true)
-  const color = accentFor(seg.index)
-  if (!seg.video)
-    return (
-      <div style={{ width: w }} className="h-full shrink-0 px-[2px]">
-        <button
-          onClick={() => selectScene(seg.scene.id, { seek: true })}
-          className={`flex h-full w-full items-center gap-1.5 overflow-hidden rounded-lg border border-dashed px-2 text-[11px] text-ink-3 ${selected ? 'border-sel-2' : 'border-line-2'}`}
-          aria-label={`Escena ${seg.index + 1} sin video`}
-        >
-          <Film size={13} className="shrink-0" /> <span className="truncate">Sin video · {formatDuration(seg.duration)}</span>
-        </button>
-      </div>
-    )
-  const v = seg.video
-  const clips = placedClips(v)
-  const firstC = clips[0]
-  const lastC = clips[clips.length - 1]
-  const drag = (edge: 'left' | 'right') => (e: React.PointerEvent) => {
+/** Arrastre de una orilla para recortar: `onMove` recibe el nuevo segundo del archivo. */
+function edgeDrag(base: number, pps: number, onMove: (fileTime: number) => void) {
+  return (e: React.PointerEvent) => {
     e.stopPropagation()
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     const ox = e.clientX
-    const base = edge === 'left' ? firstC.from : lastC.to
-    const move = (ev: PointerEvent) => useProject.getState().trimVideo(seg.scene.id, edge, base + (ev.clientX - ox) / pps)
+    const move = (ev: PointerEvent) => onMove(base + (ev.clientX - ox) / pps)
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
@@ -156,24 +169,101 @@ const VideoBlock = memo(function VideoBlock({ seg, w, selected, pps }: { seg: Se
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
+}
+
+/** Un video en la pista (de la escena o de un plano), con orillas para recortar. */
+function VideoPiece({ v, length, label, title, name, color, selected, pps, onClick, onTrim }: { v: VideoVersion; length: number; label: string; title: string; name: string; color: string; selected: boolean; pps: number; onClick: () => void; onTrim: (edge: 'left' | 'right', fileTime: number) => void }) {
+  const url = useMediaUrl(v.mediaId, true)
+  const clips = placedClips(v)
+  const firstC = clips[0]
+  const lastC = clips[clips.length - 1]
   const trimmed = firstC.from > 0.01 || lastC.to < lastC.clip.duration - 0.01
   return (
-    <div style={{ width: w }} className="relative h-full shrink-0 px-[2px]">
-      <EdgeHandle side="left" label={`Estirar el inicio del video de la escena ${seg.index + 1}`} onPointerDown={drag('left')} />
-      <EdgeHandle side="right" label={`Estirar el final del video de la escena ${seg.index + 1}`} onPointerDown={drag('right')} />
+    <div className="relative h-full min-w-0 flex-1">
+      <EdgeHandle side="left" label={`Estirar el inicio del video ${label}`} onPointerDown={edgeDrag(firstC.from, pps, (t) => onTrim('left', t))} />
+      <EdgeHandle side="right" label={`Estirar el final del video ${label}`} onPointerDown={edgeDrag(lastC.to, pps, (t) => onTrim('right', t))} />
       <button
-        onClick={() => selectScene(seg.scene.id, { seek: true })}
+        onClick={onClick}
         title={`${clips.length > 1 ? `${clips.length} videos seguidos · ` : ''}${trimmed ? 'recortado · ' : ''}jala las orillas para recortar`}
         className={`relative flex h-full w-full items-center gap-1.5 overflow-hidden rounded-lg border pr-2 text-left text-[11px] font-medium text-white ${selected ? 'border-white ring-2 ring-sel-2' : 'border-black/30'}`}
         style={{ background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
-        aria-label={`Video escena ${seg.index + 1}, ${formatDuration(seg.duration)}`}
+        aria-label={`${title}, ${formatDuration(length)}`}
       >
         <div className="h-full w-[52px] shrink-0 bg-black/30">{url && <img src={url} alt="" className="h-full w-full object-cover" />}</div>
-        <span className="truncate">Escena {seg.index + 1} · {formatDuration(seg.duration)}{clips.length > 1 ? ` · ${clips.length} videos` : ''}</span>
+        <span className="truncate">{name} · {formatDuration(length)}{clips.length > 1 ? ` · ${clips.length} videos` : ''}</span>
         {clips.slice(1).map((c) => (
-          <span key={c.clip.id} className="pointer-events-none absolute bottom-1 top-1 w-[2px] rounded bg-white/70" style={{ left: `${(c.start / seg.duration) * 100}%` }} />
+          <span key={c.clip.id} className="pointer-events-none absolute bottom-1 top-1 w-[2px] rounded bg-white/70" style={{ left: `${(c.start / length) * 100}%` }} />
         ))}
       </button>
+    </div>
+  )
+}
+
+function NoVideo({ label, text, selected, onClick }: { label: string; text: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex h-full w-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-lg border border-dashed px-2 text-[11px] text-ink-3 ${selected ? 'border-sel-2' : 'border-line-2'}`}
+      aria-label={label}
+    >
+      <Film size={13} className="shrink-0" /> <span className="truncate">{text}</span>
+    </button>
+  )
+}
+
+const VideoBlock = memo(function VideoBlock({ seg, w, selected, pps }: { seg: Segment; w: number; selected: boolean; pps: number }) {
+  const color = accentFor(seg.index)
+  const n = seg.index + 1
+  const go = (at = 0) => {
+    selectScene(seg.scene.id)
+    if (!usePlayback.getState().playing) void playback.seek(seg.start + at)
+  }
+  if (hasCoverage(seg.scene))
+    // Cobertura: un bloque por plano, cada uno con su video (o hueco).
+    return (
+      <div style={{ width: w }} className="flex h-full shrink-0 gap-[2px] px-[2px]" aria-label={`Videos de los planos de la escena ${n}`}>
+        {seg.parts.map((p) => (
+          <div key={p.shot.id} className="flex h-full min-w-0" style={{ width: `${(p.duration / seg.duration) * 100}%` }}>
+            {p.video ? (
+              <VideoPiece
+                v={p.video}
+                length={p.duration}
+                label={`del plano ${p.index + 1} de la escena ${n}`}
+                title={`Video del plano ${p.index + 1} de la escena ${n}`}
+                name={`P${p.index + 1}`}
+                color={color}
+                selected={selected}
+                pps={pps}
+                onClick={() => go(p.start)}
+                onTrim={(edge, t) => useProject.getState().trimShotVideo(seg.scene.id, p.shot.id, edge, t)}
+              />
+            ) : (
+              <NoVideo label={`Plano ${p.index + 1} de la escena ${n} sin video`} text={`P${p.index + 1} · sin video`} selected={selected} onClick={() => go(p.start)} />
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  if (!seg.video)
+    return (
+      <div style={{ width: w }} className="flex h-full shrink-0 px-[2px]">
+        <NoVideo label={`Escena ${n} sin video`} text={`Sin video · ${formatDuration(seg.duration)}`} selected={selected} onClick={() => selectScene(seg.scene.id, { seek: true })} />
+      </div>
+    )
+  return (
+    <div style={{ width: w }} className="flex h-full shrink-0 px-[2px]">
+      <VideoPiece
+        v={seg.video}
+        length={seg.duration}
+        label={`de la escena ${n}`}
+        title={`Video escena ${n}`}
+        name={`Escena ${n}`}
+        color={color}
+        selected={selected}
+        pps={pps}
+        onClick={() => selectScene(seg.scene.id, { seek: true })}
+        onTrim={(edge, t) => useProject.getState().trimVideo(seg.scene.id, edge, t)}
+      />
     </div>
   )
 })
@@ -249,6 +339,7 @@ export function Timeline() {
     const { index, offset } = locateTime(segments, t)
     const seg = segments[index]
     if (!seg) return
+    if (hasCoverage(seg.scene)) return toast(COVERAGE_CUT, 'info')
     const id = useProject.getState().splitSceneAt(seg.scene.id, offset)
     if (id) {
       useProject.getState().select(id)
@@ -377,6 +468,7 @@ export function Timeline() {
             const { index, offset } = locateTime(segments, t)
             const seg = segments[index]
             if (!seg) return
+            if (hasCoverage(seg.scene)) return toast(COVERAGE_CUT, 'info')
             const id = useProject.getState().splitSceneAt(seg.scene.id, offset)
             if (!id) toast('Muy cerca de la orilla para cortar', 'info')
           }}

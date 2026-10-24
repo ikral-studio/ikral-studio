@@ -151,7 +151,8 @@ export type TrashEntry = { id: string; deletedAt: string } & (
   | { kind: 'scene'; scene: Scene; index: number }
   | { kind: BibleKind; item: BibleItem | Character; relations?: Relation[] }
   | { kind: 'relation'; relation: Relation }
-  | { kind: 'version'; sceneId: string; version: VideoVersion }
+  /** `shotId`: el video era de un plano (cobertura), no de la escena. */
+  | { kind: 'version'; sceneId: string; version: VideoVersion; shotId?: string }
   /** `conflict`: lo guardó la unión de cambios (Claude y la app cambiaron el mismo plano). */
   | { kind: 'shot'; sceneId: string; shot: Shot; index: number; conflict?: boolean }
 )

@@ -16,6 +16,8 @@ import { MediaSlot } from './MediaSlot'
 import { FramesStrip } from './FramesStrip'
 import { ScriptEditor } from './ScriptEditor'
 import { VideoPanel } from './VideoPanel'
+import { ShotVideosPanel } from './ShotVideosPanel'
+import { hasCoverage } from '../../features/coverage/shots'
 
 /** Alto fijo de las cajas en la tarjeta cerrada: todas las escenas miden lo mismo. */
 const COMPACT_H = 112
@@ -149,7 +151,8 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
   const isPlayingHere = usePlayback((s) => s.playing && s.index === n - 1)
   const scrollReq = useUI((s) => s.scrollRequest)
   const ref = useRef<HTMLElement>(null)
-  const video = scene ? activeVideo(scene) : undefined
+  const coverage = !!scene && hasCoverage(scene)
+  const video = scene && !coverage ? activeVideo(scene) : undefined
   const videoThumb = useMediaUrl(video?.mediaId, true)
 
   useEffect(() => {
@@ -189,8 +192,16 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
             <Play size={10} fill="currentColor" /> En vista previa
           </span>
         )}
-        <DurationInput sceneId={id} />
-        <SuggestChip sceneId={id} />
+        {coverage ? (
+          <span className="chip bg-white/5 text-ink-2 tabular-nums" title="Con cobertura, la duración es la suma de sus planos">
+            <Clock3 size={11} /> {formatTime(effectiveDuration(scene))} · {scene.shots!.length} planos
+          </span>
+        ) : (
+          <>
+            <DurationInput sceneId={id} />
+            <SuggestChip sceneId={id} />
+          </>
+        )}
         {video && Math.abs(video.duration - scene.plannedDuration) >= 0.5 && (
           <span className="chip bg-white/5 text-ink-2" title="Duración real del video activo">
             <Film size={11} /> {formatTime(video.duration)}
@@ -237,6 +248,15 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
               {scene.script.action || scene.script.generationPrompt || <span className="text-ink-3">Sin guion todavía. Clic para escribir.</span>}
             </button>
           </div>
+          {coverage ? (
+            <div className="min-w-0">
+              <div className="label mb-1">Videos por plano</div>
+              <button className="field flex w-full flex-col items-center justify-center gap-1 text-[11.5px] text-ink-2" style={{ height: COMPACT_H }} onClick={toggle} title="Clic para ver los videos de cada plano">
+                <Film size={18} />
+                {scene.shots!.filter((s) => s.activeVideoVersionId).length} de {scene.shots!.length} planos con video
+              </button>
+            </div>
+          ) : (
           <CompactSlot sceneId={id} kind="video" mediaId={video?.mediaId} label="Video generado" onOpen={toggle}>
             {videoThumb ? (
               <>
@@ -253,6 +273,7 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
               </span>
             )}
           </CompactSlot>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-4 border-t border-line px-3 pb-4 pt-3">
@@ -262,7 +283,7 @@ export const SceneCard = memo(function SceneCard({ id, n }: { id: string; n: num
           </div>
           <FramesStrip sceneId={id} />
           <ScriptEditor sceneId={id} n={n} />
-          <VideoPanel sceneId={id} fileBase={fileBase} />
+          {coverage ? <ShotVideosPanel sceneId={id} /> : <VideoPanel sceneId={id} fileBase={fileBase} />}
         </div>
       )}
     </article>
