@@ -13,6 +13,8 @@
 //      Tras cada etapa el puente comprueba él mismo: commit de cierre + npm test + npm run build. Si no, cuenta
 //      como fallo; tras el reintento la cadena se detiene con informe. ChatGPT puede pausarla («COORD-CADENA-PAUSA»)
 //      y reanudarla («COORD-CADENA-SIGUE», que vuelve a intentar la etapa detenida).
+//   5. Monitor en vivo (tools/coord-monitor.mjs): cada vuelta reescribe una página de solo lectura con el estado real,
+//      también las vueltas que encuentran el candado ocupado (latido mientras Claude trabaja).
 // Control: candado con PID (una sola ejecución), límite de tiempo por tarea, 1 reintento a los 10 min,
 // y deduplicación (mismo comentario o misma tarea repetida en 24 h no se corre dos veces). Lógica en coord-bridge-core.mjs.
 // Apagar: crear ~/.ikral-coord-pausa (pausa todo) o `launchctl bootout gui/$(id -u)/com.ikral.coord-bridge`.
@@ -38,6 +40,8 @@ import {
   recoverRunning,
   vitestSummary,
 } from './coord-bridge-core.mjs'
+import { logEvent, writeMonitor } from './coord-monitor.mjs'
+import { taskTitle } from './coord-monitor-core.mjs'
 
 const env = process.env
 const REPO = 'ikral-studio/coordinacion'
@@ -55,6 +59,9 @@ const CLAUDE = env.COORD_CLAUDE_BIN || 'claude'
 const TASK_TIMEOUT_MS = Number(env.COORD_TASK_TIMEOUT_MS) || 2 * 60 * 60 * 1000
 const STALE_MS = TASK_TIMEOUT_MS + 10 * 60 * 1000
 
+/** Monitor en vivo (solo lectura): se reescribe en cada vuelta, también con el candado ocupado. Nunca falla. */
+const monitor = () => writeMonitor({ stateDir: STATE_DIR, workdir: WORKDIR, pauseFile: PAUSE, repo: REPO, issue: ISSUE })
+const event = (ev) => logEvent(STATE_DIR, ev)
 const log = (msg) => appendFileSync(LOG, `${new Date().toISOString()} ${msg}\n`)
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 const post = (body) => {
@@ -150,8 +157,9 @@ function verifyStage(stage) {
 
 function main() {
   mkdirSync(STATE_DIR, { recursive: true })
-  if (existsSync(PAUSE)) return
-  if (!acquireLock()) return
+  if (existsSync(PAUSE)) return monitor()
+  // Candado ocupado = otra vuelta está trabajando: esta solo actualiza el monitor (latido).
+  if (!acquireLock()) return monitor()
   try {
     // Una línea JSON por comentario (los saltos de línea del texto van escapados).
     const comments = gh('api', `repos/${REPO}/issues/${ISSUE}/comments`, '--paginate', '--jq', '.[] | tojson')
@@ -164,12 +172,15 @@ function main() {
     if (!state) return saveState({ lastId: Math.max(0, ...comments.map((c) => c.id)), tasks: {}, chain: {} })
     state = prune(recoverRunning(state, now), now)
     const { state: next, pings, controls } = ingest(state, comments, now)
+    // Título corto y limpio de cada tarea de ChatGPT, para el monitor.
+    for (const c of comments) if (next.tasks[c.id] && !next.tasks[c.id].title) next.tasks[c.id].title = taskTitle(c.body)
     // Se guarda ANTES de actuar: un comentario nunca se procesa dos veces.
     saveState((state = next))
     for (const c of pings) {
       post(`COORD-PONG ✅ (puente automático del Mac, respuesta al comentario ${c.id})`)
       log(`ping ${c.id}: pong`)
     }
+    for (const c of controls) event({ type: c.kind })
     for (const c of controls)
       post(
         c.kind === 'chain-pause'
@@ -196,10 +207,12 @@ function main() {
     } else if (step.action === 'stopped' && !state.tasks[`etapa-${step.stage}`].reported) {
       state.tasks[`etapa-${step.stage}`].reported = true
       saveState(state)
+      event({ type: 'chain-stopped', stage: step.stage })
       post(`⛔ Puente: la cadena del plan está detenida en la etapa ${step.stage} (falló ${MAX_ATTEMPTS} veces). «COORD-CADENA-SIGUE» la vuelve a intentar.`)
     } else if (step.action === 'finished' && !state.chain.finishedReported) {
       post(`🏁 Puente: cadena del plan terminada: ya están cerradas todas las etapas autorizadas (${info.range.from} → ${info.range.to}). Publicar sigue esperando el «sí» del director.`)
       state.chain = { ...state.chain, finishedReported: true }
+      event({ type: 'chain-finished' })
       saveState(state)
     }
 
@@ -210,14 +223,19 @@ function main() {
     const attempt = (task.attempts ?? 0) + 1
     state.tasks[id] = { ...task, status: 'running', startedAt: now }
     saveState(state)
+    const about = { key: String(id), stage: task.stage, title: task.title }
+    event({ type: 'task-start', attempt, ...about })
+    monitor()
     let fail
     let report = ''
     if (task.kind === 'stage') {
       const closed = [...info.closed].sort().join(', ') || 'ninguna'
       post(`🔗 Puente: se activa la etapa **${task.stage}** del plan maestro (intento ${attempt} de ${MAX_ATTEMPTS}). Ya cerradas: ${closed}. Claude Code empieza con contexto nuevo.`)
       fail = runClaude(`etapa ${task.stage} (intento ${attempt})`, stagePrompt(task.stage, info.closed))
+      event({ type: 'task-end', ok: !fail, why: fail ?? undefined, ...about })
       if (!fail) {
         const v = verifyStage(task.stage)
+        event({ type: 'verify', stage: task.stage, ok: v.ok, why: v.why, tests: v.tests?.passed })
         if (v.ok) {
           const t = v.tests ? `${v.tests.passed}/${v.tests.total} unitarias` : 'unitarias OK'
           report = `✅ Puente: etapa **${task.stage}** cerrada y comprobada por el puente · commit \`${v.commit}\` · npm test: ${t} · npm run build: OK. En la próxima vuelta sigue la siguiente etapa.`
@@ -226,6 +244,7 @@ function main() {
     } else {
       post(`🤖 Puente: recibí la tarea (comentario ${id}, intento ${attempt} de ${MAX_ATTEMPTS}). Claude Code empieza ahora con contexto nuevo.`)
       fail = runClaude(`tarea ${id} (intento ${attempt})`, taskPrompt(id, task.url))
+      event({ type: 'task-end', ok: !fail, why: fail ?? undefined, ...about })
     }
     const done = afterAttempt(task, !fail, Date.now())
     state.tasks[id] = done
@@ -242,8 +261,10 @@ function main() {
     }
   } catch (e) {
     log(`error: ${e instanceof Error ? e.message : String(e)}`)
+    event({ type: 'error' })
   } finally {
     rmSync(LOCK, { force: true })
+    monitor()
   }
 }
 

@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "monitor": "node tools/coord-monitor.mjs",
     "build:web": "tsc -b && vite build",
     "app:dev": "tauri dev",
     "app:build": "tauri build"
