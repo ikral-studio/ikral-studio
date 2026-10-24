@@ -740,15 +740,20 @@
       "id": "M4",
       "fase": "M",
       "titulo": "Cuota de Claude Code (sesión y semana) con fuente autorizada",
-      "criterio": "Solo con dato oficial verificable en usage.json; si no, «Uso no disponible» + «Ver uso en Claude».",
-      "estado": "pendiente",
+      "criterio": "Solo con dato oficial verificable en usage.json (rate_limits de la statusLine de Claude Code); dos barras sesión/semana con reinicio y «última lectura»; si no, lo dice + «Ver uso en Claude».",
+      "estado": "en curso",
       "responsable": "Claude",
-      "fecha": null,
-      "evidencia": [],
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "tools/mini-monitor.test.mjs: statusLine→usage.json (ausencia, JSON malo, lectura antigua, reinicio, cuenta, sesión nueva, privacidad 600, encadenado) en verde; app compila con swiftc"
+        }
+      ],
       "dependeDe": [
         "M1"
       ],
-      "siguiente": "Verificar en la documentación oficial si Claude Code entrega la cuota (p. ej. a la barra de estado) sin leer credenciales.",
+      "siguiente": "Sesión interactiva: npm run mini-monitor:conectar-uso (respaldo en C), npm run mini-monitor:instalar y comprobar % reales en la ventana.",
       "director": null
     },
     {

@@ -14,9 +14,22 @@ Pedido del director: Issue #4 de `ikral-studio/coordinacion`. Interfaz local del
 - «Ahora: …» y «Te necesito: …» (una línea cada uno, ≤200 caracteres), proyecto, última actividad y enlace al Issue.
 - Puente y Claude interactivo por separado: última vuelta del puente, si su Claude corre, y cuántas ventanas de Claude
   hay abiertas (abierta ≠ trabajando).
-- **Uso de Claude Code** (sesión / semana): solo si `usage.json` trae un dato con fuente verificable y reciente
-  (formato `ikral-usage/1`). Hoy nada lo escribe → **«Uso no disponible»** + botón «Ver uso en Claude».
-  No se leen credenciales, cookies ni archivos privados. El contexto (150k) no es la cuota.
+- **Uso de Claude Code** (M4): dos barras con texto grande, «Sesión: NN%» «Reinicia: HH:mm» y
+  «Semana: NN%» «Reinicia: día HH:mm», más «Leído / Última lectura HH:mm». El contexto (150k) no es la cuota.
+
+## De dónde sale el uso (M4)
+- Fuente oficial: Claude Code manda un JSON por stdin al comando de su `statusLine`, con
+  `rate_limits.five_hour` y `rate_limits.seven_day` (`used_percentage`, `resets_at`)
+  ([docs](https://code.claude.com/docs/en/statusline)). Solo llega en cuentas compatibles y tras la primera respuesta.
+- `tools/usage-statusline.mjs` encadena el statusLine que ya existía (la barra se ve igual) y guarda **solo**
+  esos campos + hora de lectura en `usage.json` (archivo 600, escritura atómica). Sin credenciales, cookies,
+  llavero ni red. No guarda rutas, costos, transcript ni el id de sesión en claro (solo un resumen sha256 corto).
+- Si un evento llega sin `rate_limits`, no borra la última lectura buena. Si la hora de reinicio ya pasó, esa
+  barra dice «ya reinició» y no enseña el % viejo: nunca se fabrican porcentajes.
+- Cuenta: si se define `IKRAL_USAGE_ACCOUNT` (una etiqueta, no un secreto) en Claude Code y en el puente, un dato
+  de otra cuenta no se enseña. Sin esa etiqueta no se puede saber la cuenta (el JSON de statusLine no la trae).
+- Conectar (sesión interactiva): `npm run mini-monitor:conectar-uso` → respaldo único de `~/.claude/settings.json`
+  en `/Volumes/c/respaldos/ikral-studio/` y statusLine encadenado. Quitar: `npm run mini-monitor:desconectar-uso`.
 - ▶ **Escuchar estado**: voz del propio Mac (es-MX), solo al pulsar.
 
 ## Ventana y accesos

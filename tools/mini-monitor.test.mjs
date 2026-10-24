@@ -1,11 +1,13 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { STALE_MS } from './coord-monitor-core.mjs'
 import { writeMonitor } from './coord-monitor.mjs'
 import { APP_NAME, desktopLinkPlan, dockEntry, dockHasApp, infoPlist } from './mini-monitor-app.mjs'
-import { LINE_MAX, USAGE_STALE_MS, USAGE_URL, cleanUsage, countInteractiveClaude, miniCode, miniView, usageText } from './mini-monitor-core.mjs'
+import { LINE_MAX, USAGE_FRESH_MS, USAGE_MAX_AGE_MS, USAGE_SOURCE, USAGE_URL, cleanUsage, countInteractiveClaude, miniCode, miniView, toMs, usageFromStatusline, usageText } from './mini-monitor-core.mjs'
+import { saveUsage, unwrapCommand, unwrapSettings, wrapSettings } from './usage-statusline.mjs'
 
 const NOW = Date.parse('2026-10-24T18:00:00Z')
 const project = { id: 'ikral-studio', name: 'IKRAL Studio', source: { type: 'github-issue', repo: 'ikral-studio/coordinacion', issue: 1 } }
@@ -87,15 +89,121 @@ describe('mini monitor: cuota de Claude Code', () => {
     expect(JSON.stringify(v)).not.toMatch(/\d+%/)
   })
 
-  it('un dato viejo o del futuro no se enseña', () => {
-    expect(cleanUsage(usage({ at: NOW - USAGE_STALE_MS - 1 }), NOW).available).toBe(false)
+  it('un dato del futuro o de hace más de 7 días no se enseña', () => {
+    expect(cleanUsage(usage({ at: NOW - USAGE_MAX_AGE_MS - 1 }), NOW).available).toBe(false)
     expect(cleanUsage(usage({ at: NOW + 10 * 60_000 }), NOW).available).toBe(false)
   })
 
-  it('con fuente verificable enseña sesión y semana por separado', () => {
+  it('con fuente verificable enseña sesión y semana por separado, y si es reciente', () => {
     const u = cleanUsage(JSON.stringify(usage()), NOW)
-    expect(u).toMatchObject({ available: true, session: { usedPct: 61 }, week: { usedPct: 6, resetsAt: null } })
-    expect(usageText(u)).toMatch(/^Sesión 61% usado \(reinicia .+\) · Semana 6% usado$/)
+    expect(u).toMatchObject({ available: true, fresh: true, session: { usedPct: 61 }, week: { usedPct: 6, resetsAt: null } })
+    expect(usageText(u)).toMatch(/^Sesión 61% \(reinicia \d\d:\d\d\) · Semana 6% · leído \d\d:\d\d$/)
+  })
+
+  it('lectura antigua: se enseña como «última lectura», hasta su hora de reinicio (no fabrica %)', () => {
+    const old = usage({ at: NOW - USAGE_FRESH_MS - 1, week: { usedPct: 6, resetsAt: NOW + 86_400_000 } })
+    const u = cleanUsage(old, NOW)
+    expect(u).toMatchObject({ available: true, fresh: false, session: { usedPct: 61 } })
+    expect(usageText(u)).toContain('última lectura')
+    // Pasó el reinicio de la sesión: la sesión desaparece, la semana sigue.
+    const after = cleanUsage(old, NOW + 3_600_001)
+    expect(after.session).toBe(null)
+    expect(after.sessionReset).toBe(true)
+    expect(after.week.usedPct).toBe(6)
+    // Pasaron las dos: no hay dato y lo dice.
+    const both = cleanUsage(old, NOW + 86_400_001)
+    expect(both.available).toBe(false)
+    expect(usageText(both)).toContain('ya se reinició')
+    // Sin hora de reinicio, la sesión no vive más de 5 h.
+    expect(cleanUsage(usage({ at: NOW - 5 * 3_600_000 - 1, session: { usedPct: 10 }, week: null }), NOW).available).toBe(false)
+  })
+
+  it('cambio de cuenta: si se sabe la cuenta y el dato es de otra, no se enseña', () => {
+    expect(cleanUsage(usage({ account: 'A' }), NOW, { account: 'A' }).available).toBe(true)
+    const other = cleanUsage(usage({ account: 'B' }), NOW, { account: 'A' })
+    expect(other.available).toBe(false)
+    expect(usageText(other)).toContain('otra cuenta')
+    expect(cleanUsage(usage(), NOW, { account: 'A' }).available).toBe(false)
+    expect(cleanUsage(usage({ account: 'B' }), NOW).available).toBe(true)
+  })
+})
+
+describe('mini monitor: statusLine de Claude Code → usage.json', () => {
+  const NOW_S = Math.floor(NOW / 1000)
+  const stdin = (o = {}) =>
+    JSON.stringify({
+      session_id: 'abc-123-sesion',
+      transcript_path: '/Users/kyo/.claude/projects/x/abc.jsonl',
+      cwd: '/Users/kyo/Documents/secreto',
+      version: '2.1.80',
+      model: { id: 'claude-opus-5-5', display_name: 'Opus' },
+      cost: { total_cost_usd: 1.23 },
+      context_window: { used_percentage: 55 },
+      rate_limits: { five_hour: { used_percentage: 23.5, resets_at: NOW_S + 3600 }, seven_day: { used_percentage: 41.2, resets_at: NOW_S + 86_400 } },
+      ...o,
+    })
+
+  it('toma solo rate_limits: % y reinicio (segundos Unix → ms), con fuente y hora', () => {
+    const r = usageFromStatusline(stdin(), NOW)
+    expect(r).toEqual({ format: 'ikral-usage/1', source: USAGE_SOURCE, at: NOW, version: '2.1.80', session: { usedPct: 23.5, resetsAt: NOW + 3_600_000 }, week: { usedPct: 41.2, resetsAt: NOW + 86_400_000 } })
+    expect(toMs('2026-10-24T19:00:00Z')).toBe(NOW + 3_600_000)
+    expect(toMs(NOW)).toBe(NOW)
+    expect(cleanUsage(r, NOW)).toMatchObject({ available: true, session: { usedPct: 24 }, week: { usedPct: 41 } })
+  })
+
+  it('ausencia o JSON malformado → null (no se escribe nada y no se confunde contexto con cuota)', () => {
+    for (const raw of ['', 'no es json', '{}', stdin({ rate_limits: undefined }), stdin({ rate_limits: { five_hour: { used_percentage: 'x' } } }), stdin({ rate_limits: { five_hour: { used_percentage: 120 } } })])
+      expect(usageFromStatusline(raw, NOW)).toBe(null)
+    const one = usageFromStatusline(stdin({ rate_limits: { seven_day: { used_percentage: 5 } } }), NOW)
+    expect(one).toMatchObject({ session: null, week: { usedPct: 5, resetsAt: null } })
+  })
+
+  it('privacidad: usage.json no guarda rutas, costos, modelo, contexto ni el id de sesión en claro; archivo 600', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'usage-'))
+    expect(saveUsage(stdin(), { dir, now: NOW, account: undefined })).not.toBe(null)
+    const file = join(dir, 'usage.json')
+    const text = readFileSync(file, 'utf8')
+    for (const bad of ['/Users', 'transcript', 'cwd', 'cost', 'abc-123', 'opus', 'context']) expect(text.toLowerCase()).not.toContain(bad.toLowerCase())
+    expect(Object.keys(JSON.parse(text)).sort()).toEqual(['at', 'format', 'session', 'sessionKey', 'source', 'version', 'week'])
+    expect(statSync(file).mode & 0o777).toBe(0o600)
+  })
+
+  it('nueva sesión: sin rate_limits todavía no borra la lectura buena; con dato nuevo la reemplaza', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'usage-'))
+    saveUsage(stdin(), { dir, now: NOW })
+    expect(saveUsage(stdin({ session_id: 'otra', rate_limits: undefined }), { dir, now: NOW + 1000 })).toBe(null)
+    const first = JSON.parse(readFileSync(join(dir, 'usage.json'), 'utf8'))
+    expect(first.session.usedPct).toBe(23.5)
+    saveUsage(stdin({ session_id: 'otra', rate_limits: { five_hour: { used_percentage: 30, resets_at: NOW_S + 3600 } } }), { dir, now: NOW + 2000 })
+    const second = JSON.parse(readFileSync(join(dir, 'usage.json'), 'utf8'))
+    expect(second).toMatchObject({ at: NOW + 2000, session: { usedPct: 30 }, week: null })
+    expect(second.sessionKey).not.toBe(first.sessionKey)
+    expect(saveUsage('basura', { dir: join(dir, 'no', 'existe'), now: NOW })).toBe(null)
+  })
+
+  it('encadena el statusLine de antes sin perderlo y se puede quitar (idempotente)', () => {
+    const orig = `python3 ~/.claude/contexto.py --x 'a b'`
+    const before = { model: 'opus', statusLine: { type: 'command', command: orig, padding: 0 } }
+    const { settings, changed } = wrapSettings(before, '/usr/local/bin/node', '/r/tools/usage-statusline.mjs')
+    expect(changed).toBe(true)
+    expect(settings).toMatchObject({ model: 'opus', statusLine: { type: 'command', padding: 0 } })
+    expect(unwrapCommand(settings.statusLine.command)).toBe(orig)
+    expect(wrapSettings(settings, '/x', '/y').changed).toBe(false)
+    expect(unwrapSettings(settings).settings).toEqual(before)
+    expect(unwrapSettings(before).changed).toBe(false)
+    const none = wrapSettings({}, '/n', '/r/tools/usage-statusline.mjs').settings
+    expect(unwrapCommand(none.statusLine.command)).toBe('')
+    expect(unwrapSettings(none).settings).toEqual({})
+  })
+
+  it('el script de verdad: pasa el stdin al statusLine de antes, imprime lo mismo y escribe usage.json', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'usage-'))
+    const out = execFileSync(process.execPath, [join(import.meta.dirname, 'usage-statusline.mjs'), '--chain', `printf 'barra:' && wc -c | tr -d ' '`], {
+      input: stdin(),
+      env: { ...process.env, IKRAL_COORD_DIR: dir },
+    }).toString()
+    expect(out).toBe(`barra:${Buffer.byteLength(stdin())}\n`)
+    expect(JSON.parse(readFileSync(join(dir, 'usage.json'), 'utf8')).week.usedPct).toBe(41.2)
   })
 })
 

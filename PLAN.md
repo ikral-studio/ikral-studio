@@ -3,7 +3,7 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 19 de 32 hechas · 3 en curso · 6 bloqueadas · 4 pendientes · 0 aprobadas por el director.
+**Avance:** 19 de 32 hechas · 4 en curso · 6 bloqueadas · 3 pendientes · 0 aprobadas por el director.
 **Siguiente:** UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
@@ -148,10 +148,11 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Evidencia: prueba: npm run mini-monitor:instalar dos veces: /Applications/IKRAL Monitor.app, 1 acceso en Escritorio, 1 en el Dock (sin duplicados)
   - Depende de: M2
   - Siguiente: Probar a mano que abre y restaura desde Escritorio, Dock y barra de menús (M5).
-- [ ] **M4 · Cuota de Claude Code (sesión y semana) con fuente autorizada** — Claude
-  - Criterio: Solo con dato oficial verificable en usage.json; si no, «Uso no disponible» + «Ver uso en Claude».
+- [~] **M4 · Cuota de Claude Code (sesión y semana) con fuente autorizada** — Claude · 2026-10-24
+  - Criterio: Solo con dato oficial verificable en usage.json (rate_limits de la statusLine de Claude Code); dos barras sesión/semana con reinicio y «última lectura»; si no, lo dice + «Ver uso en Claude».
+  - Evidencia: prueba: tools/mini-monitor.test.mjs: statusLine→usage.json (ausencia, JSON malo, lectura antigua, reinicio, cuenta, sesión nueva, privacidad 600, encadenado) en verde; app compila con swiftc
   - Depende de: M1
-  - Siguiente: Verificar en la documentación oficial si Claude Code entrega la cuota (p. ej. a la barra de estado) sin leer credenciales.
+  - Siguiente: Sesión interactiva: npm run mini-monitor:conectar-uso (respaldo en C), npm run mini-monitor:instalar y comprobar % reales en la ventana.
 - [ ] **M5 · Pruebas de escritorio y capturas** — Claude
   - Criterio: Visible, minimizada y restaurada; sin duplicados; datos viejos → «Sin señal»; voz; pantalla completa oculta la barra.
   - Depende de: M3

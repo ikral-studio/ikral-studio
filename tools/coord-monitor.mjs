@@ -206,9 +206,10 @@ export function writeMonitor(opts) {
     const payload = statusPayload(own, view)
     writeAtomic(join(stateDir, STATUS_FILE), JSON.stringify(payload))
     writeAtomic(join(stateDir, 'monitor.html'), dashboardHtml(opts, own, payload, now))
-    // Mini Monitor (app de Mac): la misma vista, en corto. La cuota solo si usage.json trae un dato verificable.
+    // Mini Monitor (app de Mac): la misma vista, en corto. La cuota solo si usage.json trae un dato verificable
+    // (lo escribe tools/usage-statusline.mjs con el JSON de la statusLine de Claude Code).
     const ownView = projectView({ ...own, statusDir: 'propio', problem: null }, payload, now)
-    const usage = cleanUsage(readStatusFile(stateDir, USAGE_FILE), now)
+    const usage = cleanUsage(readStatusFile(stateDir, USAGE_FILE), now, { account: opts.usageAccount ?? process.env.IKRAL_USAGE_ACCOUNT })
     writeAtomic(join(stateDir, MINI_FILE), JSON.stringify(miniView(own, ownView, now, { usage, interactiveClaude: countInteractiveClaude(psText, lockAlive ? lockPid : null) })))
     writeAtomic(cacheFile, JSON.stringify({ github, procs: { tests: procs.tests, build: procs.build } }))
     return view
