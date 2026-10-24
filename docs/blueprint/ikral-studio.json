@@ -28,6 +28,10 @@
       "titulo": "Biblia de Producción PDF"
     },
     {
+      "id": "C",
+      "titulo": "Cierre y lanzamiento de Studio"
+    },
+    {
       "id": "P",
       "titulo": "Puente, monitor y registro en IKRAL"
     }
@@ -224,14 +228,14 @@
       "fase": "2",
       "titulo": "Publicar Fase 2 y probar en la página real",
       "criterio": "Autorización expresa del director, respaldo verificado y Playwright en la página publicada.",
-      "estado": "pendiente",
+      "estado": "bloqueado",
       "responsable": "Director",
       "fecha": null,
       "evidencia": [],
       "dependeDe": [
         "2d"
       ],
-      "siguiente": "Esperar autorización del director para publicar.",
+      "siguiente": "Publicar no está autorizado aún. La web publicada tiene solo la Fase 1; las Fases 2–4 se publicarían juntas, con el respaldo C2 antes.",
       "director": null
     },
     {
@@ -320,14 +324,27 @@
       "fase": "3",
       "titulo": "«Consultar GPT» en cobertura y planos",
       "criterio": "Proponer planos (cámara y duración) y diseñar cámara y prompts por plano; nada cambia sin «Aceptar».",
-      "estado": "pendiente",
+      "estado": "hecho",
       "responsable": "Claude",
-      "fecha": null,
-      "evidencia": [],
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "commit",
+          "ref": "a309b3a"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/gptCoverage.test.ts (16 con mocks) y 1 e2e"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "npm test y npm run build pasaron (comprobación automática 2026-10-24)"
+        }
+      ],
       "dependeDe": [
         "3c"
       ],
-      "siguiente": "Siguiente etapa del encadenamiento 3a → 4 (la toma el puente).",
+      "siguiente": null,
       "director": null,
       "verificar": {
         "asunto": "^Fase 3d "
@@ -338,10 +355,23 @@
       "fase": "3",
       "titulo": "«Consultar GPT» en edición",
       "criterio": "Ritmo, orden y duración como propuestas que decide el director.",
-      "estado": "pendiente",
+      "estado": "hecho",
       "responsable": "Claude",
-      "fecha": null,
-      "evidencia": [],
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "commit",
+          "ref": "7da8b8c"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/gptEdit.test.ts (16 con mocks) y 1 e2e"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "npm test y npm run build pasaron (comprobación automática 2026-10-24)"
+        }
+      ],
       "dependeDe": [
         "3d"
       ],
@@ -363,7 +393,7 @@
       "dependeDe": [
         "3a"
       ],
-      "siguiente": "Requiere instalar la app de Mac y una sesión con Codex: autorización del director.",
+      "siguiente": "3a–3e solo se probaron con mocks; el único GPT real fue el piloto del 2026-10-23 (antes del código de la Fase 3). Requiere instalar la app de Mac y una sesión con Codex: autorización del director.",
       "director": null
     },
     {
@@ -371,10 +401,23 @@
       "fase": "4",
       "titulo": "Biblia de Producción PDF",
       "criterio": "El Portafolio actual no cambia; la Biblia incluye todas las secciones con datos; proyectos viejos también la generan.",
-      "estado": "pendiente",
+      "estado": "hecho",
       "responsable": "Claude",
-      "fecha": null,
-      "evidencia": [],
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "commit",
+          "ref": "7e64822"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/productionBible.test.ts (12) y 1 e2e local que descarga el PDF (cabecera %PDF-)"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "npm test y npm run build pasaron (comprobación automática 2026-10-24)"
+        }
+      ],
       "dependeDe": [
         "3e"
       ],
@@ -397,6 +440,37 @@
         "4"
       ],
       "siguiente": "Requiere autorización expresa para publicar.",
+      "director": null
+    },
+    {
+      "id": "C1",
+      "fase": "C",
+      "titulo": "Primer flujo completo de punta a punta con un proyecto de ejemplo",
+      "criterio": "En la app de Mac: etapas → guion → cobertura → Consultar GPT real (aceptar y deshacer) → Biblia de Producción PDF que abre y se lee bien. Hoy solo hay e2e por partes en la web, con GPT simulado.",
+      "estado": "bloqueado",
+      "responsable": "Director",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [
+        "4",
+        "3.real"
+      ],
+      "siguiente": "Depende de 3.real (instalar la app de Mac y Codex con autorización del director).",
+      "director": null
+    },
+    {
+      "id": "C2",
+      "fase": "C",
+      "titulo": "Respaldo único verificado antes de publicar",
+      "criterio": "Un respaldo completo en /Volumes/c/respaldos/ikral-studio/ que se abre y se restaura; el último es studio-20261024-000702-antes-fase1.tgz (antes de las Fases 2–4).",
+      "estado": "pendiente",
+      "responsable": "Claude",
+      "fecha": null,
+      "evidencia": [],
+      "dependeDe": [
+        "4"
+      ],
+      "siguiente": "Hacerlo una sola vez, justo cuando el director autorice publicar.",
       "director": null
     },
     {
@@ -516,7 +590,7 @@
       "dependeDe": [
         "P4"
       ],
-      "siguiente": "Dejar NOTA para «Panel ikral» con docs/panel/traspaso-ikral-studio.md.",
+      "siguiente": "Pospuesto por decisión del director (Issue #1, 2026-10-24): primero terminar Studio. Luego, NOTA para «Panel ikral» con docs/panel/traspaso-ikral-studio.md.",
       "director": null
     },
     {

@@ -3,8 +3,8 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 14 de 23 hechas · 0 en curso · 4 bloqueadas · 5 pendientes · 0 aprobadas por el director.
-**Siguiente:** 2.pub · Publicar Fase 2 y probar en la página real
+**Avance:** 17 de 25 hechas · 0 en curso · 6 bloqueadas · 2 pendientes · 0 aprobadas por el director.
+**Siguiente:** C2 · Respaldo único verificado antes de publicar
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 
@@ -44,10 +44,10 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Criterio: Pedido shot-preview documentado; imágenes ligadas al id del plano.
   - Evidencia: commit `3c2b696` · prueba: src/tests/shotFrames.test.ts (7) y 1 Playwright
   - Depende de: 2c
-- [ ] **2.pub · Publicar Fase 2 y probar en la página real** — Director
+- [!] **2.pub · Publicar Fase 2 y probar en la página real** — Director
   - Criterio: Autorización expresa del director, respaldo verificado y Playwright en la página publicada.
   - Depende de: 2d
-  - Siguiente: Esperar autorización del director para publicar.
+  - Siguiente: Publicar no está autorizado aún. La web publicada tiene solo la Fase 1; las Fases 2–4 se publicarían juntas, con el respaldo C2 antes.
 
 ## Fase 3 · ChatGPT integrado
 
@@ -63,27 +63,40 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Criterio: Paquete por apartado con solo decisiones aprobadas; reglas de GPT aprobadas por el director.
   - Evidencia: commit `5c55e8d` · prueba: src/tests/gptBible.test.ts (16 con mocks) y 1 e2e
   - Depende de: 3b
-- [ ] **3d · «Consultar GPT» en cobertura y planos** — Claude
+- [x] **3d · «Consultar GPT» en cobertura y planos** — Claude · 2026-10-24
   - Criterio: Proponer planos (cámara y duración) y diseñar cámara y prompts por plano; nada cambia sin «Aceptar».
+  - Evidencia: commit `a309b3a` · prueba: src/tests/gptCoverage.test.ts (16 con mocks) y 1 e2e · prueba: npm test y npm run build pasaron (comprobación automática 2026-10-24)
   - Depende de: 3c
-  - Siguiente: Siguiente etapa del encadenamiento 3a → 4 (la toma el puente).
-- [ ] **3e · «Consultar GPT» en edición** — Claude
+- [x] **3e · «Consultar GPT» en edición** — Claude · 2026-10-24
   - Criterio: Ritmo, orden y duración como propuestas que decide el director.
+  - Evidencia: commit `7da8b8c` · prueba: src/tests/gptEdit.test.ts (16 con mocks) y 1 e2e · prueba: npm test y npm run build pasaron (comprobación automática 2026-10-24)
   - Depende de: 3d
 - [!] **3.real · Prueba real con Codex en la app de Mac** — Director
   - Criterio: Los casos de examples.ts dan los hallazgos esperados con GPT de verdad (pocas veces, sin gastar límite).
   - Depende de: 3a
-  - Siguiente: Requiere instalar la app de Mac y una sesión con Codex: autorización del director.
+  - Siguiente: 3a–3e solo se probaron con mocks; el único GPT real fue el piloto del 2026-10-23 (antes del código de la Fase 3). Requiere instalar la app de Mac y una sesión con Codex: autorización del director.
 
 ## Fase 4 · Biblia de Producción PDF
 
-- [ ] **4 · Biblia de Producción PDF** — Claude
+- [x] **4 · Biblia de Producción PDF** — Claude · 2026-10-24
   - Criterio: El Portafolio actual no cambia; la Biblia incluye todas las secciones con datos; proyectos viejos también la generan.
+  - Evidencia: commit `7e64822` · prueba: src/tests/productionBible.test.ts (12) y 1 e2e local que descarga el PDF (cabecera %PDF-) · prueba: npm test y npm run build pasaron (comprobación automática 2026-10-24)
   - Depende de: 3e
 - [!] **4.pub · Descargar la Biblia en la página publicada (Playwright)** — Director
   - Criterio: La Biblia descargada en https://ikral.com/studio/ abre bien.
   - Depende de: 4
   - Siguiente: Requiere autorización expresa para publicar.
+
+## Fase C · Cierre y lanzamiento de Studio
+
+- [!] **C1 · Primer flujo completo de punta a punta con un proyecto de ejemplo** — Director
+  - Criterio: En la app de Mac: etapas → guion → cobertura → Consultar GPT real (aceptar y deshacer) → Biblia de Producción PDF que abre y se lee bien. Hoy solo hay e2e por partes en la web, con GPT simulado.
+  - Depende de: 4, 3.real
+  - Siguiente: Depende de 3.real (instalar la app de Mac y Codex con autorización del director).
+- [ ] **C2 · Respaldo único verificado antes de publicar** — Claude
+  - Criterio: Un respaldo completo en /Volumes/c/respaldos/ikral-studio/ que se abre y se restaura; el último es studio-20261024-000702-antes-fase1.tgz (antes de las Fases 2–4).
+  - Depende de: 4
+  - Siguiente: Hacerlo una sola vez, justo cuando el director autorice publicar.
 
 ## Fase P · Puente, monitor y registro en IKRAL
 
@@ -106,7 +119,7 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 - [ ] **P5 · Ficha de IKRAL Studio en el Panel** — Panel ikral
   - Criterio: La sesión del Panel registra la ficha (Blueprint, inventario, bitácora) con el «sí» del director.
   - Depende de: P4
-  - Siguiente: Dejar NOTA para «Panel ikral» con docs/panel/traspaso-ikral-studio.md.
+  - Siguiente: Pospuesto por decisión del director (Issue #1, 2026-10-24): primero terminar Studio. Luego, NOTA para «Panel ikral» con docs/panel/traspaso-ikral-studio.md.
 - [!] **P6 · Respaldo remoto en GitHub (push verificado)** — Director
   - Criterio: Revisión previa limpia (npm run revisar-respaldo) y push con autorización; el remoto tiene el mismo commit que el local.
   - Siguiente: El repositorio es público: subir los commits locales = publicarlos. Necesita autorización expresa del director.
