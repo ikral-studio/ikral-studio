@@ -1,3 +1,15 @@
+2026-10-24 15:26 · IKRAL Studio · Estados por escena y revisión GPT honesta
+- Agregado: [código] src/features/bible/itemStates.ts — estados por escena o etapa sobre la ficha fija; prompt «¿Para qué escena?» sin mezclar papel y app.
+- Agregado: [código] src/features/gpt/corrections.ts — «Revisar cambios» → «Aplicar corrección» con vista previa, deshacer e historial.
+- Agregado: [diseño] GptPanel — «Guardar regla», «Decide tú» (preguntas al director), «Regenerar imagen para Escena N» aparte.
+- Agregado: [código] src/tests/gptCorrections.test.ts e itemStates.test.ts — 2 escenas y 1 cocina: sin mezcla, guardar/abrir, deshacer, Canon intacto.
+- Agregado: [imagen] docs/qa/capturas/15-ficha-estado-por-escena.png — captura de la ficha con estados.
+- Cambiado: [documento] docs/carpeta-del-proyecto.md — fotograma de escena (stateId/sceneId) nunca pone imageId.
+- Arreglado: «Aceptar» decía hecho pero solo guardaba la regla; ahora dice qué pasó y qué falta.
+- Publicado: no.
+- Commit: f836020
+- Pendiente: el director decide restaurante con comedor o food truck; compilar app de Mac.
+
 2026-10-24 14:46 · IKRAL Studio · App nueva instalada en el Mac
 - Cambiado: [código] /Applications/IKRAL Studio.app — versión con «Revisar guion con GPT» e «Instrucciones para GPT».
 - Seguridad: respaldo de la app anterior en /Volumes/c/respaldos/ikral-studio/app/.
