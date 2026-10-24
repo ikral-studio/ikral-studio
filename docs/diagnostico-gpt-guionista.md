@@ -135,6 +135,15 @@ IKRAL Studio (app Mac)
 | 5 | Panel «GPT · Guionista» con hallazgos y Aceptar/Descartar. | Sí |
 | 6 | Documentar para Claude y escribir la bitácora. | — |
 
+## 8. Auditoría 2026-10-24: guion de 10 escenas y «restaurante → food truck»
+
+- **Qué pasaba:** GPT decía que algunas escenas «mezclaban papel y app». No era cierto: papel en 1–3 y app en 6–10 es la historia, no una mezcla.
+- **«Aceptar»** solo guardaba la regla; no cambiaba la ficha. Ahora el botón dice lo que hace («Guardar regla», «Revisar cambios → Aplicar corrección»).
+- **Restaurante vs food truck:** el cambio fue A PROPÓSITO (prueba de estrés del director). No es un error que la app deba corregir sola.
+- **Ahora:** la Biblia muestra UNA pregunta: «La historia dice RESTAURANTE, pero ahora la Biblia dice FOOD TRUCK. ¿Qué quieres conservar?» con 3 caminos (adaptar historia, mantener restaurante, definir transformación). Ninguno se escoge solo.
+- Antes de aplicar hay **Vista previa de impacto** (antes/después por campo y lo que queda para el director). Se aplica en un solo paso, con Deshacer y Cmd+Z. Solo textos: imágenes, Canon y diálogos no se tocan.
+- Pruebas con un proyecto **inventado** (`src/tests/setting.test.ts`) y la captura `docs/qa/capturas/16-lugar-guion-vs-biblia.png`.
+
 ## Riesgos y cuidados
 
 - Es una **vista previa** de OpenAI: los límites o las reglas pueden cambiar.

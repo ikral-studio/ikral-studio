@@ -7,6 +7,7 @@ import { orderedScenes } from '../../features/script-sync/derive'
 import { SuggestionStep } from './SuggestionStep'
 import { FramesPanel } from './FramesPanel'
 import { ContinuitySection } from './ContinuitySection'
+import { SettingConflictCard } from './SettingConflictCard'
 import { CharactersSection, ItemsSection, RelationsSection } from './BibleSections'
 import { Section, Tile } from './bibleUi'
 import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } from '../../features/bible/bible'
@@ -189,6 +190,8 @@ export function BibleScreen() {
               <OverviewCard project={project} scenes={scenes} />
             </div>
           </div>
+
+          <SettingConflictCard />
 
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[340px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)_360px]">
             <Section n={1} title="Estilo y tono visual" label="Preguntas de estilo" count={`${answered} de 4`}>

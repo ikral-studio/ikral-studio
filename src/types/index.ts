@@ -36,8 +36,40 @@ export interface Project {
   phases?: Phase[]
   /** Reglas del director que Claude y GPT deben respetar. Solo cuentan las aprobadas. */
   decisions?: Decision[]
+  /** Último cambio de lugar decidido por el director (guion vs Biblia), con lo que había antes para deshacer. */
+  settingChange?: SettingChange
   createdAt: string
   updatedAt: string
+}
+
+/** Qué escogió el director cuando el guion y la Biblia dicen lugares distintos. */
+export type SettingChoice = 'adapt' | 'keep' | 'transform'
+
+/** Un texto que cambió al aplicar la decisión (dónde, cómo estaba y cómo quedó). */
+export interface SettingEdit {
+  /** Escena (y plano) o ficha de la Biblia; sin ninguno = respuestas de la Biblia. */
+  sceneId?: string
+  shotId?: string
+  kind?: ItemKind
+  itemId?: string
+  /** Campo: ruta dentro de la escena, plano o ficha (ej. «script.action», «states.st_1.shows»). */
+  field: string
+  /** Dónde está, en palabras (ej.: «Escena 03 · Acción»). */
+  where: string
+  before: string
+  after: string
+}
+
+export interface SettingChange {
+  choice: SettingChoice
+  /** Lugar que decía el guion y lugar que decía la Biblia. */
+  story: string
+  bible: string
+  decisionId?: string
+  edits: SettingEdit[]
+  /** Lo que no se cambió solo (diálogos, palabras sueltas, imágenes): queda para el director. */
+  pending: string[]
+  at: string
 }
 
 export interface BibleAnswers {

@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, Shot, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, SettingChange, SettingChoice, Shot, VideoVersion } from '../types'
 import { applyItemSuggestion, applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
 import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
@@ -11,6 +11,7 @@ import { cloneScene, createProjectData, createScene, defaultTracks } from '../fe
 import { clipAt, deriveStatus, placedClips, trimEdge, versionClips, withClips } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
 import { cleanContinuity } from '../features/continuity/continuity'
+import { applySetting, newDecisionId, settingImpact, undoSetting } from '../features/continuity/setting'
 import { applyShotText, convertToCoverage, copyShots, hasCoverage, moveShot, renumberShots, shotsFromText } from '../features/coverage/shots'
 import { toast } from './uiStore'
 
@@ -99,6 +100,10 @@ interface State {
   approveDecision: (id: string) => void
   rejectDecision: (id: string) => void
   removeDecision: (id: string) => void
+  /** Guion vs Biblia (lugar): aplica la vista previa del camino escogido en un solo paso (Deshacer la regresa). */
+  applySettingChoice: (choice: SettingChoice) => SettingChange | undefined
+  /** Deshace la decisión del lugar. Devuelve lo que no se regresó porque se cambió después a mano. */
+  undoSettingChange: () => string[] | null
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -247,6 +252,13 @@ export const useProject = create<State>()((set, get) => {
     updated.updatedAt = nowIso()
     updated.status = deriveStatus(updated)
     commit({ project: cur.project, scenes: { ...cur.scenes, [id]: updated } }, coalesce, delay)
+  }
+
+  /** Recalcula el estado de las escenas que cambiaron entre `prev` y `next`. */
+  function withStatus(next: Snapshot, prev: Snapshot): Snapshot {
+    const scenes = { ...next.scenes }
+    for (const [id, s] of Object.entries(scenes)) if (s !== prev.scenes[id]) scenes[id] = { ...s, status: deriveStatus(s) }
+    return { ...next, scenes }
   }
 
   /** Cambia un plano de la escena (y su `updatedAt`, para unir cambios plano por plano). */
@@ -908,6 +920,24 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur?.project.decisions?.some((d) => d.id === id)) return
       commit({ ...cur, project: { ...cur.project, decisions: cur.project.decisions.filter((d) => d.id !== id) } })
+    },
+
+    applySettingChoice(choice) {
+      const cur = snap()
+      if (!cur) return
+      const impact = settingImpact(cur.project, cur.project.sceneIds.map((id) => cur.scenes[id]).filter(Boolean), choice)
+      if (!impact) return
+      const next = withStatus(applySetting(cur, impact, newDecisionId()), cur)
+      commit(next)
+      return next.project.settingChange
+    },
+
+    undoSettingChange() {
+      const cur = snap()
+      const r = cur && undoSetting(cur)
+      if (!cur || !r) return null
+      commit(withStatus(r.next, cur))
+      return r.kept
     },
 
     updateItemSuggestion(kind, index, patch) {
