@@ -12,6 +12,8 @@ import { AUDIENCES, LOOKS, MOODS, bibleAnswered, findCharacters, type Choice } f
 import { bibleProgress, type ProgressRow } from '../../features/bible/items'
 import type { Project, Scene } from '../../types'
 import { ClaudeLight } from '../chat/ClaudeLight'
+import { ClaudeChat } from '../chat/ClaudeChat'
+import { isDesktop } from '../../database/db'
 
 /** «🎥 Personas reales» → ícono y texto por separado. */
 const split = (c: Choice) => {
@@ -238,6 +240,11 @@ export function BibleScreen() {
                 <ItemsSection kind="wardrobe" n={5} empty="Aún no hay vestuario. Agrega la ropa fija de cada personaje (ej.: Delantal de Doña Chuy)." />
               </div>
               <RelationsSection />
+              {isDesktop() && (
+                <div className="flex h-[520px] flex-col">
+                  <ClaudeChat />
+                </div>
+              )}
             </div>
 
             <div className="lg:col-span-2 2xl:sticky 2xl:top-0 2xl:col-span-1">
