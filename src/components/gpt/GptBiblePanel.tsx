@@ -103,8 +103,9 @@ function ProposalRow({ p, project, stale, onAccept, onEdit, onDiscard, onAskClau
       <div className="flex flex-wrap gap-1.5 pl-3 pt-0.5">
         {p.status === 'pending' ? (
           <>
-            <button className="btn btn-sm" onClick={onAccept} aria-label="Aceptar propuesta">
-              <Check size={13} /> Aceptar
+            {/* Honesto: una regla solo se guarda; no cambia fichas ni imágenes. */}
+            <button className="btn btn-sm" onClick={onAccept} aria-label={p.kind === 'rule' ? 'Guardar regla' : 'Aplicar cambio'}>
+              <Check size={13} /> {p.kind === 'rule' ? 'Guardar regla' : 'Aplicar cambio'}
             </button>
             {canEditBible(p) && (
               <button className="btn btn-sm btn-ghost" onClick={() => setEditing((e) => !e)} aria-label="Editar propuesta">
@@ -120,7 +121,7 @@ function ProposalRow({ p, project, stale, onAccept, onEdit, onDiscard, onAskClau
           </>
         ) : (
           <>
-            <span className="text-[13px] text-ink-2">{DONE[p.status]}</span>
+            <span className="text-[13px] text-ink-2">{p.status === 'accepted' && p.kind === 'rule' ? '✓ Regla guardada. No cambió fichas ni imágenes.' : DONE[p.status]}</span>
             <button className="btn btn-sm btn-ghost" onClick={onUndo} aria-label="Deshacer propuesta">
               <RotateCcw size={13} /> Deshacer
             </button>

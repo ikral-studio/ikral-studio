@@ -79,6 +79,9 @@ export interface CharacterTry {
   mediaId: string
   prompt?: string
   at: string
+  /** Fotograma de un estado (escena) de la ficha: no es la referencia base y no puede volverse Canon. */
+  stateId?: string
+  sceneId?: string
 }
 
 /** Elemento de la Biblia (locación, objeto o vestuario). Sin imagen aprobada = sin preparar; con imagen aprobada = Canon. */
@@ -98,6 +101,28 @@ export interface BibleItem {
   onlyIn?: string[]
   /** Otros nombres para encontrarlo en el guion (ej.: «papelitos», «tickets»). */
   aliases?: string[]
+  /**
+   * Estados del mismo lugar (u objeto) por etapa o escena: la descripción es el Canon fijo (espacio, materiales,
+   * luz) y cada estado dice qué cosas temporales se ven en esas escenas (ej.: «Antes: papel» / «Después: app»).
+   * Sin estados = como siempre.
+   */
+  states?: ItemState[]
+}
+
+/** Estado temporal de una ficha en ciertas etapas o escenas. */
+export interface ItemState {
+  id: string
+  /** Nombre corto (ej.: «Antes: papel»). */
+  label: string
+  /** Etapas donde vale (ids de `project.phases`). */
+  phaseIds?: string[]
+  /** Escenas donde vale (gana sobre la etapa). */
+  sceneIds?: string[]
+  /** Qué se ve en este estado (ej.: «comandas de papel en el riel»). */
+  shows: string
+  /** Qué NO debe verse (ej.: «tablet, celular»). */
+  hides?: string
+  updatedAt: string
 }
 
 /** Etapa de la historia (ej.: «ANTES (comandas de papel)»). */

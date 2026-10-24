@@ -135,9 +135,19 @@ export function itemMentions(text: string, item: Pick<BibleItem, 'name' | 'alias
  */
 export function cleanContinuity(project: Project, scenes: Scene[]): { project: Project; scenes: Scene[] } {
   const ids = new Set(phasesOf(project).map((ph) => ph.id))
+  // También los estados por escena de una ficha (ej.: «Antes: papel») sueltan la etapa borrada.
+  const stale = (it: BibleItem) => it.onlyIn?.some((id) => !ids.has(id)) || it.states?.some((st) => st.phaseIds?.some((id) => !ids.has(id)))
   const fixItems = (list?: BibleItem[]) => {
-    if (!list?.some((it) => it.onlyIn?.some((id) => !ids.has(id)))) return list
-    return list.map((it) => (it.onlyIn?.some((id) => !ids.has(id)) ? { ...it, onlyIn: it.onlyIn.filter((id) => ids.has(id)) } : it))
+    if (!list?.some(stale)) return list
+    return list.map((it) =>
+      stale(it)
+        ? {
+            ...it,
+            onlyIn: it.onlyIn?.filter((id) => ids.has(id)),
+            states: it.states?.map((st) => (st.phaseIds ? { ...st, phaseIds: st.phaseIds.filter((id) => ids.has(id)) } : st)),
+          }
+        : it,
+    )
   }
   const locations = fixItems(project.locations)
   const props = fixItems(project.props)

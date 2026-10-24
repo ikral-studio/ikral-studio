@@ -78,10 +78,11 @@ function itemLines(project: Project): string {
   for (const [kind, items] of groups) {
     for (const it of items ?? []) {
       const only = (it.onlyIn ?? []).map((id) => phases.find((p) => p.id === id)?.name).filter(Boolean)
-      if (!only.length && !it.aliases?.length) continue
+      if (!only.length && !it.aliases?.length && !it.states?.length) continue
       out += `- ${kind} «${it.name}»`
       if (only.length) out += ` · solo en: ${only.join(', ')}`
       if (it.aliases?.length) out += ` · otros nombres: ${it.aliases.join(', ')}`
+      if (it.states?.length) out += ` · estados: ${it.states.map((s) => `«${s.label}» (se ve: ${short(s.shows, 80)})`).join('; ')}`
       out += '\n'
     }
   }
@@ -134,6 +135,13 @@ export function buildContinuityPacket(project: Project, scenes: Scene[]): Contin
     '(objetos, vestuario, locaciones, luz, posición de personajes, etapas de la historia). No inventes: cita la evidencia.',
     SCRIPT_RULES,
     'Respeta las decisiones del director: no las contradigas. Puedes proponer una regla nueva en «regla» (o null).',
+    'Si una ficha de la Biblia se puede corregir, pon los cambios concretos en «cambios» (o []):',
+    '- «estado-ficha»: lo que se ve en esa ficha en UNA escena («escena», «etiqueta» corta como «Antes: papel», «se_ve», «no_se_ve»).',
+    '  Un estado por escena: nunca antes y después juntos. Si no sabes la escena, no lo pongas.',
+    '- «descripcion-ficha»: la descripción fija nueva en «texto» (solo lo que nunca cambia: espacio, materiales, luz).',
+    '  «ficha» es el nombre exacto de la ficha. No cambies diálogos, imágenes ni decisiones del director.',
+    'Si falta una decisión del director (por ejemplo, ¿restaurante con comedor o food truck?), no la adivines:',
+    'ponla en «pregunta» con 2 a 4 «opciones», en un hallazgo aparte, y no reescribas esa ficha. Si no hay, null.',
     '«escena», «plano» e «imagen» son los números de abajo (o null). Responde en español con el esquema JSON.',
     '',
     'Instrucciones de guionismo del director (síguelas):',

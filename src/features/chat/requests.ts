@@ -131,8 +131,11 @@ export async function requestShotPreview(sceneId: string, shotId: string, slot: 
   toast('Pedido enviado a Claude 🎬 La imagen aparecerá en el plano')
 }
 
-/** Biblia: pedir a Claude una prueba de imagen de una locación, objeto o vestuario. */
-export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe', itemId: string, prompt: string) {
+/**
+ * Biblia: pedir a Claude una prueba de imagen de una locación, objeto o vestuario. Con `scene` es el fotograma
+ * de un estado (ej.: Escena 3 con papel): se guarda como prueba de esa escena y nunca se vuelve Canon.
+ */
+export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe', itemId: string, prompt: string, scene?: { stateId: string; sceneId: string; label: string }) {
   const { project, updateItem } = useProject.getState()
   const it = project?.[kind]?.find((c) => c.id === itemId)
   if (!project || !it || !isDesktop()) return
@@ -142,8 +145,10 @@ export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe
     id: uid('msg_'),
     from: 'user',
     at: new Date().toISOString(),
-    text: `Haz con ChatGPT una prueba de imagen de ${what} «${it.name}» con este prompt: ${prompt}`,
-    request: { type: 'item-preview', kind, itemId, name: it.name, prompt },
+    text: scene
+      ? `Haz con ChatGPT el fotograma de ${what} «${it.name}» para la ${scene.label} (no es la referencia base: no la pongas como Canon) con este prompt: ${prompt}`
+      : `Haz con ChatGPT una prueba de imagen de ${what} «${it.name}» con este prompt: ${prompt}`,
+    request: { type: 'item-preview', kind, itemId, name: it.name, prompt, ...(scene ? { stateId: scene.stateId, sceneId: scene.sceneId } : {}) },
   })
   toast('Pedido enviado a Claude. La imagen aparecerá aquí')
 }

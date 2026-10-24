@@ -1,14 +1,37 @@
 // Propuestas de GPT: se validan, se guardan aparte (gpt-revisiones.json) y NUNCA cambian el proyecto solas.
-// El director decide: Aceptar (si trae regla, entra como decisión de GPT aprobada por él), Editar, Descartar
-// o Pedir a Claude. Todo se puede deshacer. Si la escena cambió desde que GPT la vio, se avisa.
+// El director decide: Guardar regla (entra como decisión de GPT aprobada por él), Aplicar corrección en fichas
+// (corrections.ts), Editar, Descartar o Pedir a Claude. Todo se puede deshacer. Si la escena cambió, se avisa.
 import { z } from 'zod'
-import type { Scene } from '../../types'
+import type { BibleItem, ItemKind, Scene } from '../../types'
 import { nowIso, uid } from '../../utils'
 import { shotsOf } from '../coverage/shots'
 import type { ContinuityPacket } from './context'
 
 export type GptSeverity = 'alta' | 'media' | 'baja'
 export type ProposalStatus = 'pending' | 'accepted' | 'discarded' | 'asked-claude'
+
+/** Un cambio concreto que GPT propone en una ficha de la Biblia. Solo se aplica si el director lo aprueba. */
+export interface ProposedChange {
+  /** 'item-state': agrega o ajusta un estado por escena; 'item-description': cambia la descripción fija. */
+  kind: 'item-state' | 'item-description'
+  /** Nombre de la ficha como lo dijo GPT (se busca por nombre u otros nombres). */
+  item: string
+  sceneId?: string
+  label?: string
+  shows?: string
+  hides?: string
+  text?: string
+}
+
+/** Qué hizo de verdad el director con la propuesta (para decirlo con honestidad). */
+export type ProposalOutcome = 'rule' | 'applied' | 'reviewed'
+
+/** Cómo estaba cada ficha antes de aplicar la corrección (para Deshacer). */
+export interface AppliedSnapshot {
+  kind: ItemKind
+  itemId: string
+  before: Pick<BibleItem, 'states' | 'description'>
+}
 
 export interface GptProposal {
   id: string
@@ -27,6 +50,18 @@ export interface GptProposal {
   /** Decisión creada al aceptar (para poder deshacer). */
   decisionId?: string
   resolvedAt?: string
+  /** Cambios concretos en fichas que GPT propone (se revisan antes de aplicar). */
+  changes?: ProposedChange[]
+  /** Pregunta para el director cuando GPT no debe adivinar (ej.: ¿restaurante o food truck?). */
+  question?: { text: string; options: string[] }
+  /** Respuesta del director y la decisión que se creó con ella. */
+  answer?: string
+  answerDecisionId?: string
+  outcome?: ProposalOutcome
+  /** Fichas como estaban antes de aplicar (historial y Deshacer). */
+  applied?: AppliedSnapshot[]
+  /** Lo que no se pudo corregir solo: pasos que faltan. */
+  missing?: string[]
 }
 
 export interface GptReview {
@@ -57,10 +92,25 @@ const responseSchema = z.object({
       evidencia: z.string(),
       correccion: z.string(),
       regla: z.string().nullable(),
+      // Las respuestas viejas no los traen: siguen valiendo.
+      cambios: z
+        .array(
+          z.object({
+            tipo: z.enum(['estado-ficha', 'descripcion-ficha']),
+            ficha: z.string(),
+            escena: z.number().int().nullable(),
+            etiqueta: z.string().nullable(),
+            se_ve: z.string().nullable(),
+            no_se_ve: z.string().nullable(),
+            texto: z.string().nullable(),
+          }),
+        )
+        .default([]),
+      pregunta: z.object({ texto: z.string(), opciones: z.array(z.string()) }).nullable().optional(),
     }),
   ),
 })
-export type ContinuityResponse = z.infer<typeof responseSchema>
+export type ContinuityResponse = z.input<typeof responseSchema>
 
 /** Lee la respuesta de GPT. Si no trae el formato pedido, no se usa nada. */
 export function parseContinuityResponse(raw: string): { ok: true; data: ContinuityResponse } | { ok: false; error: 'bad-format' } {
@@ -94,6 +144,19 @@ export function toReview(data: ContinuityResponse, packet: ContinuityPacket, sce
     const sceneId = (h.escena ? packet.sceneIds[h.escena - 1] : undefined) ?? image?.sceneId
     const shotId = (sceneId && h.plano ? packet.shotIds[sceneId]?.[h.plano - 1] : undefined) ?? (image?.sceneId === sceneId ? image?.shotId : undefined)
     const scene = sceneId ? scenes[sceneId] : undefined
+    const opt = (t?: string | null) => t?.trim() || undefined
+    const changes = (h.cambios ?? []).map(
+      (c): ProposedChange => ({
+        kind: c.tipo === 'estado-ficha' ? 'item-state' : 'item-description',
+        item: c.ficha.trim(),
+        sceneId: c.escena ? packet.sceneIds[c.escena - 1] : undefined,
+        label: opt(c.etiqueta),
+        shows: opt(c.se_ve),
+        hides: opt(c.no_se_ve),
+        text: opt(c.texto),
+      }),
+    )
+    const options = (h.pregunta?.opciones ?? []).map((o) => o.trim()).filter(Boolean)
     return {
       id: uid('gp'),
       severity: h.gravedad,
@@ -106,6 +169,8 @@ export function toReview(data: ContinuityResponse, packet: ContinuityPacket, sce
       imageId: image?.mediaId,
       stamp: scene ? stampOf(scene, shotId) : undefined,
       status: 'pending',
+      ...(changes.length ? { changes } : {}),
+      ...(h.pregunta?.texto.trim() && options.length >= 2 ? { question: { text: h.pregunta.texto.trim(), options } } : {}),
     }
   })
   return { id: uid('gr'), at, kind: 'continuity', summary: data.resumen.trim(), imagesSent: packet.images.length, proposals }
@@ -141,36 +206,65 @@ export function classifyGptError(err: unknown): GptErrorKind {
 
 // ---- acciones del director (cada una se puede deshacer) ----
 export interface DecisionOps {
-  addDecision: (text: string, opts: { proposedBy: 'gpt'; sceneIds?: string[] }) => string | undefined
+  addDecision: (text: string, opts: { proposedBy: 'gpt' | 'director'; sceneIds?: string[] }) => string | undefined
   approveDecision: (id: string) => void
   removeDecision: (id: string) => void
 }
 
-function patchProposal(reviews: GptReview[], reviewId: string, proposalId: string, fn: (p: GptProposal) => GptProposal): GptReview[] {
+/** Para aplicar y deshacer correcciones en fichas (con las acciones de siempre de la app). */
+export interface ItemOps {
+  updateItem: (kind: ItemKind, id: string, patch: Partial<Omit<BibleItem, 'id'>>) => void
+}
+
+export function patchProposal(reviews: GptReview[], reviewId: string, proposalId: string, fn: (p: GptProposal) => GptProposal): GptReview[] {
   return reviews.map((r) => (r.id !== reviewId ? r : { ...r, proposals: r.proposals.map((p) => (p.id === proposalId ? fn(p) : p)) }))
 }
 
 export const findProposal = (reviews: GptReview[], reviewId: string, proposalId: string) =>
   reviews.find((r) => r.id === reviewId)?.proposals.find((p) => p.id === proposalId)
 
-/** Aceptar: si trae regla, entra a las decisiones como propuesta de GPT y el director (tú) la aprueba. */
+/** Guarda la regla de GPT como decisión aprobada por el director. Devuelve su id. */
+export function saveRule(p: GptProposal, ops: DecisionOps): string | undefined {
+  if (!p.rule) return undefined
+  const id = ops.addDecision(p.rule, { proposedBy: 'gpt', sceneIds: p.sceneId ? [p.sceneId] : undefined })
+  if (id) ops.approveDecision(id)
+  return id
+}
+
+/**
+ * «Guardar regla» (si trae regla) o «Marcar como revisado» (si no): solo eso. No cambia fichas, diálogos ni
+ * imágenes; para eso está «Revisar cambios» → «Aplicar corrección» (corrections.ts).
+ */
 export function acceptProposal(reviews: GptReview[], reviewId: string, proposalId: string, ops: DecisionOps, at = nowIso()): GptReview[] {
   const p = findProposal(reviews, reviewId, proposalId)
   if (!p || p.status === 'accepted') return reviews
-  let decisionId: string | undefined
-  if (p.rule) {
-    decisionId = ops.addDecision(p.rule, { proposedBy: 'gpt', sceneIds: p.sceneId ? [p.sceneId] : undefined })
-    if (decisionId) ops.approveDecision(decisionId)
-  }
-  return patchProposal(reviews, reviewId, proposalId, (x) => ({ ...x, status: 'accepted', decisionId, resolvedAt: at }))
+  const decisionId = saveRule(p, ops)
+  return patchProposal(reviews, reviewId, proposalId, (x) => ({ ...x, status: 'accepted', decisionId, outcome: decisionId ? 'rule' : 'reviewed', resolvedAt: at }))
 }
 
-/** Deshacer: vuelve a «pendiente» y quita la decisión que se había creado al aceptar. */
-export function undoProposal(reviews: GptReview[], reviewId: string, proposalId: string, ops: Pick<DecisionOps, 'removeDecision'>): GptReview[] {
+/** Deshacer: vuelve a «pendiente», quita la decisión creada y deja las fichas como estaban antes de aplicar. */
+export function undoProposal(reviews: GptReview[], reviewId: string, proposalId: string, ops: Pick<DecisionOps, 'removeDecision'> & Partial<ItemOps>): GptReview[] {
   const p = findProposal(reviews, reviewId, proposalId)
   if (!p || p.status === 'pending') return reviews
   if (p.decisionId) ops.removeDecision(p.decisionId)
-  return patchProposal(reviews, reviewId, proposalId, (x) => ({ ...x, status: 'pending', decisionId: undefined, resolvedAt: undefined }))
+  for (const s of [...(p.applied ?? [])].reverse()) ops.updateItem?.(s.kind, s.itemId, { states: s.before.states, description: s.before.description })
+  return patchProposal(reviews, reviewId, proposalId, (x) => ({ ...x, status: 'pending', decisionId: undefined, resolvedAt: undefined, outcome: undefined, applied: undefined, missing: undefined }))
+}
+
+/** Responder la pregunta de GPT: queda como decisión del director. No reescribe nada más. */
+export function answerQuestion(reviews: GptReview[], reviewId: string, proposalId: string, option: string, ops: DecisionOps): GptReview[] {
+  const p = findProposal(reviews, reviewId, proposalId)
+  if (!p?.question || p.answer || !p.question.options.includes(option)) return reviews
+  const id = ops.addDecision(`${p.question.text} Respuesta del director: ${option}.`, { proposedBy: 'director', sceneIds: p.sceneId ? [p.sceneId] : undefined })
+  return patchProposal(reviews, reviewId, proposalId, (x) => ({ ...x, answer: option, answerDecisionId: id }))
+}
+
+/** Deshacer la respuesta: quita la decisión creada con ella. */
+export function undoAnswer(reviews: GptReview[], reviewId: string, proposalId: string, ops: Pick<DecisionOps, 'removeDecision'>): GptReview[] {
+  const p = findProposal(reviews, reviewId, proposalId)
+  if (!p?.answer) return reviews
+  if (p.answerDecisionId) ops.removeDecision(p.answerDecisionId)
+  return patchProposal(reviews, reviewId, proposalId, (x) => ({ ...x, answer: undefined, answerDecisionId: undefined }))
 }
 
 export const discardProposal = (reviews: GptReview[], reviewId: string, proposalId: string, at = nowIso()) =>

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Check, ClipboardCopy, ImagePlus, Loader2, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Check, ClipboardCopy, ImagePlus, Loader2, Plus, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
 import { isDesktop } from '../../database/db'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
@@ -11,7 +11,8 @@ import { orderedScenes } from '../../features/script-sync/derive'
 import { requestCharacterPreview, requestItemPreview } from '../../features/chat/requests'
 import { IMAGE_ACCEPT } from '../scenes/MediaSlot'
 import { uid } from '../../utils'
-import type { BibleItem, BibleKind, Character, CharacterTry, ItemKind, Phase } from '../../types'
+import { itemImagePrompt, MIXED, mixesMoments, sceneTargets } from '../../features/bible/itemStates'
+import type { BibleItem, BibleKind, Character, CharacterTry, ItemKind, ItemState, Phase, Scene } from '../../types'
 import { StatusPill } from './bibleUi'
 import { FullScreenButton } from '../common/Overlays'
 import { GptBibleToggle } from '../gpt/GptBiblePanel'
@@ -25,6 +26,7 @@ export function TryThumb({
   onRemove,
   wide,
   approvedLabel = '✓ Aprobada',
+  sceneLabel,
 }: {
   t: CharacterTry
   n: number
@@ -33,6 +35,8 @@ export function TryThumb({
   onRemove: () => void
   wide?: boolean
   approvedLabel?: string
+  /** Fotograma de una escena (ej.: «Escena 03 · Antes: papel»): no es la referencia base, no se aprueba como Canon. */
+  sceneLabel?: string
 }) {
   const url = useMediaUrl(t.mediaId, true)
   return (
@@ -46,7 +50,11 @@ export function TryThumb({
           </button>
         )}
       </div>
-      {approved ? (
+      {sceneLabel ? (
+        <span className="py-1 text-center text-[12px] leading-tight text-ink-2" title="Fotograma de escena: no cambia la imagen Canon">
+          {sceneLabel}
+        </span>
+      ) : approved ? (
         <span className="py-1 text-center text-[12.5px] text-ok">{approvedLabel}</span>
       ) : (
         <button className="btn btn-sm !justify-center" onClick={onApprove} aria-label={`Aprobar prueba ${n}`}>
@@ -103,12 +111,93 @@ function ContinuityFields({ kind, it, phases }: { kind: ItemKind; it: BibleItem;
   )
 }
 
+/**
+ * Estados por escena: el mismo lugar u objeto con cosas que cambian según la etapa o la escena
+ * (ej.: «Antes: papel» / «Después: app»). La descripción de arriba es lo fijo (Canon).
+ */
+function StatesFields({ kind, it, phases, scenes }: { kind: ItemKind; it: BibleItem; phases: Phase[]; scenes: Scene[] }) {
+  const { updateItem } = useProject.getState()
+  const states = it.states ?? []
+  const save = (next: ItemState[]) => updateItem(kind, it.id, { states: next.length ? next : undefined })
+  const patch = (id: string, p: Partial<ItemState>) => save(states.map((s) => (s.id === id ? { ...s, ...p, updatedAt: new Date().toISOString() } : s)))
+  const toggle = (list: string[] | undefined, id: string) => {
+    const next = list?.includes(id) ? list.filter((x) => x !== id) : [...(list ?? []), id]
+    return next.length ? next : undefined
+  }
+  const add = () => save([...states, { id: uid('st_'), label: `Estado ${states.length + 1}`, shows: '', updatedAt: new Date().toISOString() }])
+  return (
+    <div className="flex flex-col gap-2 rounded-[10px] border border-line p-2.5" role="group" aria-label={`Estados por escena de ${it.name}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[14px] font-semibold">Estados por escena</span>
+        <button className="btn btn-sm" onClick={add}>
+          <Plus size={13} /> Agregar estado
+        </button>
+      </div>
+      {!states.length && <p className="text-[13px] text-ink-3">¿Cambia algo entre escenas (ej.: papel antes, app después)? Agrega un estado por cada momento.</p>}
+      {states.map((st) => (
+        <div key={st.id} className="flex flex-col gap-1.5 rounded-[8px] bg-bg p-2" aria-label={`Estado ${st.label}`}>
+          <div className="flex items-center gap-2">
+            <input className="field !text-[14px] flex-1" aria-label="Nombre del estado" value={st.label} onChange={(e) => patch(st.id, { label: e.target.value })} placeholder="Ej.: Antes: papel" />
+            <button className="icon-btn sm" onClick={() => save(states.filter((s) => s.id !== st.id))} aria-label={`Quitar estado ${st.label}`} title="Quitar este estado">
+              <Trash2 size={13} />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[12.5px] text-ink-2">Vale en:</span>
+            {phases.map((p) => {
+              const on = !!st.phaseIds?.includes(p.id)
+              return (
+                <button key={p.id} className={`btn btn-sm ${on ? '!border-sel !bg-sel/20 !text-white' : ''}`} aria-pressed={on} onClick={() => patch(st.id, { phaseIds: toggle(st.phaseIds, p.id) })}>
+                  {on && <Check size={12} />} etapa {p.name}
+                </button>
+              )
+            })}
+            {(st.sceneIds ?? []).map((id) => {
+              const n = scenes.findIndex((s) => s.id === id) + 1
+              return (
+                n > 0 && (
+                  <button key={id} className="btn btn-sm !border-sel !bg-sel/20 !text-white" aria-pressed onClick={() => patch(st.id, { sceneIds: toggle(st.sceneIds, id) })} title="Quitar esta escena">
+                    <Check size={12} /> Escena {String(n).padStart(2, '0')}
+                  </button>
+                )
+              )
+            })}
+            <select className="field !h-8 !w-auto !text-[13px]" aria-label="Agregar escena al estado" value="" onChange={(e) => e.target.value && patch(st.id, { sceneIds: toggle(st.sceneIds, e.target.value) })}>
+              <option value="">+ Escena…</option>
+              {scenes.map((s, i) =>
+                st.sceneIds?.includes(s.id) ? null : (
+                  <option key={s.id} value={s.id}>
+                    Escena {String(i + 1).padStart(2, '0')} · {s.title}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[12.5px] text-ink-2">Se ve</span>
+              <textarea className="field !text-[13px]" rows={2} aria-label={`Se ve en ${st.label}`} value={st.shows} onChange={(e) => patch(st.id, { shows: e.target.value })} placeholder="Ej.: comandas de papel colgadas" />
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[12.5px] text-ink-2">No se ve</span>
+              <textarea className="field !text-[13px]" rows={2} aria-label={`No se ve en ${st.label}`} value={st.hides ?? ''} onChange={(e) => patch(st.id, { hides: e.target.value || undefined })} placeholder="Ej.: tablet ni celular" />
+            </label>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId: string; onRemoved?: () => void }) {
   const project = useProject((s) => s.project)
   const scenes = useProject((s) => s.scenes)
   const it = (project?.[kind] as (BibleItem | Character)[] | undefined)?.find((c) => c.id === itemId)
   const url = useMediaUrl(it?.imageId)
   const [busy, setBusy] = useState(false)
+  // «¿Para qué?»: la referencia base (lo fijo) o el fotograma de una escena (con su estado).
+  const [target, setTarget] = useState('base')
+  const sceneRef = useRef<{ stateId: string; sceneId: string; label: string } | undefined>(undefined)
   const { updateItem } = useProject.getState()
   const wide = kind === 'locations'
   const es = KIND_ES[kind]
@@ -116,8 +205,12 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
   const addTry = (mediaId: string) => {
     const cur = (useProject.getState().project?.[kind] as BibleItem[] | undefined)?.find((c) => c.id === itemId)
     if (!cur) return
-    const tries = cur.tries?.some((t) => t.mediaId === mediaId) ? cur.tries : [...(cur.tries ?? []), { id: uid('try_'), mediaId, at: new Date().toISOString() }]
-    updateItem(kind, itemId, { tries, imageId: mediaId })
+    const sc = sceneRef.current
+    const tries = cur.tries?.some((t) => t.mediaId === mediaId)
+      ? cur.tries
+      : [...(cur.tries ?? []), { id: uid('try_'), mediaId, at: new Date().toISOString(), ...(sc ? { stateId: sc.stateId, sceneId: sc.sceneId } : {}) }]
+    // El fotograma de una escena nunca toca la imagen Canon.
+    updateItem(kind, itemId, sc ? { tries } : { tries, imageId: mediaId })
   }
   const accept = async (files: File[]) => {
     if (!files[0]) return
@@ -131,11 +224,35 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
   }
   const drop = useFileDrop(accept, addTry)
   if (!project || !it) return null
-  const auto = itemPrompt(project, kind, it, orderedScenes(project, scenes))
-  const prompt = it.prompt ?? auto
+  const ordered = orderedScenes(project, scenes)
+  const item = kind !== 'characters' ? (it as BibleItem) : undefined
+  const states = item?.states ?? []
+  const targets = item && states.length ? sceneTargets(project, item, ordered) : []
+  const chosen = targets.find((t) => t.scene.id === target)
+  let prompt: string
+  let blocked: string | undefined
+  sceneRef.current = undefined
+  if (!item || !states.length) {
+    prompt = it.prompt ?? itemPrompt(project, kind, it, ordered)
+    const mixed = kind === 'characters' ? undefined : mixesMoments(prompt)
+    blocked = mixed && MIXED(mixed)
+  } else if (!chosen) {
+    ;({ prompt, blocked } = itemImagePrompt(project, kind as ItemKind, item, { mode: 'base' }))
+  } else {
+    const r = itemImagePrompt(project, kind as ItemKind, item, { mode: 'scene', sceneId: chosen.scene.id }, ordered)
+    ;({ prompt, blocked } = r)
+    if (r.state) sceneRef.current = { stateId: r.state.id, sceneId: chosen.scene.id, label: `Escena ${String(chosen.n).padStart(2, '0')}` }
+  }
+  const forScene = sceneRef.current
   const tries = it.tries ?? []
   const status = itemStatus(it)
-  const generate = () => (kind === 'characters' ? requestCharacterPreview(itemId, prompt) : requestItemPreview(kind, itemId, prompt))
+  const tryLabel = (t: CharacterTry) => {
+    if (!t.sceneId) return undefined
+    const n = ordered.findIndex((s) => s.id === t.sceneId) + 1
+    const st = states.find((s) => s.id === t.stateId)
+    return `${n ? `Escena ${String(n).padStart(2, '0')}` : 'Escena'}${st ? ` · ${st.label}` : ''}`
+  }
+  const generate = () => (kind === 'characters' ? requestCharacterPreview(itemId, prompt) : requestItemPreview(kind, itemId, prompt, forScene))
 
   return (
     <div className="flex flex-col gap-3" aria-label={`Ficha de ${it.name}`}>
@@ -224,21 +341,53 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
               onChange={(e) => updateItem(kind, itemId, { description: e.target.value })}
             />
           </label>
+          {item && <StatesFields kind={kind as ItemKind} it={item} phases={project.phases ?? []} scenes={ordered} />}
+          {states.length > 0 && (
+            <label className="flex flex-col gap-1">
+              <span className="text-[14px] font-semibold">¿Para qué es la imagen?</span>
+              <select className="field !text-[14px]" aria-label={`Para qué es la imagen de ${it.name}`} value={chosen ? chosen.scene.id : 'base'} onChange={(e) => setTarget(e.target.value)}>
+                <option value="base">Referencia base (el lugar sin cosas de una escena)</option>
+                {targets.map((t) => (
+                  <option key={t.scene.id} value={t.scene.id}>
+                    Fotograma de la {t.label}
+                  </option>
+                ))}
+              </select>
+              {chosen && <span className="text-[12.5px] text-ink-3">Esta imagen se guarda como prueba de la escena. No cambia la imagen Canon.</span>}
+            </label>
+          )}
           <div className="flex flex-col gap-1">
             <span className="flex items-center justify-between gap-2 text-[13px] text-ink-3">
-              Prompt para la imagen (puedes cambiarlo):
-              {it.prompt !== undefined && (
+              {chosen ? 'Prompt para esta escena (se arma solo con la ficha y su estado):' : 'Prompt para la imagen (puedes cambiarlo):'}
+              {!chosen && it.prompt !== undefined && (
                 <button className="btn btn-sm btn-ghost" onClick={() => updateItem(kind, itemId, { prompt: undefined })} title="Volver al prompt que se arma solo con la Biblia y el guion">
                   <RotateCcw size={12} /> Automático
                 </button>
               )}
             </span>
-            <textarea className="field !text-[13px] leading-snug" rows={4} aria-label={`Prompt de ${it.name}`} value={prompt} onChange={(e) => updateItem(kind, itemId, { prompt: e.target.value })} />
+            <textarea
+              className="field !text-[13px] leading-snug"
+              rows={4}
+              aria-label={`Prompt de ${it.name}`}
+              value={prompt}
+              readOnly={!!chosen}
+              onChange={(e) => !chosen && updateItem(kind, itemId, { prompt: e.target.value })}
+            />
           </div>
+          {blocked && (
+            <p role="alert" className="rounded-[8px] border border-warn/50 bg-warn/10 p-2 text-[13px] text-warn">
+              ⚠️ {blocked}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             {isDesktop() && (
-              <button className="btn !h-9 !border-[#7c3aed]/60 !text-[#ddd6fe]" onClick={() => void generate()} disabled={it.generating} title="Claude la hace con ChatGPT (gratis) y aparece aquí">
-                <Sparkles size={15} /> {tries.length ? 'Generar otra prueba' : 'Generar imagen'}
+              <button
+                className="btn !h-9 !border-[#7c3aed]/60 !text-[#ddd6fe]"
+                onClick={() => void generate()}
+                disabled={it.generating || !!blocked}
+                title={blocked ? 'Primero arregla el aviso de arriba' : 'Claude la hace con ChatGPT (gratis) y aparece aquí'}
+              >
+                <Sparkles size={15} /> {forScene ? `Generar imagen para la ${forScene.label}` : tries.length ? 'Generar otra prueba' : 'Generar imagen'}
               </button>
             )}
             <button className="btn !h-9" onClick={() => void navigator.clipboard.writeText(prompt).then(() => toast('Prompt copiado'))}>
@@ -286,6 +435,7 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
                 n={i + 1}
                 wide={wide}
                 approvedLabel="✓ Canon"
+                sceneLabel={tryLabel(t)}
                 approved={t.mediaId === it.imageId}
                 onApprove={() => {
                   updateItem(kind, itemId, { imageId: t.mediaId })

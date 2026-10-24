@@ -9,7 +9,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["escena", "plano", "imagen", "gravedad", "problema", "evidencia", "correccion", "regla"],
+        "required": ["escena", "plano", "imagen", "gravedad", "problema", "evidencia", "correccion", "regla", "cambios", "pregunta"],
         "properties": {
           "escena": { "type": ["integer", "null"] },
           "plano": { "type": ["integer", "null"] },
@@ -18,7 +18,38 @@
           "problema": { "type": "string" },
           "evidencia": { "type": "string" },
           "correccion": { "type": "string" },
-          "regla": { "type": ["string", "null"] }
+          "regla": { "type": ["string", "null"] },
+          "cambios": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["tipo", "ficha", "escena", "etiqueta", "se_ve", "no_se_ve", "texto"],
+              "properties": {
+                "tipo": { "type": "string", "enum": ["estado-ficha", "descripcion-ficha"] },
+                "ficha": { "type": "string" },
+                "escena": { "type": ["integer", "null"] },
+                "etiqueta": { "type": ["string", "null"] },
+                "se_ve": { "type": ["string", "null"] },
+                "no_se_ve": { "type": ["string", "null"] },
+                "texto": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "pregunta": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["texto", "opciones"],
+                "properties": {
+                  "texto": { "type": "string" },
+                  "opciones": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              { "type": "null" }
+            ]
+          }
         }
       }
     }

@@ -3,6 +3,7 @@
 import type { FramePlan, Project, Scene, Shot } from '../../types'
 import { charactersInScene, stylePrompt } from '../project-style/style'
 import { cameraPrompt } from '../camera/camera'
+import { sceneStatesPrompt } from './itemStates'
 
 export type FrameSlot = 'start' | 'end'
 
@@ -44,6 +45,7 @@ export function framePrompt(p: Project | null | undefined, scene: Scene, slot: F
     s.dialogue.trim() && `Dialogue (Spanish, for expressions only, no text in the image): ${s.dialogue.trim()}`,
     s.generationPrompt.trim(),
     chars.length && `Characters (keep them exactly like this): ${chars.join('; ')}`,
+    sceneStatesPrompt(p, scene),
     cameraPrompt(s.camera),
     s.cameraDirection.trim(),
     stylePrompt(p),
@@ -74,6 +76,7 @@ export function shotFramePrompt(p: Project | null | undefined, scene: Scene, sho
     shot.continuity?.trim() && `Continuity (Spanish): ${shot.continuity.trim()}`,
     shot.generationPrompt?.trim(),
     chars.length && `Characters (keep them exactly like this): ${chars.join('; ')}`,
+    sceneStatesPrompt(p, scene),
     cameraPrompt(shot.camera),
     shot.cameraDirection?.trim(),
     stylePrompt(p),
