@@ -1,3 +1,10 @@
+2026-10-24 15:35 · IKRAL Studio · App instalada con estados por escena
+- Cambiado: [código] /Applications/IKRAL Studio.app — versión 4a1e9bc (estados por escena, revisión GPT honesta, botón 🔊 Escuchar).
+- Seguridad: compilada solo desde commits (sin cambios a medio hacer); respaldo de la app anterior en /Volumes/c/respaldos/ikral-studio/app/.
+- Publicado: no.
+- Commit: 4a1e9bc
+- Pendiente: que el director la pruebe.
+
 2026-10-24 15:26 · IKRAL Studio · Estados por escena y revisión GPT honesta
 - Agregado: [código] src/features/bible/itemStates.ts — estados por escena o etapa sobre la ficha fija; prompt «¿Para qué escena?» sin mezclar papel y app.
 - Agregado: [código] src/features/gpt/corrections.ts — «Revisar cambios» → «Aplicar corrección» con vista previa, deshacer e historial.
