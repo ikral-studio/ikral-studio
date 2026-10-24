@@ -18,12 +18,12 @@ const split = (c: Choice) => {
   return { icon, label: rest.join(' ') }
 }
 
-function Tiles({ list, value, onPick, label, cols = 2 }: { list: Choice[]; value?: string; onPick: (id?: string) => void; label: string; cols?: 2 | 3 }) {
+function Tiles({ list, value, onPick, label, cols = 2, stacked }: { list: Choice[]; value?: string; onPick: (id?: string) => void; label: string; cols?: 2 | 3; stacked?: boolean }) {
   return (
     <div className={`grid gap-2 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`} role="group" aria-label={label}>
       {list.map((c) => {
         const { icon, label } = split(c)
-        return <Tile key={c.id} icon={icon} label={label} stacked={cols === 3} active={value === c.id} onClick={() => onPick(value === c.id ? undefined : c.id)} />
+        return <Tile key={c.id} icon={icon} label={label} stacked={stacked} active={value === c.id} onClick={() => onPick(value === c.id ? undefined : c.id)} />
       })}
     </div>
   )
@@ -218,7 +218,7 @@ export function BibleScreen() {
                 <Tiles label="Colores" list={MOODS} value={b.mood} onPick={(mood) => setBible({ mood })} />
               </Question>
               <Question icon={<Users size={17} />} title="¿Para quién es?">
-                <Tiles label="Público" list={AUDIENCES} value={b.audience} onPick={(audience) => setBible({ audience })} cols={3} />
+                <Tiles label="Público" list={AUDIENCES} value={b.audience} onPick={(audience) => setBible({ audience })} stacked />
               </Question>
               <hr className="border-line" />
               <Question icon={<Wand2 size={17} />} title="Crear propuesta visual">

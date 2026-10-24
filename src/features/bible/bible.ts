@@ -27,7 +27,6 @@ export const MOODS: Choice[] = [
 export const AUDIENCES: Choice[] = [
   { id: 'ninos', es: '🧒 Niños', en: 'kid-friendly' },
   { id: 'familia', es: '👨‍👩‍👧 Toda la familia', en: 'family-friendly' },
-  { id: 'adultos', es: '🧑 Adultos', en: 'for adult audiences' },
 ]
 
 const pick = (list: Choice[], id?: string) => list.find((c) => c.id === id)
@@ -36,7 +35,7 @@ const pick = (list: Choice[], id?: string) => list.find((c) => c.id === id)
 export function bibleAnswered(p?: Project | null): number {
   const b = p?.bible ?? {}
   const look = b.look === 'otro' ? !!b.lookOther?.trim() : !!b.look
-  return [look, !!(b.era?.trim() || b.place?.trim()), !!b.mood, !!b.audience].filter(Boolean).length
+  return [look, !!(b.era?.trim() || b.place?.trim()), !!b.mood, !!pick(AUDIENCES, b.audience)].filter(Boolean).length
 }
 
 /** Respuestas en inglés para el prompt (vacío si no hay ninguna). */
