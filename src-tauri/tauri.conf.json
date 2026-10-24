@@ -27,7 +27,8 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$DOCUMENT/IKRAL Studio/**"
+          "$HOME/**",
+          "/Volumes/**"
         ]
       }
     }
@@ -47,6 +48,11 @@
     ],
     "category": "Video",
     "shortDescription": "Storyboard, guion y videos generados con IA",
-    "copyright": "© 2026 David González · AGPL-3.0-or-later"
+    "copyright": "© 2026 David González · AGPL-3.0-or-later",
+    "macOS": {
+      "files": {
+        "Resources/library.icns": "icons/library.icns"
+      }
+    }
   }
 }

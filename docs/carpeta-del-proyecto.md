@@ -6,13 +6,20 @@ La app de escritorio guarda todo en `Documentos/IKRAL Studio/`:
 IKRAL Studio/
   ajustes.json
   Proyectos/
-    <Título>-<id>/
+    <Título>-<id>.ikral/   ← «biblioteca»: el Mac la muestra como un solo archivo con su ícono
       proyecto.json      ← guion, escenas, orden, cámara, música, estilo, personajes
       archivos.json      ← índice de imágenes, videos y audios (id → nombre, tipo, medidas, duración)
       archivos/<id>.mp4  ← los archivos reales (también .png, .jpg, .webp, .mp3…)
       miniaturas/<id>.jpg
       respaldos/<id>.json
 ```
+
+## Bibliotecas (.ikral), como en Final Cut
+
+- Cada proyecto es una carpeta-paquete `Nombre.ikral`. En Finder se ve como un archivo con el ícono de IKRAL; por dentro es la misma carpeta de siempre (Terminal y Claude entran normal).
+- En la app: **Proyectos → «Guardar en…»** mueve la biblioteca a donde quieras (otro disco incluido; si es otro disco se copia, se revisa y luego se quita la de antes). **«Abrir biblioteca…»** abre una `.ikral` de cualquier lugar. También se abre con doble clic en Finder.
+- Las bibliotecas fuera de `Proyectos/` se anotan en `ajustes.json` → `libraries` (rutas completas). Si el disco no está conectado, no aparecen hasta que se conecte.
+- Las carpetas viejas (sin `.ikral`) se renombran solas a `.ikral` al abrir la app.
 
 ## Para asistentes de IA (Claude, etc.)
 
@@ -33,7 +40,7 @@ Puedes editar `proyecto.json` mientras la app está abierta: la app detecta el c
 
 La app escribe `chat-usuario.json`; Claude solo escribe `chat-claude.json`. El botón «Empezar a escuchar» abre la Terminal con `claude` en la carpeta del código y le pide seguir este ciclo:
 
-1. `node tools/claude-chat.mjs escuchar` en segundo plano (escucha todos los proyectos). Mientras corre, renueva `lastSeen` cada 20 s: eso prende el foquito 🟢 en la app (se apaga si pasan 90 s sin señal, o 10 min si hay `working`).
+1. `node tools/claude-chat.mjs escuchar` en segundo plano (escucha todos los proyectos, también las bibliotecas guardadas en otros discos). Mientras corre, renueva `lastSeen` cada 20 s: eso prende el foquito 🟢 en la app (se apaga si pasan 90 s sin señal, o 10 min si hay `working`).
 2. Al llegar un mensaje, el comando lo imprime (con su `carpeta`) y termina. Avisa con `node tools/claude-chat.mjs trabajando "Haciendo…" <carpeta>`.
 3. Atiende el pedido (ver arriba: antes de editar `proyecto.json`, haz copia de respaldo y escribe de forma atómica).
 4. Contesta con `node tools/claude-chat.mjs responder "texto" <carpeta>` y vuelve al paso 1.

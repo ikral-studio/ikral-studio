@@ -8,5 +8,47 @@
   <string>IKRAL Studio convierte tu voz en texto para el chat con Claude.</string>
   <key>NSAppleEventsUsageDescription</key>
   <string>IKRAL Studio abre la Terminal para que Claude empiece a escuchar el chat.</string>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>com.ikral.studio.library</string>
+      <key>UTTypeDescription</key>
+      <string>Biblioteca de IKRAL Studio</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>com.apple.package</string>
+        <string>public.composite-content</string>
+      </array>
+      <key>UTTypeIconFile</key>
+      <string>library.icns</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>ikral</string>
+        </array>
+      </dict>
+    </dict>
+  </array>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Biblioteca de IKRAL Studio</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSTypeIsPackage</key>
+      <true/>
+      <key>CFBundleTypeIconFile</key>
+      <string>library.icns</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.ikral.studio.library</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

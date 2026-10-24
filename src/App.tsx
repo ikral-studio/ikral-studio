@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { listenFinderOpen } from './features/projects/library'
 import { Clapperboard, FilePlus2, FolderOpen, Loader2, PanelLeftOpen, PanelRightOpen } from 'lucide-react'
 import { useProject } from './stores/projectStore'
 import { toast, useUI } from './stores/uiStore'
@@ -75,7 +76,10 @@ export default function App() {
     useProject
       .getState()
       .init()
-      .then(() => startTabGuard())
+      .then(() => {
+        startTabGuard()
+        void listenFinderOpen()
+      })
       .catch((e) => {
         console.error(e)
         setInitError(e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : String(e))

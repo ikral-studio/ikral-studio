@@ -36,13 +36,24 @@ fn empezar_a_escuchar() -> Result<(), String> {
   }
 }
 
+/// Bibliotecas .ikral abiertas desde Finder antes de que la ventana estuviera lista.
+#[derive(Default)]
+struct Pendientes(std::sync::Mutex<Vec<String>>);
+
+/// La app pregunta al arrancar si la abrieron con doble clic en una biblioteca.
+#[tauri::command]
+fn bibliotecas_pendientes(state: tauri::State<Pendientes>) -> Vec<String> {
+  std::mem::take(&mut *state.0.lock().unwrap())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_drag::init())
-    .invoke_handler(tauri::generate_handler![empezar_a_escuchar])
+    .manage(Pendientes::default())
+    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -53,6 +64,23 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while building tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|app, event| {
+      // Doble clic en una biblioteca .ikral en Finder (o arrastrarla al ícono de la app).
+      #[cfg(target_os = "macos")]
+      if let tauri::RunEvent::Opened { urls } = event {
+        use tauri::{Emitter, Manager};
+        let paths: Vec<String> = urls
+          .iter()
+          .filter_map(|u| u.to_file_path().ok())
+          .map(|p| p.to_string_lossy().trim_end_matches('/').to_string())
+          .collect();
+        if paths.is_empty() {
+          return;
+        }
+        app.state::<Pendientes>().0.lock().unwrap().extend(paths.clone());
+        let _ = app.emit("open-library", paths);
+      }
+    });
 }

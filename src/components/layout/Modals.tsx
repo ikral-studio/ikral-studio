@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Keyboard, Loader2, RotateCcw, Trash2, Upload, HardDrive, ShieldCheck } from 'lucide-react'
+import { FolderOpen, Keyboard, Library, Loader2, RotateCcw, Save, Trash2, Upload, HardDrive, ShieldCheck } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { deleteProject, isDesktop, listProjects, projectFolderPath } from '../../database/db'
 import { importProjectZip } from '../../features/projects/backup'
+import { pickLibrary, saveLibraryAs } from '../../features/projects/library'
 import { releaseAllUrls } from '../../features/media-library/media'
 import { pickFiles } from '../../hooks/useFileDrop'
 import { formatBytes } from '../../utils'
@@ -133,9 +134,16 @@ function ProjectsModal() {
       onClose={close}
       width={560}
       footer={
-        <button className="btn" onClick={importZip} disabled={busy}>
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />} Importar respaldo (.zip)
-        </button>
+        <>
+          {isDesktop() && (
+            <button className="btn" onClick={() => void pickLibrary().then((ok) => ok && close())} title="Abre un archivo .ikral que tengas en cualquier carpeta o disco">
+              <Library size={15} /> Abrir biblioteca…
+            </button>
+          )}
+          <button className="btn" onClick={importZip} disabled={busy}>
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />} Importar respaldo (.zip)
+          </button>
+        </>
       }
     >
       {!list ? (
@@ -152,6 +160,13 @@ function ProjectsModal() {
                   {p.sceneIds.length} escenas · {p.aspectRatio} · editado {new Date(p.updatedAt).toLocaleString('es-MX')}
                 </div>
               </div>
+              {p.id === current && isDesktop() && (
+                <button className="btn btn-sm" onClick={() => void saveLibraryAs().then((ok) => {
+                  if (ok) void refresh()
+                })} title="Elige dónde guardar este proyecto (otra carpeta u otro disco). Se guarda como biblioteca .ikral con todo adentro.">
+                  <Save size={13} /> Guardar en…
+                </button>
+              )}
               {p.id === current ? (
                 <span className="chip bg-sel/20 text-[#bfdbfe]">Abierto</span>
               ) : (
@@ -232,8 +247,8 @@ function SettingsModal() {
               <p className="text-[12.5px] leading-relaxed text-ink-2">
                 Todo se guarda <b>en tu Mac</b>, sin límite de espacio, en la carpeta:
               </p>
-              <code className="mt-1.5 block rounded-lg bg-black/30 px-2.5 py-1.5 font-mono text-[11.5px] text-ink">{folder ?? 'Documentos/IKRAL Studio/Proyectos'}</code>
-              <p className="mt-2 text-[12px] text-ink-3">Cada proyecto es una carpeta con «proyecto.json», sus archivos y respaldos. Claude puede trabajar directo ahí.</p>
+              <code className="mt-1.5 block break-all rounded-lg bg-black/30 px-2.5 py-1.5 font-mono text-[11.5px] text-ink">{folder ?? 'Documentos/IKRAL Studio/Proyectos'}</code>
+              <p className="mt-2 text-[12px] text-ink-3">Cada proyecto es una biblioteca «.ikral» (como en Final Cut) con «proyecto.json», sus archivos y respaldos. Puedes guardarla en otra carpeta o disco con «Guardar en…» en Proyectos. Claude puede trabajar directo ahí.</p>
             </>
           ) : (
             <>

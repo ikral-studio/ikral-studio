@@ -1,26 +1,35 @@
 // Motor de guardado de la app de escritorio: todo vive en carpetas de tu Mac.
 //
 //   Documentos/IKRAL Studio/
-//     ajustes.json
-//     Proyectos/<Título>-<id>/
+//     ajustes.json           ← también la lista de bibliotecas guardadas en otros lugares («libraries»)
+//     Proyectos/<Título>-<id>.ikral/   ← cada proyecto es una «biblioteca» (paquete con su ícono, como en Final Cut)
 //       proyecto.json        ← guion, escenas, orden, música… (lo puede leer y editar Claude)
 //       archivos.json        ← lista de imágenes, videos y audios
 //       archivos/<id>.mp4    ← los archivos reales
 //       miniaturas/<id>.jpg
 //       respaldos/<id>.json  ← respaldos automáticos
 //
-// Sin límite de espacio aparte del disco. Escrituras atómicas (archivo temporal + renombrar).
-import { BaseDirectory, exists, mkdir, readDir, readFile, readTextFile, remove, rename, watch, writeFile, writeTextFile } from '@tauri-apps/plugin-fs'
+// Una biblioteca se puede guardar en cualquier carpeta o disco («Guardar biblioteca en…») y abrir desde ahí.
+// Todas las rutas son completas (absolutas). Sin límite de espacio aparte del disco.
+// Escrituras atómicas (archivo temporal + renombrar).
+import { copyFile, exists, mkdir, readDir, readFile, readTextFile, remove, rename, watch, writeFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { documentDir, join } from '@tauri-apps/api/path'
+import { documentDir } from '@tauri-apps/api/path'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../types'
 import { SNAPSHOT_KEEP, mediaIdsOf, type Snapshot } from './idb'
 import { mergeProjects } from './merge'
 import { extFromMime, safeFilename } from '../utils'
 
-const BASE = { baseDir: BaseDirectory.Document }
-export const ROOT = 'IKRAL Studio'
-const PROJECTS = `${ROOT}/Proyectos`
+/** Rutas completas: ya no dependen de la carpeta Documentos. */
+const BASE = {}
+let ROOT = ''
+let PROJECTS = ''
+/** Extensión de las bibliotecas (el Mac las muestra como un solo archivo con su ícono). */
+export const LIBRARY_EXT = '.ikral'
+const ready = documentDir().then((d) => {
+  ROOT = `${d.replace(/\/$/, '')}/IKRAL Studio`
+  PROJECTS = `${ROOT}/Proyectos`
+})
 const FORMAT = 'ikral-studio-project'
 
 interface ProjectFile {
@@ -43,7 +52,7 @@ async function writeJson(path: string, data: unknown) {
   const tmp = `${path}.tmp`
   lastWritten.set(path, text)
   await writeTextFile(tmp, text, BASE)
-  await rename(tmp, path, { oldPathBaseDir: BaseDirectory.Document, newPathBaseDir: BaseDirectory.Document })
+  await rename(tmp, path)
 }
 
 async function readJson<T>(path: string): Promise<T | null> {
@@ -60,21 +69,38 @@ const folders = new Map<string, string>()
 const mediaIndex = new Map<string, { dir: string; asset: MediaAsset }>()
 
 async function scan() {
+  await ready
   await ensureDir(PROJECTS)
   folders.clear()
+  const add = async (dir: string) => {
+    const f = await readJson<ProjectFile>(`${dir}/proyecto.json`)
+    if (f?.format === FORMAT && f.project?.id && !folders.has(f.project.id)) folders.set(f.project.id, dir)
+  }
   for (const e of await readDir(PROJECTS, BASE)) {
     if (!e.isDirectory) continue
-    const dir = `${PROJECTS}/${e.name}`
-    const f = await readJson<ProjectFile>(`${dir}/proyecto.json`)
-    if (f?.format === FORMAT && f.project?.id) folders.set(f.project.id, dir)
+    let dir = `${PROJECTS}/${e.name}`
+    // Carpetas de antes: se vuelven biblioteca (mismo contenido, solo cambia el nombre).
+    if (!e.name.endsWith(LIBRARY_EXT) && (await exists(`${dir}/proyecto.json`, BASE)) && !(await exists(dir + LIBRARY_EXT, BASE))) {
+      await rename(dir, dir + LIBRARY_EXT).then(() => (dir += LIBRARY_EXT)).catch(() => {})
+    }
+    await add(dir)
   }
+  // Bibliotecas guardadas en otros lugares (si el disco no está conectado, simplemente no aparecen).
+  for (const dir of await libraries()) if (await exists(`${dir}/proyecto.json`, BASE).catch(() => false)) await add(dir)
+}
+
+async function libraries(): Promise<string[]> {
+  return (await getKV<string[]>('libraries')) ?? []
+}
+async function setLibraries(list: string[]) {
+  await setKV('libraries', [...new Set(list)])
 }
 
 async function dirFor(project: Pick<Project, 'id' | 'title'>, create = true): Promise<string> {
   if (!folders.size) await scan()
   let dir = folders.get(project.id)
   if (!dir && create) {
-    dir = `${PROJECTS}/${safeFilename(project.title)}-${project.id.slice(-6)}`
+    dir = `${PROJECTS}/${safeFilename(project.title)}-${project.id.slice(-6)}${LIBRARY_EXT}`
     await ensureDir(dir)
     folders.set(project.id, dir)
   }
@@ -155,6 +181,7 @@ export async function deleteProject(id: string) {
   if (!dir) return
   await remove(dir, { ...BASE, recursive: true })
   folders.delete(id)
+  await setLibraries((await libraries()).filter((d) => d !== dir))
 }
 
 // ---- archivos ----
@@ -214,16 +241,15 @@ export async function mediaFileUrl(id: string, thumb = false): Promise<string | 
   const m = await findMedia(id)
   if (!m) return null
   const rel = thumb && (await exists(thumbPath(m.dir, id), BASE)) ? thumbPath(m.dir, id) : mediaPath(m.dir, m.asset)
-  return convertFileSrc(await join(await documentDir(), rel))
+  return convertFileSrc(rel)
 }
 
 /** Ruta completa del archivo en el disco y de su miniatura (para arrastrarlo fuera de la app). */
 export async function mediaDiskPath(id: string): Promise<{ file: string; icon: string } | null> {
   const m = await findMedia(id)
   if (!m) return null
-  const docs = await documentDir()
-  const file = await join(docs, mediaPath(m.dir, m.asset))
-  const icon = (await exists(thumbPath(m.dir, id), BASE)) ? await join(docs, thumbPath(m.dir, id)) : file
+  const file = mediaPath(m.dir, m.asset)
+  const icon = (await exists(thumbPath(m.dir, id), BASE)) ? thumbPath(m.dir, id) : file
   return { file, icon }
 }
 
@@ -293,16 +319,17 @@ export async function importProjectData(project: Project, scenes: Scene[], recor
 }
 
 // ---- ajustes ----
-const SETTINGS = `${ROOT}/ajustes.json`
+const settingsPath = async () => (await ready, `${ROOT}/ajustes.json`)
 export async function getKV<T>(key: string): Promise<T | undefined> {
-  const all = (await readJson<Record<string, unknown>>(SETTINGS)) ?? {}
+  const all = (await readJson<Record<string, unknown>>(await settingsPath())) ?? {}
   return all[key] as T | undefined
 }
 export async function setKV(key: string, value: unknown) {
+  const path = await settingsPath()
   await ensureDir(ROOT)
-  const all = (await readJson<Record<string, unknown>>(SETTINGS)) ?? {}
+  const all = (await readJson<Record<string, unknown>>(path)) ?? {}
   all[key] = value
-  await writeJson(SETTINGS, all)
+  await writeJson(path, all)
 }
 
 // ---- cambios hechos por fuera (por ejemplo, Claude editando proyecto.json) ----
@@ -380,6 +407,70 @@ export async function sendChat(projectId: string, msg: ChatMessage) {
 }
 
 export async function projectFolderPath(projectId: string): Promise<string | null> {
-  const dir = folders.get(projectId)
-  return dir ? join(await documentDir(), dir) : null
+  if (!folders.has(projectId)) await scan()
+  return folders.get(projectId) ?? null
+}
+
+// ---- bibliotecas (como en Final Cut) ----
+/** Copia una carpeta completa (con subcarpetas). */
+async function copyDir(from: string, to: string) {
+  await mkdir(to, { recursive: true })
+  for (const e of await readDir(from, BASE)) {
+    if (e.name.endsWith('.tmp')) continue
+    if (e.isDirectory) await copyDir(`${from}/${e.name}`, `${to}/${e.name}`)
+    else await copyFile(`${from}/${e.name}`, `${to}/${e.name}`)
+  }
+}
+async function countFiles(dir: string): Promise<number> {
+  let n = 0
+  for (const e of await readDir(dir, BASE)) {
+    if (e.name.endsWith('.tmp')) continue
+    n += e.isDirectory ? await countFiles(`${dir}/${e.name}`) : 1
+  }
+  return n
+}
+
+/** Mueve la biblioteca del proyecto a otra ruta (por ejemplo, otro disco). Devuelve la ruta nueva. */
+export async function moveLibrary(projectId: string, dest: string): Promise<string> {
+  if (!folders.has(projectId)) await scan()
+  const from = folders.get(projectId)
+  if (!from) throw new Error('No encontré la biblioteca del proyecto')
+  let to = dest.replace(/\/+$/, '')
+  if (!to.endsWith(LIBRARY_EXT)) to += LIBRARY_EXT
+  if (to === from) return from
+  if (await exists(to, BASE)) throw new Error('Ya hay algo con ese nombre ahí. Elige otro nombre.')
+  unwatch?.()
+  unwatch = null
+  try {
+    await rename(from, to) // mismo disco: instantáneo
+  } catch {
+    // Otro disco: copiar todo, revisar que llegó completo y luego quitar el de antes.
+    await copyDir(from, to)
+    if ((await countFiles(to)) < (await countFiles(from)) || !(await readJson<ProjectFile>(`${to}/proyecto.json`))) {
+      await remove(to, { recursive: true }).catch(() => {})
+      throw new Error('La copia no quedó completa. No se movió nada.')
+    }
+    await remove(from, { recursive: true })
+  }
+  folders.set(projectId, to)
+  for (const [id, m] of mediaIndex) if (m.dir === from) mediaIndex.set(id, { ...m, dir: to })
+  for (const [k, v] of [...lastWritten]) if (k.startsWith(from + '/')) lastWritten.set(to + k.slice(from.length), v)
+  const inDefault = to.startsWith(PROJECTS + '/')
+  await setLibraries([...(await libraries()).filter((d) => d !== from && d !== to), ...(inDefault ? [] : [to])])
+  return to
+}
+
+/** Abre una biblioteca .ikral que está en cualquier lugar. Devuelve el id de su proyecto. */
+export async function openLibrary(path: string): Promise<string> {
+  const dir = path.replace(/\/+$/, '')
+  const f = await readJson<ProjectFile>(`${dir}/proyecto.json`)
+  if (f?.format !== FORMAT || !f.project?.id) throw new Error('Eso no es una biblioteca de IKRAL Studio')
+  const other = folders.get(f.project.id)
+  if (other && other !== dir && (await exists(`${other}/proyecto.json`, BASE).catch(() => false))) {
+    throw new Error('Ya tienes abierta otra copia de este proyecto. Ciérrala o muévela antes.')
+  }
+  folders.set(f.project.id, dir)
+  await ready
+  if (!dir.startsWith(PROJECTS + '/')) await setLibraries([...(await libraries()), dir])
+  return f.project.id
 }

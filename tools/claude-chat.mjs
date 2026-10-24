@@ -12,12 +12,11 @@ import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 
 const ROOT = join(homedir(), 'Documents', 'IKRAL Studio', 'Proyectos')
+const SETTINGS = join(homedir(), 'Documents', 'IKRAL Studio', 'ajustes.json')
 const [cmd, arg1, arg2] = process.argv.slice(2)
 
 function latestProject() {
-  const dirs = readdirSync(ROOT)
-    .map((n) => join(ROOT, n))
-    .filter((d) => existsSync(join(d, 'proyecto.json')))
+  const dirs = allProjects()
     .sort((a, b) => statSync(join(b, 'proyecto.json')).mtimeMs - statSync(join(a, 'proyecto.json')).mtimeMs)
   if (!dirs.length) throw new Error('No hay proyectos en ' + ROOT)
   return dirs[0]
@@ -43,7 +42,12 @@ function speak(text) {
   child.unref()
 }
 
-const allProjects = () => readdirSync(ROOT).map((n) => join(ROOT, n)).filter((d) => existsSync(join(d, 'proyecto.json')))
+/** Bibliotecas (.ikral) de la carpeta normal más las guardadas en otros lugares (ajustes.json → libraries). */
+function allProjects() {
+  const extra = read(SETTINGS, {}).libraries ?? []
+  const dirs = [...(existsSync(ROOT) ? readdirSync(ROOT).map((n) => join(ROOT, n)) : []), ...extra]
+  return [...new Set(dirs)].filter((d) => existsSync(join(d, 'proyecto.json')))
+}
 /** Proyecto donde se escribió el último mensaje (o el último modificado). */
 function lastChatProject() {
   const withChat = allProjects().filter((d) => existsSync(join(d, 'chat-usuario.json')))

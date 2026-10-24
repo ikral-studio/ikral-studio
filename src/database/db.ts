@@ -13,6 +13,8 @@ type Backend = typeof idb & {
   watchProject?: (projectId: string, onChange: () => void) => Promise<void>
   onMerged?: (cb: () => void) => void
   projectFolderPath?: (projectId: string) => Promise<string | null>
+  moveLibrary?: (projectId: string, dest: string) => Promise<string>
+  openLibrary?: (path: string) => Promise<string>
   readChat?: (projectId: string) => Promise<{ user: ChatMessage[]; claude: { messages: ChatMessage[]; readUpTo?: string; lastSeen?: string; working?: string } }>
   sendChat?: (projectId: string, msg: ChatMessage) => Promise<void>
   onChatChange?: (cb: () => void) => () => void
@@ -61,3 +63,15 @@ export const sendChat = async (pid: string, msg: ChatMessage) => (await backend(
 export const onChatChange = async (cb: () => void) => (await backend()).onChatChange?.(cb) ?? (() => {})
 export const onMerged = async (cb: () => void) => (await backend()).onMerged?.(cb)
 export const projectFolderPath = async (pid: string) => (await backend()).projectFolderPath?.(pid) ?? null
+/** Solo escritorio: mueve la biblioteca (.ikral) del proyecto a otra carpeta o disco. */
+export const moveLibrary = async (pid: string, dest: string) => {
+  const b = await backend()
+  if (!b.moveLibrary) throw new Error('Solo en la app de escritorio')
+  return b.moveLibrary(pid, dest)
+}
+/** Solo escritorio: abre una biblioteca .ikral que está en cualquier lugar. Devuelve el id del proyecto. */
+export const openLibrary = async (path: string) => {
+  const b = await backend()
+  if (!b.openLibrary) throw new Error('Solo en la app de escritorio')
+  return b.openLibrary(path)
+}
