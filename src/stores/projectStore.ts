@@ -127,6 +127,10 @@ interface State {
   /** Agrega un plano al final (o después de `afterId`). Devuelve su id. */
   addShot: (sceneId: string, afterId?: string) => string | undefined
   updateShot: (sceneId: string, shotId: string, patch: Partial<Omit<Shot, 'id' | 'order'>>, coalesce?: boolean) => void
+  /** Imagen inicial o final propuesta de un plano (prompt, pruebas, aprobada). */
+  updateShotFramePlan: (sceneId: string, shotId: string, slot: 'start' | 'end', patch: Partial<FramePlan>) => void
+  /** Pone la imagen inicial o final del plano en Edición. */
+  setShotImage: (sceneId: string, shotId: string, slot: 'start' | 'end', mediaId: string | undefined) => void
   moveShot: (sceneId: string, shotId: string, dir: -1 | 1) => void
   /** Copia el plano (con sus imágenes y videos) justo después. Devuelve el id nuevo. */
   duplicateShot: (sceneId: string, shotId: string) => string | undefined
@@ -677,6 +681,15 @@ export const useProject = create<State>()((set, get) => {
         coalesce ? `shot:${shotId}:${Object.keys(patch).join(',')}` : undefined,
         coalesce ? 500 : 0,
       )
+    },
+
+    updateShotFramePlan(sceneId, shotId, slot, patch) {
+      const typing = 'prompt' in patch
+      patchShot(sceneId, shotId, (sh) => ({ ...sh, prep: { ...sh.prep, [slot]: { ...sh.prep?.[slot], ...patch } } }), typing ? `shotprep:${shotId}:${slot}` : undefined, typing ? 500 : 0)
+    },
+
+    setShotImage(sceneId, shotId, slot, mediaId) {
+      patchShot(sceneId, shotId, (sh) => ({ ...sh, [slot === 'start' ? 'startImageId' : 'endImageId']: mediaId }))
     },
 
     moveShot(sceneId, shotId, dir) {

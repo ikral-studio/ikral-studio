@@ -107,6 +107,30 @@ export async function requestFramePreview(sceneId: string, slot: 'start' | 'end'
   toast('Pedido enviado a Claude 🖼️ La imagen aparecerá aquí')
 }
 
+/** Cobertura: pedir a Claude una prueba de la imagen inicial o final de un plano (va ligada al id del plano). */
+export async function requestShotPreview(sceneId: string, shotId: string, slot: 'start' | 'end', prompt: string) {
+  const { project, scenes, updateShotFramePlan } = useProject.getState()
+  const scene = scenes[sceneId]
+  const shots = [...(scene?.shots ?? [])].sort((a, b) => a.order - b.order)
+  const n = shots.findIndex((x) => x.id === shotId) + 1
+  if (!project || !scene || !n || !isDesktop()) return
+  const shot = shots[n - 1]
+  const label = `Escena ${pad2(project.sceneIds.indexOf(sceneId) + 1)} · ${scene.title}`
+  const text = [shot.name, shot.action, shot.cameraDirection, shot.continuity, shot.generationPrompt].filter(Boolean).join(' ')
+  const characterImageIds = charactersInScene(project, { ...scene, script: { ...scene.script, action: `${scene.script.action} ${text}` } }).flatMap((c) => (c.imageId ? [c.imageId] : []))
+  updateShotFramePlan(sceneId, shotId, slot, { generating: true })
+  await sendChat(project.id, {
+    id: uid('msg_'),
+    from: 'user',
+    at: new Date().toISOString(),
+    text: `🎬 Haz con ChatGPT una propuesta de la ${slot === 'start' ? 'imagen inicial' : 'imagen final'} del Plano ${n} «${shot.name}» de la ${label}${characterImageIds.length ? ', usando de referencia las imágenes aprobadas de sus personajes' : ''}.`,
+    sceneId,
+    sceneLabel: label,
+    request: { type: 'shot-preview', sceneId, shotId, slot, prompt, ...(characterImageIds.length ? { characterImageIds } : {}) },
+  })
+  toast('Pedido enviado a Claude 🎬 La imagen aparecerá en el plano')
+}
+
 /** Biblia: pedir a Claude una prueba de imagen de una locación, objeto o vestuario. */
 export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe', itemId: string, prompt: string) {
   const { project, updateItem } = useProject.getState()

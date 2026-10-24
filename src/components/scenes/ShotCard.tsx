@@ -3,6 +3,10 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, Film, Trash2 } fro
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
+import { shotFramePrompt } from '../../features/bible/frames'
+import { requestShotPreview } from '../../features/chat/requests'
+import { pad2 } from '../../utils'
+import { FramePlanBox } from '../bible/FramePlanBox'
 import type { Shot } from '../../types'
 
 type TextKey = 'cameraDirection' | 'action' | 'sound' | 'continuity' | 'generationPrompt'
@@ -24,7 +28,28 @@ function Thumb({ id }: { id?: string }) {
   )
 }
 
-/** Un plano de la cobertura: nombre, duración, cámara, acción, sonido, continuidad y prompt. */
+/** Imagen inicial o final de un plano: pruebas ligadas al id del plano (no a su número). */
+function ShotFrame({ sceneId, shot, slot, n, count }: { sceneId: string; shot: Shot; slot: 'start' | 'end'; n: number; count: number }) {
+  const project = useProject((s) => s.project)
+  const scene = useProject((s) => s.scenes[sceneId])
+  if (!scene) return null
+  const sceneN = (project?.sceneIds.indexOf(sceneId) ?? -1) + 1
+  const which = slot === 'start' ? 'Imagen inicial' : 'Imagen final'
+  const { updateShotFramePlan } = useProject.getState()
+  return (
+    <FramePlanBox
+      which={which}
+      label={`${which} del plano ${n} de escena ${pad2(sceneN)}`}
+      plan={shot.prep?.[slot]}
+      current={() => useProject.getState().scenes[sceneId]?.shots?.find((x) => x.id === shot.id)?.prep?.[slot]}
+      autoPrompt={shotFramePrompt(project, scene, shot, slot, sceneN, n, count)}
+      onPatch={(patch) => updateShotFramePlan(sceneId, shot.id, slot, patch)}
+      onRequest={(prompt) => void requestShotPreview(sceneId, shot.id, slot, prompt)}
+    />
+  )
+}
+
+/** Un plano de la cobertura: nombre, duración, cámara, acción, sonido, continuidad, prompt e imágenes. */
 export function ShotCard({ sceneId, shot, n, count }: { sceneId: string; shot: Shot; n: number; count: number }) {
   const [open, setOpen] = useState(false)
   const { updateShot, moveShot, duplicateShot, removeShot } = useProject.getState()
@@ -95,6 +120,8 @@ export function ShotCard({ sceneId, shot, n, count }: { sceneId: string; shot: S
               />
             </label>
           ))}
+          <ShotFrame sceneId={sceneId} shot={shot} slot="start" n={n} count={count} />
+          <ShotFrame sceneId={sceneId} shot={shot} slot="end" n={n} count={count} />
           <div className="flex flex-wrap gap-2 pt-1">
             <button
               className="btn btn-sm"

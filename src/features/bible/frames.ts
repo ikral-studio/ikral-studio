@@ -1,6 +1,6 @@
 // Preproducción: imagen inicial y final de cada escena. Se proponen leyendo la escena,
 // se prueban varias, se aprueba una y al final pasan todas juntas a Edición.
-import type { FramePlan, Project, Scene } from '../../types'
+import type { FramePlan, Project, Scene, Shot } from '../../types'
 import { charactersInScene, stylePrompt } from '../project-style/style'
 import { cameraPrompt } from '../camera/camera'
 
@@ -53,6 +53,36 @@ export function framePrompt(p: Project | null | undefined, scene: Scene, slot: F
     .join('\n')
 }
 
+/**
+ * Prompt de la imagen inicial o final de un plano de la cobertura: el plano (nombre, acción, cámara,
+ * continuidad) dentro del contexto de su escena, con los personajes y el estilo de la Biblia.
+ */
+export function shotFramePrompt(p: Project | null | undefined, scene: Scene, shot: Shot, slot: FrameSlot, sceneN: number, shotN: number, count?: number): string {
+  const s = scene.script
+  const shotText = [shot.name, shot.action, shot.cameraDirection, shot.continuity, shot.generationPrompt].filter(Boolean).join(' ')
+  const chars = charactersInScene(p, { ...scene, script: { ...s, action: `${s.action} ${shotText}` } }).map((c) => `${c.name.trim()}: ${c.description.trim()}`)
+  const ratio = p?.aspectRatio === '9:16' ? 'vertical 9:16' : 'horizontal 16:9'
+  const of = count ? ` of ${count}` : ''
+  const name = shot.name.trim() ? ` "${shot.name.trim()}"` : ''
+  return [
+    slot === 'start'
+      ? `Opening frame (first image) of shot ${shotN}${of}${name} of scene ${sceneN} "${scene.title.trim()}" of a video, ${ratio}. Show the moment when this shot BEGINS.`
+      : `Closing frame (last image) of shot ${shotN}${of}${name} of scene ${sceneN} "${scene.title.trim()}" of a video, ${ratio}. Show the moment when this shot ENDS; same place and characters as its opening frame.`,
+    shot.action?.trim() && `What happens in this shot (Spanish): ${shot.action.trim()}`,
+    s.action.trim() && `Scene context (Spanish): ${s.action.trim()}`,
+    s.dialogue.trim() && `Scene dialogue (Spanish, for expressions only, no text in the image): ${s.dialogue.trim()}`,
+    shot.continuity?.trim() && `Continuity (Spanish): ${shot.continuity.trim()}`,
+    shot.generationPrompt?.trim(),
+    chars.length && `Characters (keep them exactly like this): ${chars.join('; ')}`,
+    cameraPrompt(shot.camera),
+    shot.cameraDirection?.trim(),
+    stylePrompt(p),
+    'No text, no subtitles, no watermark.',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
 /** Cuántas imágenes (inicial + final) ya están aprobadas, de cuántas. */
 export function framesProgress(scenes: Scene[]): { approved: number; total: number } {
   let approved = 0
@@ -60,14 +90,27 @@ export function framesProgress(scenes: Scene[]): { approved: number; total: numb
   return { approved, total: scenes.length * 2 }
 }
 
-/** Lo que cambiaría en Edición al pasar las aprobadas: por escena, qué imagen se pone (y si reemplaza otra). */
-export function framesToApply(scenes: Scene[]): { sceneId: string; slot: FrameSlot; mediaId: string; replaces: boolean }[] {
-  const out: { sceneId: string; slot: FrameSlot; mediaId: string; replaces: boolean }[] = []
-  for (const s of scenes)
+export type FrameToApply = { sceneId: string; shotId?: string; slot: FrameSlot; mediaId: string; replaces: boolean }
+
+/**
+ * Lo que cambiaría en Edición al pasar las aprobadas: por escena (y por plano, si la escena está en
+ * cobertura), qué imagen se pone y si reemplaza otra.
+ */
+export function framesToApply(scenes: Scene[]): FrameToApply[] {
+  const out: FrameToApply[] = []
+  for (const s of scenes) {
     for (const slot of ['start', 'end'] as const) {
       const id = s.prep?.[slot]?.approvedId
       const cur = slot === 'start' ? s.startImageId : s.endImageId
       if (id && id !== cur) out.push({ sceneId: s.id, slot, mediaId: id, replaces: !!cur })
     }
+    if (!s.shots?.length) continue
+    for (const sh of [...s.shots].sort((a, b) => a.order - b.order))
+      for (const slot of ['start', 'end'] as const) {
+        const id = sh.prep?.[slot]?.approvedId
+        const cur = slot === 'start' ? sh.startImageId : sh.endImageId
+        if (id && id !== cur) out.push({ sceneId: s.id, shotId: sh.id, slot, mediaId: id, replaces: !!cur })
+      }
+  }
   return out
 }
