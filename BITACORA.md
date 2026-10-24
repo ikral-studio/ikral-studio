@@ -1,3 +1,10 @@
+2026-10-24 14:46 · IKRAL Studio · App nueva instalada en el Mac
+- Cambiado: [código] /Applications/IKRAL Studio.app — versión con «Revisar guion con GPT» e «Instrucciones para GPT».
+- Seguridad: respaldo de la app anterior en /Volumes/c/respaldos/ikral-studio/app/.
+- Publicado: no.
+- Commit: 3da33a4
+- Pendiente: que el director pruebe la revisión de guion.
+
 2026-10-24 15:50 · IKRAL Studio · GPT revisa la coherencia del guion
 - Agregado: [código] src/features/gpt/context.ts — reglas de guionista (antes/después sin mezclar, objetos, locaciones, diálogos) y fichas de la Biblia en la revisión.
 - Agregado: [diseño] GptPanel — caja «Instrucciones para GPT» (project.bible.reviewNotes); botón «Revisar guion con GPT».
