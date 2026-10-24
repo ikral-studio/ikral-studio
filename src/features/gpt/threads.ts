@@ -3,15 +3,18 @@
 import { nowIso, uid } from '../../utils'
 import type { ScriptProposal } from './script'
 
-export type GptSection = 'script'
+/** «script» = guion de una escena (sceneId = la escena). «bible» = Biblia (sceneId = el apartado: «style» o «<tipo>:<id>»). */
+export type GptSection = 'script' | 'bible'
 
-export interface GptMessage {
+export type GptProposalStatus = 'pending' | 'accepted' | 'discarded' | 'asked-claude'
+
+export interface GptMessage<P = ScriptProposal> {
   id: string
   from: 'director' | 'gpt'
   at: string
   text: string
   /** Solo en mensajes de GPT: propuestas concretas que el director acepta o no. */
-  proposals?: ScriptProposal[]
+  proposals?: P[]
 }
 
 /** Lo que GPT vio la última vez (para decirle «esto cambió desde la última vez»). */
@@ -21,9 +24,10 @@ export interface ThreadSeen {
   decisionIds: string[]
 }
 
-export interface GptThread {
+export interface GptThread<P = ScriptProposal, S = ThreadSeen> {
   id: string
   section: GptSection
+  /** Escena (guion) o apartado de la Biblia. */
   sceneId: string
   title: string
   createdAt: string
@@ -31,13 +35,16 @@ export interface GptThread {
   archived?: boolean
   /** Resumen de lo platicado (lo actualiza GPT en cada respuesta). */
   summary?: string
-  seen?: ThreadSeen
-  messages: GptMessage[]
+  seen?: S
+  messages: GptMessage<P>[]
 }
 
 export interface GptThreadsFile {
   threads: GptThread[]
 }
+
+/** Cualquier hilo guardado (guion o Biblia): para leer y guardar el archivo completo sin perder ninguno. */
+export type StoredThread = GptThread<{ status: GptProposalStatus }, unknown>
 
 /** Mensajes que van completos; lo anterior va como resumen. */
 export const KEEP_RECENT = 6
@@ -49,37 +56,50 @@ const oneLine = (t: string, max: number) => {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s
 }
 
-export function newThread(sceneId: string, title: string, at = nowIso()): GptThread {
-  return { id: uid('gh'), section: 'script', sceneId, title: title.trim() || 'Conversación', createdAt: at, updatedAt: at, messages: [] }
+export function newThread<P = ScriptProposal, S = ThreadSeen>(sceneId: string, title: string, at = nowIso(), section: GptSection = 'script'): GptThread<P, S> {
+  return { id: uid('gh'), section, sceneId, title: title.trim() || 'Conversación', createdAt: at, updatedAt: at, messages: [] }
 }
 
-export function threadsFor(threads: GptThread[], sceneId: string, archived = false) {
-  return threads.filter((t) => t.section === 'script' && t.sceneId === sceneId && !!t.archived === archived).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+type Listed = { section: GptSection; sceneId: string; archived?: boolean; updatedAt: string }
+
+export function threadsFor<T extends Listed>(threads: T[], sceneId: string, archived = false, section: GptSection = 'script') {
+  return threads.filter((t) => t.section === section && t.sceneId === sceneId && !!t.archived === archived).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 }
 
-export const upsertThread = (threads: GptThread[], t: GptThread) => (threads.some((x) => x.id === t.id) ? threads.map((x) => (x.id === t.id ? t : x)) : [t, ...threads])
+type Keyed = { id: string }
 
-export const patchThread = (threads: GptThread[], id: string, fn: (t: GptThread) => GptThread) => threads.map((t) => (t.id === id ? fn(t) : t))
+export const upsertThread = <T extends Keyed>(threads: T[], t: T) => (threads.some((x) => x.id === t.id) ? threads.map((x) => (x.id === t.id ? t : x)) : [t, ...threads])
 
-export const setArchived = (threads: GptThread[], id: string, archived: boolean) => patchThread(threads, id, (t) => ({ ...t, archived: archived || undefined }))
+export const patchThread = <T extends Keyed>(threads: T[], id: string, fn: (t: T) => T) => threads.map((t) => (t.id === id ? fn(t) : t))
 
-export function addMessage(t: GptThread, msg: Omit<GptMessage, 'id' | 'at'> & { at?: string }): GptThread {
-  const m: GptMessage = { id: uid('gm'), ...msg, at: msg.at ?? nowIso() }
+export const setArchived = <T extends Keyed & { archived?: boolean }>(threads: T[], id: string, archived: boolean) =>
+  patchThread(threads, id, (t) => ({ ...t, archived: archived || undefined }))
+
+export function addMessage<P, S>(t: GptThread<P, S>, msg: Omit<GptMessage<P>, 'id' | 'at'> & { at?: string }): GptThread<P, S> {
+  const m: GptMessage<P> = { id: uid('gm'), ...msg, at: msg.at ?? nowIso() }
   return { ...t, updatedAt: m.at, messages: [...t.messages, m] }
 }
 
-const STATUS_WORD: Record<ScriptProposal['status'], string> = {
+const STATUS_WORD: Record<GptProposalStatus, string> = {
   pending: 'pendiente',
   accepted: 'aceptada',
   discarded: 'descartada',
   'asked-claude': 'enviada a Claude',
 }
 
+/**
+ * Une el archivo de hilos al guardar: cada panel solo manda los hilos de SU apartado;
+ * los de los otros apartados se toman del archivo como están (para no pisar lo que guardó otro panel).
+ */
+export function mergeSection<T extends { section: GptSection }>(onDisk: T[], mine: T[], section: GptSection): T[] {
+  return [...mine.filter((t) => t.section === section), ...onDisk.filter((t) => t.section !== section)]
+}
+
 /** Historial para el paquete: resumen de lo viejo + los últimos mensajes completos. */
-export function historyForPrompt(t: GptThread): string {
+export function historyForPrompt(t: { summary?: string; messages: GptMessage<{ status: GptProposalStatus }>[] }): string {
   const recent = t.messages.slice(-KEEP_RECENT)
   const old = t.messages.slice(0, -KEEP_RECENT)
-  const who = (m: GptMessage) => (m.from === 'director' ? 'Director' : 'GPT')
+  const who = (m: { from: GptMessage['from'] }) => (m.from === 'director' ? 'Director' : 'GPT')
   let out = ''
   if (old.length) {
     out += 'Resumen de lo platicado antes:\n'

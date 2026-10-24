@@ -864,6 +864,37 @@ test('extra · consultar GPT en guion y diálogos: en la web avisa con calma y n
   await expect(gpt).toHaveCount(0)
 })
 
+test('extra · consultar GPT en personajes y Biblia: en la web avisa con calma y no cambia nada', async ({ page }) => {
+  await freshProject(page, 'GPT Biblia')
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  // Estilo
+  const style = page.getByRole('region', { name: 'Preguntas de estilo' })
+  await style.getByRole('button', { name: 'Consultar GPT', exact: true }).click()
+  const gs = style.getByLabel('Consultar GPT sobre Estilo y tono visual')
+  await expect(gs.getByRole('button', { name: 'Consultar GPT' })).toBeDisabled()
+  await expect(gs.getByText('Disponible en la app de Mac.')).toBeVisible()
+  await style.getByRole('button', { name: 'Consultar GPT', exact: true }).first().click()
+  await expect(gs).toHaveCount(0)
+  // Etapas y decisiones: proponer reglas
+  const rules = page.getByRole('region', { name: 'Etapas y decisiones' })
+  await rules.getByRole('button', { name: 'Consultar GPT', exact: true }).click()
+  const gr = rules.getByLabel('Consultar GPT sobre Etapas y decisiones')
+  await expect(gr.getByRole('button', { name: 'Consultar GPT' })).toBeDisabled()
+  await expect(gr.getByText('Disponible en la app de Mac.')).toBeVisible()
+  await expect(rules).toContainText('0 aprobadas')
+  // Ficha de un personaje
+  await page.getByRole('button', { name: 'Nuevo personaje' }).click()
+  await page.getByLabel('Nombre del nuevo personaje').fill('Ana')
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click()
+  const sheet = page.getByRole('dialog', { name: /Ana/ })
+  await sheet.getByRole('button', { name: 'Consultar GPT', exact: true }).click()
+  const gc = sheet.getByLabel('Consultar GPT sobre Personaje «Ana»')
+  await expect(gc.getByRole('button', { name: 'Consultar GPT' })).toBeDisabled()
+  await expect(gc.getByText('Disponible en la app de Mac.')).toBeVisible()
+  await sheet.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(page.getByRole('button', { name: /^Ana · / })).toBeVisible()
+})
+
 test('extra · cobertura: pasar a cobertura, 4 planos de Doña Chuy, deshacer, papelera y recargar', async ({ page }) => {
   await freshProject(page, 'Cobertura')
   await addScenes(page, 1)

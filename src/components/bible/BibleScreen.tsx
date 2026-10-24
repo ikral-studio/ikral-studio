@@ -1,4 +1,4 @@
-import { ArrowLeft, BookMarked, CalendarDays, ChevronRight, Circle, CheckCircle2, Clapperboard, Clock3, FileText, MapPin, Palette, Play, Sparkles, Users, Wand2 } from 'lucide-react'
+import { ArrowLeft, BookMarked, CalendarDays, ChevronRight, Circle, CheckCircle2, Clapperboard, Clock3, FileText, MapPin, MessagesSquare, Palette, Play, Sparkles, Users, Wand2 } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -16,6 +16,7 @@ import { ClaudeLight } from '../chat/ClaudeLight'
 import { FinderButton, SaveAsButton, TrashButton } from '../layout/TrashModal'
 import { ClaudeChat } from '../chat/ClaudeChat'
 import { isDesktop } from '../../database/db'
+import { GptBibleToggle } from '../gpt/GptBiblePanel'
 
 /** «🎥 Personas reales» → ícono y texto por separado. */
 const split = (c: Choice) => {
@@ -233,6 +234,12 @@ export function BibleScreen() {
               <Question icon={<Wand2 size={17} />} title="Crear propuesta visual">
                 <p className="-mt-1 text-[13.5px] text-ink-3">Escribe la idea y Claude propone cómo se ve cada personaje, con su imagen.</p>
                 <SuggestionStep names={found.map((c) => c.name)} />
+              </Question>
+              <hr className="border-line" />
+              <Question icon={<MessagesSquare size={17} />} title="Afinar el estilo con GPT">
+                <div className="flex flex-wrap gap-2">
+                  <GptBibleToggle target="style" className="btn !h-10 !px-3 !text-[14px]" />
+                </div>
               </Question>
               <p className="text-[12.5px] text-ink-3">Las respuestas entran solas al prompt de cada escena.</p>
             </Section>

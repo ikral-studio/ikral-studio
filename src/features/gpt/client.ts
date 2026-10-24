@@ -7,6 +7,8 @@ import scriptSchemaText from './schemas/script.json?raw'
 import { buildContinuityPacket } from './context'
 import { classifyGptError, GPT_ERROR_TEXT, parseContinuityResponse, toReview, type GptErrorKind, type GptReview } from './proposals'
 import { buildScriptPacket, parseScriptResponse, toScriptProposals } from './script'
+import bibleSchemaText from './schemas/bible.json?raw'
+import { buildBiblePacket, parseBibleResponse, toBibleProposals, type BibleThread } from './bible'
 import { addMessage, type GptThread } from './threads'
 
 /** Tiempo máximo de una consulta. */
@@ -75,6 +77,32 @@ export async function runScriptConsult(
     if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
     let next = addMessage(thread, { from: 'director', text: request.trim() })
     next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toScriptProposals(parsed.data, scene) })
+    return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
+  } catch (e) {
+    const kind = classifyGptError(e)
+    return { ok: false, kind, message: GPT_ERROR_TEXT[kind] }
+  }
+}
+
+export type BibleConsultResult = { ok: true; thread: BibleThread } | { ok: false; kind: GptErrorKind; message: string }
+
+/**
+ * Un mensaje del director en un hilo de la Biblia (estilo o una ficha). Devuelve el hilo con el mensaje
+ * y la respuesta de GPT (propuestas pendientes). Si falla, el hilo queda igual.
+ */
+export async function runBibleConsult(project: Project, key: string, thread: BibleThread, request: string, deps: GptDeps = defaultDeps): Promise<BibleConsultResult> {
+  if (!deps.desktop()) return { ok: false, kind: 'web', message: GPT_ERROR_TEXT.web }
+  const packet = buildBiblePacket(project, key, thread, request)
+  if (!packet) return { ok: false, kind: 'bad-format', message: 'Ese apartado ya no existe en la Biblia. No se cambió nada.' }
+  try {
+    // Solo la miniatura de la imagen Canon de la ficha (si no está en disco, va sin imagen).
+    const paths = await Promise.all(packet.images.map((id) => deps.diskPath(id).catch(() => null)))
+    const images = paths.map((p) => p?.icon || p?.file).filter((p): p is string => !!p)
+    const raw = await deps.consult({ prompt: packet.prompt, schema: bibleSchemaText, images, timeoutSecs: GPT_TIMEOUT_SECS })
+    const parsed = parseBibleResponse(raw)
+    if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
+    let next = addMessage(thread, { from: 'director', text: request.trim() })
+    next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toBibleProposals(parsed.data, project, key) })
     return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
   } catch (e) {
     const kind = classifyGptError(e)

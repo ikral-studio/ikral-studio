@@ -13,7 +13,7 @@ IKRAL Studio/
       miniaturas/<id>.jpg
       respaldos/<id>.json
       gpt-revisiones.json ← revisiones de continuidad con GPT (solo propuestas)
-      gpt-hilos.json      ← conversaciones con GPT sobre guion y diálogos (historial y propuestas)
+      gpt-hilos.json      ← conversaciones con GPT sobre guion, diálogos y Biblia (historial y propuestas)
 ```
 
 ## Bibliotecas (.ikral), como en Final Cut
@@ -83,3 +83,13 @@ En cada escena (Edición → «Guion y dirección»), el botón «Consultar GPT�
 - GPT responde con el esquema `src/features/gpt/schemas/script.json`: cambiar la acción, cambiar, agregar o quitar una línea de diálogo (máximo 8 propuestas). Si el formato no sirve, se descarta sin cambiar nada.
 - Cada propuesta: Aceptar · Editar · Descartar · Pedir a Claude, y Deshacer. Al Aceptar, la app cambia la escena con sus acciones de siempre (⌘Z y guardado); ningún asistente escribe `proyecto.json` directo.
 - Si la línea o la acción cambió desde que GPT la vio, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. Si la línea solo se movió, se sigue. Deshacer no pisa lo que editaste después.
+
+## Consultar GPT en personajes y Biblia
+
+En la Biblia (Preproducción), «Consultar GPT» está en «Estilo y tono visual», en «Etapas y decisiones» (proponer reglas) y en la ficha de cada personaje, locación, objeto y vestuario (solo en la app de Mac; en la web avisa «Disponible en la app de Mac.»).
+
+- Hilos por apartado (`style`, `rules`, `characters:<id>`, `locations:<id>`…), en el mismo `gpt-hilos.json` con `section: 'bible'`. Al guardar, la app vuelve a leer el archivo y solo cambia los hilos de su apartado (guion y Biblia no se pisan).
+- Cada consulta manda: proyecto, etapas, decisiones APROBADAS, el apartado completo, el resto de la Biblia en corto, la miniatura de la imagen Canon de la ficha (si tiene), «esto cambió desde la última vez» y el historial (resumen + últimos 6). No manda decisiones propuestas o rechazadas, prompts de generación, intentos de imagen ni chat con Claude.
+- GPT responde con el esquema `src/features/gpt/schemas/bible.json` (máximo 8 propuestas). Según el apartado: estilo → notas de estilo, época, lugar, cómo se ve, colores; personaje → cómo se ve, papel, relación con otro personaje; locación/objeto/vestuario → cómo se ve, nota corta, alias, etapas; etapas y decisiones → solo reglas. En todos, «regla». Los tipos que no valen en ese apartado se ignoran.
+- Aceptar aplica el cambio con las acciones de siempre (⌘Z y guardado). Una regla entra como decisión de GPT (`proposedBy: 'gpt'`) aprobada por el director. Deshacer la quita (o regresa el campo, salvo que lo hayas editado después). También: Editar, Descartar y Pedir a Claude.
+- Si el campo cambió desde que GPT lo vio, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. Nunca cambia imágenes: el Canon (imagen aprobada) se queda igual.

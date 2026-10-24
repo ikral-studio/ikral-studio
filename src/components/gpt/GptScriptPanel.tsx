@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Archive, ArchiveRestore, Check, MessageSquare, Pencil, Plus, RotateCcw, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast } from '../../stores/uiStore'
-import { isDesktop, readGptThreads, saveGptThreads, sendChat } from '../../database/db'
+import { isDesktop, readGptThreads, sendChat } from '../../database/db'
+import { saveSectionThreads } from '../../features/gpt/threadsFile'
 import { orderedScenes } from '../../features/script-sync/derive'
 import { runScriptConsult } from '../../features/gpt/client'
 import {
@@ -151,7 +152,7 @@ export function GptScriptPanel({ sceneId, n }: { sceneId: string; n: number }) {
 
   const save = (next: GptThread[]) => {
     setThreads(next)
-    void saveGptThreads(project.id, { threads: next } satisfies GptThreadsFile).catch(() => toast('No se pudo guardar la conversación con GPT', 'error'))
+    void saveSectionThreads(project.id, 'script', next).catch(() => toast('No se pudo guardar la conversación con GPT', 'error'))
   }
 
   const startThread = () => {
@@ -173,7 +174,7 @@ export function GptScriptPanel({ sceneId, n }: { sceneId: string; n: number }) {
     // Se guarda sobre lo último (pudo cambiar mientras GPT pensaba).
     setThreads((prev) => {
       const next = upsertThread(prev, { ...r.thread, archived: undefined })
-      void saveGptThreads(project.id, { threads: next } satisfies GptThreadsFile).catch(() => toast('No se pudo guardar la conversación con GPT', 'error'))
+      void saveSectionThreads(project.id, 'script', next).catch(() => toast('No se pudo guardar la conversación con GPT', 'error'))
       return next
     })
     setCurrentId(r.thread.id)

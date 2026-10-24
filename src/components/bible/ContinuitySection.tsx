@@ -10,6 +10,7 @@ import { selectScene } from '../../features/scene-management/actions'
 import type { Decision, DecisionAuthor } from '../../types'
 import { Section } from './bibleUi'
 import { GptPanel } from '../gpt/GptPanel'
+import { GptBibleToggle } from '../gpt/GptBiblePanel'
 
 const SEVERITY: Record<Severity, { label: string; cls: string; icon: React.ReactNode }> = {
   high: { label: 'Alta', cls: 'border-bad/50 bg-bad/10 text-[#fecaca]', icon: <CircleAlert size={15} /> },
@@ -234,6 +235,10 @@ export function ContinuitySection({ n }: { n: number }) {
       <PhasesList />
       <hr className="border-line" />
       <DecisionsList />
+      {/* Proponer reglas con GPT: entran como decisión de GPT solo si el director las acepta. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <GptBibleToggle target="rules" />
+      </div>
       <hr className="border-line" />
       <Audit />
       <GptPanel />

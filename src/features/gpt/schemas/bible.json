@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["respuesta", "resumen_hilo", "propuestas"],
+  "properties": {
+    "respuesta": { "type": "string" },
+    "resumen_hilo": { "type": "string" },
+    "propuestas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tipo", "con", "texto", "motivo"],
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": ["notas_estilo", "epoca", "lugar", "aspecto", "colores", "descripcion", "papel", "alias", "etapas", "relacion", "regla"]
+          },
+          "con": { "type": ["string", "null"] },
+          "texto": { "type": "string" },
+          "motivo": { "type": "string" }
+        }
+      }
+    }
+  }
+}

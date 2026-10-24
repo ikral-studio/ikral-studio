@@ -14,6 +14,8 @@ import { uid } from '../../utils'
 import type { BibleItem, BibleKind, Character, CharacterTry, ItemKind, Phase } from '../../types'
 import { StatusPill } from './bibleUi'
 import { FullScreenButton } from '../common/Overlays'
+import { GptBibleToggle } from '../gpt/GptBiblePanel'
+import { targetKey } from '../../features/gpt/bible'
 
 export function TryThumb({
   t,
@@ -259,6 +261,7 @@ export function ItemSheet({ kind, itemId, onRemoved }: { kind: BibleKind; itemId
                 <Trash2 size={15} /> Quitar
               </button>
             )}
+            <GptBibleToggle target={targetKey(kind, itemId)} />
           </div>
         </div>
       </div>
