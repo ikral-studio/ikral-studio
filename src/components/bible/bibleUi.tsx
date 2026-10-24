@@ -109,10 +109,10 @@ export function ItemCard({
 }
 
 /** Opción grande con ícono (estilo, sensación, público). */
-export function Tile({ icon, label, active, onClick }: { icon: ReactNode; label: string; active: boolean; onClick: () => void }) {
+export function Tile({ icon, label, active, onClick, stacked }: { icon: ReactNode; label: string; active: boolean; onClick: () => void; stacked?: boolean }) {
   return (
     <button
-      className={`flex min-h-[56px] items-center gap-2.5 rounded-[11px] border px-3 py-2 text-left text-[14px] transition ${
+      className={`flex min-h-[56px] rounded-[11px] border text-[14px] transition ${stacked ? 'min-h-[76px] flex-col items-center justify-center gap-1.5 px-2 py-2.5 text-center' : 'items-center gap-2.5 px-3 py-2 text-left'} ${
         active ? 'border-[#6d7cff] bg-[#3b4bdb]/20 text-white shadow-[0_0_0_1px_#6d7cff66,0_0_18px_#4f46e533]' : 'border-line bg-card/70 text-ink-2 hover:border-line-2 hover:text-ink'
       }`}
       onClick={onClick}

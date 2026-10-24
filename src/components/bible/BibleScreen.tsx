@@ -23,7 +23,7 @@ function Tiles({ list, value, onPick, label, cols = 2 }: { list: Choice[]; value
     <div className={`grid gap-2 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`} role="group" aria-label={label}>
       {list.map((c) => {
         const { icon, label } = split(c)
-        return <Tile key={c.id} icon={icon} label={label} active={value === c.id} onClick={() => onPick(value === c.id ? undefined : c.id)} />
+        return <Tile key={c.id} icon={icon} label={label} stacked={cols === 3} active={value === c.id} onClick={() => onPick(value === c.id ? undefined : c.id)} />
       })}
     </div>
   )
