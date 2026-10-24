@@ -789,3 +789,18 @@ test('extra · biblia: locación, vestuario y relación con estado Canon', async
   await page.getByRole('button', { name: 'Agregar', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Relaciones entre personajes' })).toContainText('Matrimonio')
 })
+
+test('extra · papelera: borrar una escena y recuperarla', async ({ page }) => {
+  await freshProject(page, 'Papelera')
+  await addScenes(page, 2)
+  await expect(page.locator('article[data-scene-id]')).toHaveCount(2)
+  await card(page, 1).getByRole('button', { name: 'Eliminar escena' }).click()
+  await page.getByRole('button', { name: 'Eliminar escena', exact: true }).last().click()
+  await expect(page.locator('article[data-scene-id]')).toHaveCount(1)
+  await page.getByRole('button', { name: /^Papelera y respaldos/ }).click()
+  await expect(page.getByRole('tab', { name: 'Papelera (1)' })).toBeVisible()
+  await page.getByRole('button', { name: 'Recuperar' }).click()
+  await expect(page.locator('article[data-scene-id]')).toHaveCount(2)
+  await page.getByRole('tab', { name: 'Respaldos' }).click()
+  await expect(page.getByText('Respaldos automáticos de este proyecto')).toBeVisible()
+})

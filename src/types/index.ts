@@ -26,6 +26,8 @@ export interface Project {
   customFields?: CustomField[]
   /** Pistas de música (2). Opcional para proyectos viejos. */
   audioTracks?: AudioTrack[]
+  /** Papelera: lo que se borró y se puede recuperar. */
+  trash?: TrashEntry[]
   createdAt: string
   updatedAt: string
 }
@@ -91,6 +93,14 @@ export interface Relation {
   /** Qué son (ej.: Matrimonio, Jefa / Empleado). */
   label: string
 }
+
+/** Algo que se borró y está en la papelera. */
+export type TrashEntry = { id: string; deletedAt: string } & (
+  | { kind: 'scene'; scene: Scene; index: number }
+  | { kind: BibleKind; item: BibleItem | Character; relations?: Relation[] }
+  | { kind: 'relation'; relation: Relation }
+  | { kind: 'version'; sceneId: string; version: VideoVersion }
+)
 
 /** Propuesta de la imagen inicial o final de una escena (Preproducción). */
 export interface FramePlan {

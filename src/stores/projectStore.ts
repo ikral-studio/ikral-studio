@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
 import { applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
+import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
 import { clamp, nowIso, uid } from '../utils'
 import * as store from '../database/db'
@@ -98,6 +99,10 @@ interface State {
   removeClip: (sceneId: string, clipId: string) => void
   moveClip: (sceneId: string, clipId: string, dir: -1 | 1) => void
 
+  /** Regresa algo de la papelera a su lugar. Devuelve el error si no se pudo. */
+  restoreTrash: (entryId: string) => string | null
+  /** Borra para siempre una cosa de la papelera (o toda si no se da id). */
+  purgeTrash: (entryId?: string) => void
   undo: () => void
   redo: () => void
   flushSave: () => Promise<void>
@@ -210,7 +215,7 @@ export const useProject = create<State>()((set, get) => {
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
       store
-        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...bibleMediaIds(project)])
+        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...bibleMediaIds(project), ...trashMediaIds(project)])
         .catch(() => {})
   }
 
@@ -351,8 +356,9 @@ export const useProject = create<State>()((set, get) => {
       const rest = { ...cur.scenes }
       delete rest[id]
       const sceneIds = ids.filter((x) => x !== id)
-      // Los archivos no se borran aquí: así se puede deshacer. Se limpian al abrir el proyecto.
-      commit({ project: { ...cur.project, sceneIds }, scenes: rest })
+      // Los archivos no se borran aquí: la escena va a la papelera y se puede recuperar.
+      const trash = addToTrash(cur.project, { kind: 'scene', scene: cur.scenes[id], index: idx })
+      commit({ project: { ...cur.project, sceneIds, trash }, scenes: rest })
       if (get().selectedSceneId === id) set({ selectedSceneId: sceneIds[Math.min(idx, sceneIds.length - 1)] ?? null })
     },
 
@@ -442,12 +448,16 @@ export const useProject = create<State>()((set, get) => {
     },
 
     removeVersion(id, versionId) {
-      patchScene(id, (s) => {
-        const videoVersions = s.videoVersions.filter((v) => v.id !== versionId)
-        const active =
-          s.activeVideoVersionId === versionId ? videoVersions[videoVersions.length - 1]?.id : s.activeVideoVersionId
-        return { ...s, videoVersions, activeVideoVersionId: active }
-      })
+      const cur = snap()
+      const s = cur?.scenes[id]
+      const version = s?.videoVersions.find((v) => v.id === versionId)
+      if (!cur || !s || !version) return
+      const videoVersions = s.videoVersions.filter((v) => v.id !== versionId)
+      const active = s.activeVideoVersionId === versionId ? videoVersions[videoVersions.length - 1]?.id : s.activeVideoVersionId
+      const updated = { ...s, videoVersions, activeVideoVersionId: active, updatedAt: nowIso() }
+      updated.status = deriveStatus(updated)
+      const trash = addToTrash(cur.project, { kind: 'version', sceneId: id, version })
+      commit({ project: { ...cur.project, trash }, scenes: { ...cur.scenes, [id]: updated } })
     },
 
     updateVersion(id, versionId, patch) {
@@ -520,9 +530,7 @@ export const useProject = create<State>()((set, get) => {
     },
 
     removeCharacter(id) {
-      const cur = snap()
-      if (!cur) return
-      commit({ ...cur, project: { ...cur.project, characters: (cur.project.characters ?? []).filter((c) => c.id !== id) } })
+      get().removeItem('characters', id)
     },
 
     addItem(kind, name, extra) {
@@ -544,10 +552,15 @@ export const useProject = create<State>()((set, get) => {
     removeItem(kind, id) {
       const cur = snap()
       if (!cur) return
-      const list = ((cur.project[kind] ?? []) as BibleItem[]).filter((c) => c.id !== id)
-      // Quitar un personaje también quita sus relaciones.
-      const relations = kind === 'characters' ? cur.project.relations?.filter((r) => r.a !== id && r.b !== id) : cur.project.relations
-      commit({ ...cur, project: { ...cur.project, [kind]: list, relations } })
+      const all = (cur.project[kind] ?? []) as BibleItem[]
+      const item = all.find((c) => c.id === id)
+      if (!item) return
+      const list = all.filter((c) => c.id !== id)
+      // Quitar un personaje también quita sus relaciones (van con él a la papelera).
+      const gone = kind === 'characters' ? (cur.project.relations ?? []).filter((r) => r.a === id || r.b === id) : []
+      const relations = gone.length ? cur.project.relations?.filter((r) => !gone.includes(r)) : cur.project.relations
+      const trash = addToTrash(cur.project, { kind, item, relations: gone.length ? gone : undefined })
+      commit({ ...cur, project: { ...cur.project, [kind]: list, relations, trash } })
     },
 
     addRelation(a, b, label) {
@@ -560,7 +573,27 @@ export const useProject = create<State>()((set, get) => {
     removeRelation(id) {
       const cur = snap()
       if (!cur) return
-      commit({ ...cur, project: { ...cur.project, relations: (cur.project.relations ?? []).filter((r) => r.id !== id) } })
+      const relation = cur.project.relations?.find((r) => r.id === id)
+      if (!relation) return
+      const trash = addToTrash(cur.project, { kind: 'relation', relation })
+      commit({ ...cur, project: { ...cur.project, relations: cur.project.relations!.filter((r) => r.id !== id), trash } })
+    },
+
+    restoreTrash(entryId) {
+      const cur = snap()
+      if (!cur) return 'No hay proyecto abierto.'
+      const r = restoreFromTrash(cur.project, cur.scenes, entryId)
+      if ('error' in r) return r.error
+      for (const sc of Object.values(r.scenes)) if (sc !== cur.scenes[sc.id]) r.scenes[sc.id] = { ...sc, status: deriveStatus(sc), updatedAt: nowIso() }
+      commit(r)
+      return null
+    },
+
+    purgeTrash(entryId) {
+      const cur = snap()
+      if (!cur?.project.trash?.length) return
+      const trash = entryId ? cur.project.trash.filter((e) => e.id !== entryId) : []
+      commit({ ...cur, project: { ...cur.project, trash } })
     },
 
     acceptSuggestion(name) {

@@ -122,6 +122,8 @@ export async function importProjectZip(file: Blob): Promise<string> {
   const project: Project = {
     ...m.project,
     ...mapBibleMedia(m.project, mapMedia),
+    // La papelera no viaja en el .zip importado (sus archivos cambian de id).
+    trash: undefined,
     id: projectId,
     sceneIds: m.project.sceneIds.map((id) => sceneMap.get(id)).filter((x): x is string => !!x),
     audioTracks: m.project.audioTracks?.map((t) => ({

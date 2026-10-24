@@ -31,6 +31,7 @@ import { exportPortfolioPdf } from '../../features/projects/portfolio'
 import { masterScriptMarkdown, orderedScenes } from '../../features/script-sync/derive'
 import { downloadBlob, downloadText, safeFilename } from '../../utils'
 import { ClaudeLight } from '../chat/ClaudeLight'
+import { TrashButton } from './TrashModal'
 
 const SUGGEST_URL = 'https://github.com/ikral-studio/ikral-studio/discussions/new?category=ideas'
 
@@ -280,6 +281,7 @@ export function TopBar() {
         >
           <Lightbulb size={17} />
         </a>
+        <TrashButton />
         <button className="icon-btn" onClick={() => useUI.setState({ modal: 'help' })} title="Ayuda y atajos" aria-label="Ayuda">
           <HelpCircle size={17} />
         </button>

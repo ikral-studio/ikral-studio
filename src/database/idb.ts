@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../types'
 import { prepMediaIds } from '../features/bible/frames'
 import { bibleMediaIds } from '../features/bible/items'
+import { trashMediaIds } from '../features/trash/trash'
 
 /** En disco se guarda como ArrayBuffer: Safari falla a veces al guardar Blob/File. */
 export interface StoredMedia extends MediaAsset {
@@ -159,7 +160,7 @@ export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
     })
   }
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
-  used.push(...bibleMediaIds(project))
+  used.push(...bibleMediaIds(project), ...trashMediaIds(project))
   return used
 }
 

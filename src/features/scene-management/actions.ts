@@ -12,13 +12,13 @@ export async function confirmDeleteScene(id: string) {
   const n = project.sceneIds.indexOf(id) + 1
   const ok = await askConfirm({
     title: `¿Eliminar la escena ${pad2(n)}?`,
-    body: `«${scene.title}» desaparecerá de las tarjetas, del guion y del timeline. Los archivos que usen otras escenas se conservan. Puedes deshacer con ⌘Z.`,
+    body: `«${scene.title}» desaparecerá de las tarjetas, del guion y del timeline. Se va a la papelera 🗑️ y desde ahí la puedes recuperar (o deshacer con ⌘Z).`,
     confirmLabel: 'Eliminar escena',
     danger: true,
   })
   if (ok) {
     deleteScene(id)
-    toast('Escena eliminada')
+    toast('Escena enviada a la papelera')
   }
 }
 
