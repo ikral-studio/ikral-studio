@@ -3,7 +3,7 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 19 de 32 hechas · 1 en curso · 8 bloqueadas · 4 pendientes · 0 aprobadas por el director.
+**Avance:** 19 de 32 hechas · 3 en curso · 6 bloqueadas · 4 pendientes · 0 aprobadas por el director.
 **Siguiente:** UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
@@ -50,9 +50,9 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Siguiente: Publicar no está autorizado aún. La web publicada tiene solo la Fase 1; las Fases 2–4 se publicarían juntas, con el respaldo C2 antes.
 - [~] **UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)** — Claude · 2026-10-24
   - Criterio: En Edición y Preproducción: bloque visible con explicación llana, botón destacado «Dividir escena en tomas», luego «Agregar toma», contador y «Ver/editar tomas»; nada cambia hasta el clic; Deshacer y datos intactos. El director lo ve en la app instalada.
-  - Evidencia: prueba: tests-e2e/acceptance.spec.ts «planos de cámara a la vista en Edición» (43 de 43 e2e en verde) · prueba: capturas docs/qa/2026-10-24-planos-de-camara/ (antes de dividir y con 2 tomas) · decisión del director: Issue #1, 2026-10-24: «lo modificamos de una vez» (nombre «🎬 Planos de cámara» y botón grande)
+  - Evidencia: prueba: tests-e2e/acceptance.spec.ts «planos de cámara a la vista en Edición» (43 de 43 e2e en verde) · prueba: capturas docs/qa/2026-10-24-planos-de-camara/ (antes de dividir y con 2 tomas) · decisión del director: Issue #1, 2026-10-24: «lo modificamos de una vez» (nombre «🎬 Planos de cámara» y botón grande) · prueba: Sesión interactiva 2026-10-24 13:30: npm run app:build OK (commit 47e640f) e instalada en /Applications/IKRAL Studio.app; abre. App anterior respaldada en /Volumes/c/respaldos/ikral-studio/app-anterior-20261024-1330
   - Depende de: 2b
-  - Siguiente: Compilar e instalar la app de Mac en una sesión interactiva (el puente no tiene permiso de /Applications) y que el director lo vea ahí.
+  - Siguiente: Que el director abra IKRAL Studio, entre a Edición y vea «🎬 Planos de cámara».
 
 ## Fase 3 · ChatGPT integrado
 
@@ -138,14 +138,16 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 - [x] **M1 · Datos del Mini Monitor (mini.json) desde el puente** — Claude · 2026-10-24
   - Criterio: «Ahora» y «Te necesito» ≤200, «Sin señal» con datos viejos, cuota solo con fuente verificable; pruebas.
   - Evidencia: prueba: tools/mini-monitor.test.mjs · commit `73ea229` · prueba: npm test y npm run build pasaron (comprobación automática 2026-10-24)
-- [!] **M2 · App «IKRAL Monitor.app» (ventana + barra de menús + voz)** — Claude
+- [~] **M2 · App «IKRAL Monitor.app» (ventana + barra de menús + voz)** — Claude · 2026-10-24
   - Criterio: Compila con swiftc; la ventana se cierra, minimiza y restaura; icono arriba con menú y «Abrir ventana»; ▶ Escuchar estado.
+  - Evidencia: prueba: npm run mini-monitor:compilar OK en sesión interactiva; la app abre (proceso IKRAL Monitor activo)
   - Depende de: M1
-  - Siguiente: Compilar (npm run mini-monitor:compilar) y probar desde la sesión interactiva: el puente no tiene permiso para swiftc.
-- [!] **M3 · Instalada en /Applications, acceso en Escritorio y en el Dock** — Claude
+  - Siguiente: Probar a mano: cerrar, minimizar, restaurar, menú de la barra y ▶ Escuchar estado (M5).
+- [~] **M3 · Instalada en /Applications, acceso en Escritorio y en el Dock** — Claude · 2026-10-24
   - Criterio: npm run mini-monitor:instalar sin duplicados; abre y restaura la app desde los tres.
+  - Evidencia: prueba: npm run mini-monitor:instalar dos veces: /Applications/IKRAL Monitor.app, 1 acceso en Escritorio, 1 en el Dock (sin duplicados)
   - Depende de: M2
-  - Siguiente: Sesión interactiva con permiso de macOS (/Applications, Escritorio, Dock).
+  - Siguiente: Probar a mano que abre y restaura desde Escritorio, Dock y barra de menús (M5).
 - [ ] **M4 · Cuota de Claude Code (sesión y semana) con fuente autorizada** — Claude
   - Criterio: Solo con dato oficial verificable en usage.json; si no, «Uso no disponible» + «Ver uso en Claude».
   - Depende de: M1

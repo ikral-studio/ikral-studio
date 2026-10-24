@@ -655,12 +655,16 @@
           "tipo": "decision",
           "ref": "Issue #1, 2026-10-24: «lo modificamos de una vez» (nombre «🎬 Planos de cámara» y botón grande)",
           "por": "director"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "Sesión interactiva 2026-10-24 13:30: npm run app:build OK (commit 47e640f) e instalada en /Applications/IKRAL Studio.app; abre. App anterior respaldada en /Volumes/c/respaldos/ikral-studio/app-anterior-20261024-1330"
         }
       ],
       "dependeDe": [
         "2b"
       ],
-      "siguiente": "Compilar e instalar la app de Mac en una sesión interactiva (el puente no tiene permiso de /Applications) y que el director lo vea ahí.",
+      "siguiente": "Que el director abra IKRAL Studio, entre a Edición y vea «🎬 Planos de cámara».",
       "director": null
     },
     {
@@ -697,14 +701,19 @@
       "fase": "M",
       "titulo": "App «IKRAL Monitor.app» (ventana + barra de menús + voz)",
       "criterio": "Compila con swiftc; la ventana se cierra, minimiza y restaura; icono arriba con menú y «Abrir ventana»; ▶ Escuchar estado.",
-      "estado": "bloqueado",
+      "estado": "en curso",
       "responsable": "Claude",
-      "fecha": null,
-      "evidencia": [],
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "npm run mini-monitor:compilar OK en sesión interactiva; la app abre (proceso IKRAL Monitor activo)"
+        }
+      ],
       "dependeDe": [
         "M1"
       ],
-      "siguiente": "Compilar (npm run mini-monitor:compilar) y probar desde la sesión interactiva: el puente no tiene permiso para swiftc.",
+      "siguiente": "Probar a mano: cerrar, minimizar, restaurar, menú de la barra y ▶ Escuchar estado (M5).",
       "director": null
     },
     {
@@ -712,14 +721,19 @@
       "fase": "M",
       "titulo": "Instalada en /Applications, acceso en Escritorio y en el Dock",
       "criterio": "npm run mini-monitor:instalar sin duplicados; abre y restaura la app desde los tres.",
-      "estado": "bloqueado",
+      "estado": "en curso",
       "responsable": "Claude",
-      "fecha": null,
-      "evidencia": [],
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "npm run mini-monitor:instalar dos veces: /Applications/IKRAL Monitor.app, 1 acceso en Escritorio, 1 en el Dock (sin duplicados)"
+        }
+      ],
       "dependeDe": [
         "M2"
       ],
-      "siguiente": "Sesión interactiva con permiso de macOS (/Applications, Escritorio, Dock).",
+      "siguiente": "Probar a mano que abre y restaura desde Escritorio, Dock y barra de menús (M5).",
       "director": null
     },
     {
