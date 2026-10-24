@@ -13,7 +13,7 @@ IKRAL Studio/
       miniaturas/<id>.jpg
       respaldos/<id>.json
       gpt-revisiones.json ← revisiones de continuidad con GPT (solo propuestas)
-      gpt-hilos.json      ← conversaciones con GPT sobre guion, diálogos, Biblia y cobertura (historial y propuestas)
+      gpt-hilos.json      ← conversaciones con GPT sobre guion, diálogos, Biblia, cobertura y edición (historial y propuestas)
 ```
 
 ## Bibliotecas (.ikral), como en Final Cut
@@ -103,3 +103,12 @@ En Preproducción → «Cobertura de escena», «Consultar GPT» propone planos 
 - GPT responde con el esquema `src/features/gpt/schemas/coverage.json` (máximo 10 propuestas): agregar un plano en un lugar, o cambiar un campo de un plano. Lo que no vale en ese apartado, planos que no existen o duraciones malas se ignoran.
 - Si la escena aún es un solo plano, Aceptar pregunta si pasarla a cobertura (con respaldo antes). Un plano agregado se puede Deshacer (va a la Papelera). Deshacer no pisa lo que editaste después. También: Editar, Descartar y Pedir a Claude.
 - Si el plano o la lista de planos cambió desde que GPT la vio, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. Nunca genera imágenes ni videos.
+
+## Consultar GPT en edición (ritmo, orden y duración)
+
+En la línea de tiempo, el botón «Consultar GPT» abre un panel donde GPT revisa el ritmo, el orden y la duración de toda la película (solo en la app de Mac; en la web avisa «Disponible en la app de Mac.»).
+
+- Hilos en el mismo `gpt-hilos.json` con `section: 'edit'` y clave `project`. Guion, Biblia, cobertura y edición no se pisan.
+- Cada consulta manda: proyecto, estilo, etapas, decisiones APROBADAS, las escenas en orden con su duración (planeada, del video o suma de sus planos), acción y diálogos recortados, sus planos con duración, «esto cambió desde la última vez» y el historial. Sin prompts, imágenes ni chat con Claude.
+- GPT responde con el esquema `src/features/gpt/schemas/edit.json` (máximo 10 propuestas): mover una escena, cambiar la duración de una escena (solo si no tiene cobertura), mover un plano o cambiar su duración. Escenas o planos que no existen, cambios que no cambian nada o duraciones malas se ignoran.
+- Aceptar usa las acciones normales (se deshace con ⌘Z y se guarda). Deshacer no pisa lo que editaste después. También: Editar, Descartar y Pedir a Claude. Si el orden o la duración cambió, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. No corta ni recorta videos.
