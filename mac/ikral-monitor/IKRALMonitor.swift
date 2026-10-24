@@ -71,6 +71,28 @@ func bar(_ name: String, _ w: Window?, _ resetPattern: String, now: Double) -> B
   return Bar(title: "\(name): \(Int(w.usedPct.rounded()))%", reset: w.resetsAt.map { "Reinicia: \(fmt($0, resetPattern))" } ?? "", pct: w.usedPct)
 }
 
+/// Icono de la barra de menús con las dos barras de cuota, sin texto: arriba sesión, abajo semana.
+/// Azul normal, naranja desde 70%, rojo desde 90%. Una barra sin dato (o ya reiniciada) queda vacía.
+func barsImage(_ session: Double?, _ week: Double?) -> NSImage {
+  let w: CGFloat = 34, h: CGFloat = 16, bh: CGFloat = 5
+  let img = NSImage(size: NSSize(width: w, height: h), flipped: true) { _ in
+    for (i, pct) in [session, week].enumerated() {
+      let y: CGFloat = i == 0 ? 2.5 : 8.5
+      let track = NSBezierPath(roundedRect: NSRect(x: 0, y: y, width: w, height: bh), xRadius: 2, yRadius: 2)
+      NSColor.labelColor.withAlphaComponent(0.25).setFill()
+      track.fill()
+      guard let p = pct else { continue }
+      let v = min(max(p, 0), 100)
+      let color: NSColor = v >= 90 ? .systemRed : v >= 70 ? .systemOrange : .systemBlue
+      color.setFill()
+      NSBezierPath(roundedRect: NSRect(x: 0, y: y, width: max(w * v / 100, 2), height: bh), xRadius: 2, yRadius: 2).fill()
+    }
+    return true
+  }
+  img.isTemplate = false
+  return img
+}
+
 func short(_ s: String, _ max: Int) -> String { s.count > max ? String(s.prefix(max - 1)) + "…" : s }
 
 /// Lo que se enseña ahora mismo (ya con «Sin señal» si el dato es viejo o falta).
@@ -147,10 +169,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   let weekBar = NSProgressIndicator()
   let bridgeField = NSTextField(wrappingLabelWithString: "")
   let pinBox = NSButton(checkboxWithTitle: "Siempre visible", target: nil, action: nil)
+  let barsBox = NSButton(checkboxWithTitle: "Barras de uso arriba (en vez del círculo)", target: nil, action: nil)
 
   var alwaysOnTop: Bool {
     get { UserDefaults.standard.bool(forKey: "siempreVisible") }
     set { UserDefaults.standard.set(newValue, forKey: "siempreVisible") }
+  }
+
+  var barsOnTop: Bool {
+    get { UserDefaults.standard.bool(forKey: "barrasArriba") }
+    set { UserDefaults.standard.set(newValue, forKey: "barrasArriba") }
   }
 
   func applicationDidFinishLaunching(_ n: Notification) {
@@ -188,6 +216,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     pinBox.target = self
     pinBox.action = #selector(togglePin)
+    barsBox.target = self
+    barsBox.action = #selector(toggleBars)
 
     let listen = NSButton(title: "▶ Escuchar estado", target: self, action: #selector(speak))
     listen.keyEquivalent = " "
@@ -218,7 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let sessionRow = usageRow(sessionTitle, sessionReset, sessionBar)
     let weekRow = usageRow(weekTitle, weekReset, weekBar)
 
-    let stack = NSStackView(views: [statusField, ahoraField, needField, sessionRow, weekRow, usageField, lastField, bridgeField, buttons, pinBox])
+    let stack = NSStackView(views: [statusField, ahoraField, needField, sessionRow, weekRow, usageField, lastField, bridgeField, buttons, pinBox, barsBox])
     stack.orientation = .vertical
     stack.alignment = .leading
     stack.spacing = 8
@@ -249,8 +279,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     shown = Shown.read()
     let s = shown
     if let b = item.button {
-      b.title = "\(s.icon) IKRAL"
-      b.toolTip = "\(s.label) · \(s.project)\nAhora: \(s.ahora)"
+      // Con «Barras arriba» y dato de uso: solo las dos barras. Sin dato: vuelve el círculo de estado.
+      if barsOnTop && (s.session.pct != nil || s.week.pct != nil) {
+        b.image = barsImage(s.session.pct, s.week.pct)
+        b.title = ""
+      } else {
+        b.image = nil
+        b.title = "\(s.icon) IKRAL"
+      }
+      b.toolTip = "\(s.label) · \(s.project)\nAhora: \(s.ahora)\n\(s.session.title) · \(s.week.title)"
       b.setAccessibilityLabel("IKRAL Monitor: \(s.label)")
     }
     statusField.stringValue = "\(s.icon) \(s.label) · \(s.project)"
@@ -264,6 +301,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
       bar.isHidden = b.pct == nil
     }
     usageField.stringValue = s.usageRead
+    barsBox.state = barsOnTop ? .on : .off
     bridgeField.stringValue = s.bridge
     item.menu = buildMenu(s)
   }
@@ -297,6 +335,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     pin.target = self
     pin.state = alwaysOnTop ? .on : .off
     menu.addItem(pin)
+    let bars = NSMenuItem(title: "Barras de uso arriba", action: #selector(toggleBars), keyEquivalent: "")
+    bars.target = self
+    bars.state = barsOnTop ? .on : .off
+    menu.addItem(bars)
     menu.addItem(.separator())
     action("Salir de IKRAL Monitor", #selector(quit), "q")
     return menu
@@ -312,6 +354,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
   @objc func togglePin() {
     alwaysOnTop.toggle()
     applyPin()
+    refresh()
+  }
+
+  @objc func toggleBars() {
+    barsOnTop.toggle()
     refresh()
   }
 

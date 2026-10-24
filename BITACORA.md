@@ -19,3 +19,9 @@
 - Publicado: no.
 - Commit: ver «Blueprint: M4 hecha».
 - Pendiente: M5, probar a mano ventana, menú y voz.
+
+2026-10-24 14:12 · IKRAL Studio · Barras de uso en la barra de menús
+- Agregado: [código] mac/ikral-monitor/IKRALMonitor.swift — opción «Barras de uso arriba»: sesión y semana sin texto en vez del círculo.
+- Publicado: no.
+- Commit: ver «Mini Monitor: barras de uso arriba».
+- Pendiente: M5, probar a mano ventana, menú y voz.
