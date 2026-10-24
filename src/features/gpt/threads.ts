@@ -6,8 +6,9 @@ import type { ScriptProposal } from './script'
 /**
  * «script» = guion de una escena (sceneId = la escena). «bible» = Biblia (sceneId = el apartado: «style» o «<tipo>:<id>»).
  * «coverage» = cobertura de una escena (sceneId = la escena) o un plano (sceneId = «<escena>#<plano>»).
+ * «edit» = edición de toda la película: ritmo, orden y duración (sceneId = «project»).
  */
-export type GptSection = 'script' | 'bible' | 'coverage'
+export type GptSection = 'script' | 'bible' | 'coverage' | 'edit'
 
 export type GptProposalStatus = 'pending' | 'accepted' | 'discarded' | 'asked-claude'
 

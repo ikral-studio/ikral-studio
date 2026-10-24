@@ -11,6 +11,8 @@ import bibleSchemaText from './schemas/bible.json?raw'
 import { buildBiblePacket, parseBibleResponse, toBibleProposals, type BibleThread } from './bible'
 import coverageSchemaText from './schemas/coverage.json?raw'
 import { buildCoveragePacket, parseCoverageResponse, toCoverageProposals, type CoverageThread } from './coverage'
+import editSchemaText from './schemas/edit.json?raw'
+import { buildEditPacket, parseEditResponse, toEditProposals, type EditThread } from './edit'
 import { addMessage, type GptThread } from './threads'
 
 /** Tiempo máximo de una consulta. */
@@ -136,6 +138,28 @@ export async function runCoverageConsult(
     if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
     let next = addMessage(thread, { from: 'director', text: request.trim() })
     next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toCoverageProposals(parsed.data, scene, key) })
+    return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
+  } catch (e) {
+    const kind = classifyGptError(e)
+    return { ok: false, kind, message: GPT_ERROR_TEXT[kind] }
+  }
+}
+
+export type EditConsultResult = { ok: true; thread: EditThread } | { ok: false; kind: GptErrorKind; message: string }
+
+/**
+ * Un mensaje del director en un hilo de Edición (ritmo, orden y duración de toda la película).
+ * Devuelve el hilo con el mensaje y la respuesta de GPT (propuestas pendientes). Si falla, el hilo queda igual.
+ */
+export async function runEditConsult(project: Project, ordered: Scene[], thread: EditThread, request: string, deps: GptDeps = defaultDeps): Promise<EditConsultResult> {
+  if (!deps.desktop()) return { ok: false, kind: 'web', message: GPT_ERROR_TEXT.web }
+  const packet = buildEditPacket(project, ordered, thread, request)
+  try {
+    const raw = await deps.consult({ prompt: packet.prompt, schema: editSchemaText, images: [], timeoutSecs: GPT_TIMEOUT_SECS })
+    const parsed = parseEditResponse(raw)
+    if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
+    let next = addMessage(thread, { from: 'director', text: request.trim() })
+    next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toEditProposals(parsed.data, ordered) })
     return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
   } catch (e) {
     const kind = classifyGptError(e)
