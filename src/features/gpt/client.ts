@@ -3,8 +3,11 @@
 import type { Project, Scene } from '../../types'
 import { isDesktop, mediaDiskPath } from '../../database/db'
 import schemaText from './schemas/continuity.json?raw'
+import scriptSchemaText from './schemas/script.json?raw'
 import { buildContinuityPacket } from './context'
 import { classifyGptError, GPT_ERROR_TEXT, parseContinuityResponse, toReview, type GptErrorKind, type GptReview } from './proposals'
+import { buildScriptPacket, parseScriptResponse, toScriptProposals } from './script'
+import { addMessage, type GptThread } from './threads'
 
 /** Tiempo máximo de una consulta. */
 export const GPT_TIMEOUT_SECS = 240
@@ -47,5 +50,34 @@ export async function runContinuityReview(
     return { ok: true, review: toReview(parsed.data, packet, scenes), imagesLeftOut: packet.imagesLeftOut }
   } catch (e) {
     return fail(classifyGptError(e))
+  }
+}
+
+export type ScriptConsultResult = { ok: true; thread: GptThread } | { ok: false; kind: GptErrorKind; message: string }
+
+/**
+ * Un mensaje del director en un hilo de guion y diálogos. Devuelve el hilo con el mensaje del director
+ * y la respuesta de GPT (propuestas pendientes). Si falla, no devuelve nada nuevo: el hilo queda igual.
+ */
+export async function runScriptConsult(
+  project: Project,
+  ordered: Scene[],
+  scene: Scene,
+  thread: GptThread,
+  request: string,
+  deps: GptDeps = defaultDeps,
+): Promise<ScriptConsultResult> {
+  if (!deps.desktop()) return { ok: false, kind: 'web', message: GPT_ERROR_TEXT.web }
+  const packet = buildScriptPacket(project, ordered, scene, thread, request)
+  try {
+    const raw = await deps.consult({ prompt: packet.prompt, schema: scriptSchemaText, images: [], timeoutSecs: GPT_TIMEOUT_SECS })
+    const parsed = parseScriptResponse(raw)
+    if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
+    let next = addMessage(thread, { from: 'director', text: request.trim() })
+    next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toScriptProposals(parsed.data, scene) })
+    return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
+  } catch (e) {
+    const kind = classifyGptError(e)
+    return { ok: false, kind, message: GPT_ERROR_TEXT[kind] }
   }
 }

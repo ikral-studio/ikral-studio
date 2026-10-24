@@ -118,7 +118,7 @@ export const addReview = (reviews: GptReview[], r: GptReview) => [r, ...reviews]
 export type GptErrorKind = 'web' | 'no-codex' | 'no-login' | 'quota' | 'timeout' | 'bad-format' | 'unknown'
 
 export const GPT_ERROR_TEXT: Record<GptErrorKind, string> = {
-  web: 'La revisión con GPT está disponible en la app de Mac.',
+  web: 'GPT está disponible en la app de Mac.',
   'no-codex': 'No encontré Codex en esta Mac. Cuando esté instalado, puedes volver a intentarlo. No se cambió nada.',
   'no-login': 'Codex necesita iniciar sesión con tu cuenta de ChatGPT. Cuando esté listo, vuelve a intentarlo. No se cambió nada.',
   quota: 'Por ahora se acabó la cuota de GPT. Puedes intentarlo más tarde. No se cambió nada.',

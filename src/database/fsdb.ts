@@ -421,6 +421,21 @@ export async function saveGptReviews(projectId: string, data: unknown) {
   await writeJson(`${dir}/${GPT_REVIEWS}`, data)
 }
 
+// ---- Conversaciones con GPT (hilos con historial) ----
+// Codex corre sin memoria (--ephemeral): el historial lo guarda IKRAL aquí, no OpenAI.
+export const GPT_THREADS = 'gpt-hilos.json'
+
+export async function readGptThreads<T>(projectId: string): Promise<T | null> {
+  if (!folders.has(projectId)) await scan()
+  const dir = folders.get(projectId)
+  return dir ? readJson<T>(`${dir}/${GPT_THREADS}`) : null
+}
+
+export async function saveGptThreads(projectId: string, data: unknown) {
+  const dir = await dirFor({ id: projectId, title: 'Proyecto' })
+  await writeJson(`${dir}/${GPT_THREADS}`, data)
+}
+
 export async function projectFolderPath(projectId: string): Promise<string | null> {
   if (!folders.has(projectId)) await scan()
   return folders.get(projectId) ?? null

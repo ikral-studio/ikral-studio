@@ -3,6 +3,7 @@ import {
   ClipboardCopy,
   Languages,
   ListPlus,
+  MessagesSquare,
   Pencil,
   Plus,
   Sparkles,
@@ -13,6 +14,7 @@ import { askConfirm, toast } from "../../stores/uiStore";
 import { CameraSummary } from "./CameraLibrary";
 import { DialogueEditor } from "./DialogueEditor";
 import { SuggestChip } from "./SceneCard";
+import { GptScriptPanel } from "../gpt/GptScriptPanel";
 import { isDesktop } from "../../database/db";
 import { requestImages } from "../../features/chat/requests";
 import {
@@ -72,6 +74,7 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
     setNumbersToWords,
   } = useProject.getState();
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showGpt, setShowGpt] = useState(false);
   const fields = useProject((s) => s.project?.customFields ?? NO_FIELDS);
   const project = useProject((s) => s.project);
   if (!script) return null;
@@ -119,8 +122,17 @@ export function ScriptEditor({ sceneId, n }: { sceneId: string; n: number }) {
               <Sparkles size={13} /> Generar imágenes
             </button>
           )}
+          <button
+            className="btn btn-sm"
+            onClick={() => setShowGpt((v) => !v)}
+            aria-expanded={showGpt}
+            title="GPT propone cambios a la acción y los diálogos; tú decides"
+          >
+            <MessagesSquare size={13} /> Consultar GPT
+          </button>
         </div>
       </div>
+      {showGpt && <GptScriptPanel sceneId={sceneId} n={n} />}
       <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
         {FIELDS.map((f) => (
           <div key={f.key} className="flex flex-col gap-1 lg:col-span-2">

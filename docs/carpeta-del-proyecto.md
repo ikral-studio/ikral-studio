@@ -13,6 +13,7 @@ IKRAL Studio/
       miniaturas/<id>.jpg
       respaldos/<id>.json
       gpt-revisiones.json ← revisiones de continuidad con GPT (solo propuestas)
+      gpt-hilos.json      ← conversaciones con GPT sobre guion y diálogos (historial y propuestas)
 ```
 
 ## Bibliotecas (.ikral), como en Final Cut
@@ -72,3 +73,13 @@ En la Biblia → «Etapas y decisiones», el botón «Revisar con GPT» (solo en
 - Las propuestas se guardan en `gpt-revisiones.json` (las 20 revisiones más nuevas). La escribe solo la app: Claude y otros asistentes no la editan.
 - Nada cambia hasta que el director pulsa Aceptar. Aceptar una propuesta con regla crea una decisión de GPT aprobada por el director; Deshacer la quita.
 - Si no hay Codex, no hay sesión, se acabó la cuota o tarda más de 4 min, la app lo dice con calma y no cambia nada.
+
+## Consultar GPT en guion y diálogos
+
+En cada escena (Edición → «Guion y dirección»), el botón «Consultar GPT» abre una conversación con GPT sobre la acción visual y los diálogos de esa escena (solo en la app de Mac; en la web avisa «Disponible en la app de Mac.»).
+
+- Conversaciones (hilos) por escena: se pueden abrir varias, retomar y archivar. Codex corre `--ephemeral`: el historial lo guarda IKRAL en `gpt-hilos.json` (escritura atómica). La escribe solo la app.
+- Cada consulta manda: proyecto, estilo, etapas, decisiones APROBADAS, personajes, la escena con sus diálogos numerados, la acción de las escenas vecinas, «esto cambió desde la última vez» y el historial. Si el historial crece, va el resumen de lo viejo (lo escribe GPT en cada respuesta) y los últimos 6 mensajes completos. No manda decisiones propuestas o rechazadas, prompts de generación, chat con Claude ni imágenes.
+- GPT responde con el esquema `src/features/gpt/schemas/script.json`: cambiar la acción, cambiar, agregar o quitar una línea de diálogo (máximo 8 propuestas). Si el formato no sirve, se descarta sin cambiar nada.
+- Cada propuesta: Aceptar · Editar · Descartar · Pedir a Claude, y Deshacer. Al Aceptar, la app cambia la escena con sus acciones de siempre (⌘Z y guardado); ningún asistente escribe `proyecto.json` directo.
+- Si la línea o la acción cambió desde que GPT la vio, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. Si la línea solo se movió, se sigue. Deshacer no pisa lo que editaste después.

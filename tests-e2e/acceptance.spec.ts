@@ -849,6 +849,21 @@ test('extra · continuidad: etapas, objeto solo en ANTES y aviso de «papelitos�
   await expect(page.getByRole('region', { name: 'Etapas y decisiones' }).getByLabel('Nombre de la etapa 1')).toHaveValue('ANTES')
 })
 
+test('extra · consultar GPT en guion y diálogos: en la web avisa con calma y no cambia nada', async ({ page }) => {
+  await freshProject(page, 'GPT guion')
+  await addScenes(page, 1)
+  const c = card(page, 1)
+  await c.getByLabel('Acción visual').fill('La abuela sirve el caldo.')
+  await c.getByRole('button', { name: 'Consultar GPT', exact: true }).click()
+  const gpt = c.getByLabel('Consultar GPT sobre el guion')
+  await expect(gpt.getByRole('button', { name: 'Consultar GPT' })).toBeDisabled()
+  await expect(gpt.getByText('Disponible en la app de Mac.')).toBeVisible()
+  await expect(c.getByLabel('Acción visual')).toHaveValue('La abuela sirve el caldo.')
+  // Se cierra con el mismo botón
+  await c.getByRole('button', { name: 'Consultar GPT', exact: true }).first().click()
+  await expect(gpt).toHaveCount(0)
+})
+
 test('extra · cobertura: pasar a cobertura, 4 planos de Doña Chuy, deshacer, papelera y recargar', async ({ page }) => {
   await freshProject(page, 'Cobertura')
   await addScenes(page, 1)

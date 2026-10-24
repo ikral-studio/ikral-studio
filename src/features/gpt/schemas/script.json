@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["respuesta", "resumen_hilo", "propuestas"],
+  "properties": {
+    "respuesta": { "type": "string" },
+    "resumen_hilo": { "type": "string" },
+    "propuestas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tipo", "linea", "personaje", "emocion", "texto", "motivo"],
+        "properties": {
+          "tipo": { "type": "string", "enum": ["accion", "cambiar_linea", "agregar_linea", "quitar_linea"] },
+          "linea": { "type": ["integer", "null"] },
+          "personaje": { "type": ["string", "null"] },
+          "emocion": { "type": ["string", "null"] },
+          "texto": { "type": "string" },
+          "motivo": { "type": "string" }
+        }
+      }
+    }
+  }
+}
