@@ -177,7 +177,7 @@ export function FramesPanel() {
             const open = openId === s.id
             const done = (s.prep?.start?.approvedId ? 1 : 0) + (s.prep?.end?.approvedId ? 1 : 0)
             return (
-              <li key={s.id} className={`overflow-hidden rounded-[11px] border bg-card ${open ? 'border-[#7c3aed]/70' : 'border-line'}`}>
+              <li key={s.id} className={`shrink-0 overflow-hidden rounded-[11px] border bg-card ${open ? 'border-[#7c3aed]/70' : 'border-line'}`}>
                 <button className="flex w-full items-center gap-2.5 p-1.5 pr-3 text-left" aria-expanded={open} aria-label={`Escena ${pad2(i + 1)} · ${s.title}`} onClick={() => setOpenId(open ? undefined : s.id)}>
                   <span className="flex h-[46px] w-9 shrink-0 items-center justify-center rounded-[7px] bg-bg/70 text-[14px] font-semibold tabular-nums text-ink-2">{pad2(i + 1)}</span>
                   <SceneThumb id={s.prep?.start?.approvedId ?? s.startImageId} />

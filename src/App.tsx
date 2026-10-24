@@ -66,17 +66,22 @@ export default function App() {
   const scriptDock = useUI((s) => s.scriptDock)
   const view = useUI((s) => s.view)
   const [sizes, setSizes] = useState<Sizes>(loadSizes)
+  const [initError, setInitError] = useState<string>()
+  const [slow, setSlow] = useState(false)
   const start = useRef(sizes)
 
   useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 15000)
     useProject
       .getState()
       .init()
       .then(() => startTabGuard())
       .catch((e) => {
         console.error(e)
+        setInitError(e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : String(e))
         toast('No se pudo abrir el almacenamiento del navegador', 'error')
       })
+      .finally(() => clearTimeout(t))
   }, [])
   useShortcuts()
 
@@ -112,8 +117,18 @@ export default function App() {
 
   if (!ready)
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-ink-2">
-        <Loader2 className="animate-spin" /> Abriendo IKRAL Studio…
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-ink-2">
+        {initError ? (
+          <>
+            <p className="text-[16px] font-semibold text-bad">No se pudo abrir IKRAL Studio</p>
+            <pre className="max-h-[50vh] max-w-[90vw] overflow-auto whitespace-pre-wrap rounded-[10px] border border-line bg-panel p-3 text-[12px] text-ink-2">{initError}</pre>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Loader2 className="animate-spin" /> Abriendo IKRAL Studio…
+          </div>
+        )}
+        {slow && !initError && <p className="text-[13px] text-ink-3">Está tardando más de lo normal…</p>}
       </div>
     )
 
