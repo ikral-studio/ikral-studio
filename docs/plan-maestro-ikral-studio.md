@@ -1,6 +1,6 @@
 # Plan maestro · IKRAL Studio como estudio de producción
 
-Fecha: 2026-10-23. Estado: **arquitectura aprobada con 5 correcciones (revisión con ChatGPT, 2026-10-23). Autorizado solo: Fase 1, paso 1.**
+Fecha: 2026-10-23. Estado: **arquitectura aprobada con 5 correcciones (revisión con ChatGPT, 2026-10-23). Autorizado solo: Fase 1, paso 1.** Actualización 2026-10-24: Fases 1–2 cerradas; autorizado el encadenamiento 3a → 4 sin publicar (ver «Siguiente paso»).
 Programador principal: Claude. Codex en pausa. La carpeta `ikral-studio-codex` y su rama **no se tocan**.
 
 ## Resumen sencillo
@@ -382,3 +382,11 @@ Fases 1, 2 y 3 (para que tenga etapas, decisiones, planos y lo aprobado con GPT)
 ## Siguiente paso
 
 **Autorizado (2026-10-23): Fase 1, paso 1** — tipos, funciones puras del auditor y pruebas unitarias. Sin interfaz, sin convertir proyectos reales, sin publicar, sin tocar `ikral-studio-codex`.
+
+Fases 1 y 2 (2a–2d) ya cerradas en commits locales.
+
+**Autorizado (2026-10-24, el director vía ChatGPT, Issue #1 comentario 6385444622):** seguir solo con las sub-etapas de la Fase 3 y la Fase 4, una por una, con contexto nuevo cada una (puente `tools/coord-bridge.mjs`). Sin publicar, sin instalar la app de Mac, sin `git push`, sin APIs de pago ni credenciales nuevas; GPT se prueba con mocks. La prueba de la Fase 4 «en la página publicada» queda pendiente hasta que el director autorice publicar.
+
+El puente lee esta línea (no la cambies de formato):
+
+Encadenamiento autorizado: 3a → 4
