@@ -16,7 +16,7 @@ export interface Snapshot {
   id: string
   projectId: string
   createdAt: string
-  reason: 'auto' | 'before-restore' | 'before-import'
+  reason: 'auto' | 'before-restore' | 'before-import' | 'before-coverage'
   project: Project
   scenes: Scene[]
 }

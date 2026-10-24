@@ -844,3 +844,56 @@ test('extra · continuidad: etapas, objeto solo en ANTES y aviso de «papelitos�
   await page.reload()
   await expect(page.getByRole('region', { name: 'Etapas y decisiones' }).getByLabel('Nombre de la etapa 1')).toHaveValue('ANTES')
 })
+
+test('extra · cobertura: pasar a cobertura, 4 planos de Doña Chuy, deshacer, papelera y recargar', async ({ page }) => {
+  await freshProject(page, 'Cobertura')
+  await addScenes(page, 1)
+  await card(page, 1).getByLabel('Acción visual').fill('Doña Chuy voltea la carne y contesta.')
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  const scenes = page.getByRole('region', { name: 'Escenas del proyecto' })
+  await scenes.getByRole('button', { name: /Escena 01/ }).click()
+  const cov = scenes.getByRole('region', { name: 'Cobertura de escena' })
+  await expect(cov.getByText('Esta escena es un solo plano.')).toBeVisible()
+  // Pasar a cobertura y deshacer: queda como antes
+  await cov.getByRole('button', { name: 'Pasar a cobertura' }).click()
+  const list = cov.getByRole('list', { name: 'Planos de la escena' })
+  await expect(list.getByRole('listitem')).toHaveCount(1)
+  await cov.getByRole('button', { name: 'Deshacer' }).click()
+  await expect(cov.getByText('Esta escena es un solo plano.')).toBeVisible()
+  // Otra vez, ahora con los 4 planos del ejemplo
+  await cov.getByRole('button', { name: 'Pasar a cobertura' }).click()
+  for (let i = 0; i < 3; i++) await cov.getByRole('button', { name: 'Agregar plano' }).click()
+  await expect(list.getByRole('listitem')).toHaveCount(4)
+  const names = ['Plano general del restaurante', 'Detalle de sus manos', 'Inserto de la carne en la parrilla', 'Primer plano de su rostro']
+  const secs = ['3', '2', '2', '3']
+  for (let i = 0; i < 4; i++) {
+    await list.getByRole('button', { name: `Abrir plano ${i + 1}` }).click()
+    await list.getByLabel(`Nombre del plano ${i + 1}`).fill(names[i])
+    await list.getByLabel(`Duración del plano ${i + 1}`).fill(secs[i])
+    await list.getByRole('button', { name: `Abrir plano ${i + 1}` }).click()
+  }
+  await expect(cov).toContainText('4 planos · 10 s')
+  await list.getByRole('button', { name: 'Abrir plano 2' }).click()
+  await list.getByLabel('Continuidad del plano 2').fill('La carne ya está volteada')
+  // Ordenar: el rostro sube un lugar
+  await list.getByRole('button', { name: 'Subir plano 4' }).click()
+  await expect(list.getByRole('listitem').nth(2)).toContainText('Primer plano de su rostro')
+  // Quitar a la papelera y recuperar
+  await list.getByRole('button', { name: 'Abrir plano 4' }).click()
+  await list.getByRole('button', { name: 'Quitar plano 4' }).click()
+  await expect(list.getByRole('listitem')).toHaveCount(3)
+  await page.getByRole('button', { name: /^Papelera y respaldos/ }).click()
+  await page.getByRole('button', { name: 'Recuperar' }).click()
+  await page.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(list.getByRole('listitem')).toHaveCount(4)
+  // En Edición se ve el aviso de cobertura; al recargar sigue todo
+  await page.getByRole('button', { name: 'Ir a Edición' }).click()
+  await expect(card(page, 1).getByText('Cobertura: 4 planos · 10 s')).toBeVisible()
+  await page.reload()
+  await page.getByRole('button', { name: 'Preproducción', exact: true }).click()
+  await page.getByRole('region', { name: 'Escenas del proyecto' }).getByRole('button', { name: /Escena 01/ }).click()
+  const again = page.getByRole('region', { name: 'Cobertura de escena' }).getByRole('list', { name: 'Planos de la escena' })
+  await expect(again.getByRole('listitem')).toHaveCount(4)
+  await again.getByRole('button', { name: 'Abrir plano 2' }).click()
+  await expect(again.getByLabel('Continuidad del plano 2')).toHaveValue('La carne ya está volteada')
+})

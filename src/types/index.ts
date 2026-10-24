@@ -152,7 +152,8 @@ export type TrashEntry = { id: string; deletedAt: string } & (
   | { kind: BibleKind; item: BibleItem | Character; relations?: Relation[] }
   | { kind: 'relation'; relation: Relation }
   | { kind: 'version'; sceneId: string; version: VideoVersion }
-  | { kind: 'shot'; sceneId: string; shot: Shot; index: number }
+  /** `conflict`: lo guardó la unión de cambios (Claude y la app cambiaron el mismo plano). */
+  | { kind: 'shot'; sceneId: string; shot: Shot; index: number; conflict?: boolean }
 )
 
 /** Propuesta de la imagen inicial o final de una escena (Preproducción). */

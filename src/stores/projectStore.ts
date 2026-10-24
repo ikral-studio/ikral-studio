@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, Shot, VideoVersion } from '../types'
 import { applyItemSuggestion, applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
 import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
@@ -11,7 +11,8 @@ import { cloneScene, createProjectData, createScene, defaultTracks } from '../fe
 import { clipAt, deriveStatus, placedClips, versionClips, withClips } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
 import { cleanContinuity } from '../features/continuity/continuity'
-import { applyShotText, shotsFromText } from '../features/coverage/shots'
+import { applyShotText, convertToCoverage, copyShots, hasCoverage, moveShot, renumberShots, shotsFromText } from '../features/coverage/shots'
+import { toast } from './uiStore'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 interface Snapshot {
@@ -121,6 +122,17 @@ interface State {
   removeClip: (sceneId: string, clipId: string) => void
   moveClip: (sceneId: string, clipId: string, dir: -1 | 1) => void
 
+  /** «Pasar a cobertura»: respaldo automático y luego crea el Plano 1 copiando la escena (se puede Deshacer). */
+  convertToCoverage: (sceneId: string) => Promise<boolean>
+  /** Agrega un plano al final (o después de `afterId`). Devuelve su id. */
+  addShot: (sceneId: string, afterId?: string) => string | undefined
+  updateShot: (sceneId: string, shotId: string, patch: Partial<Omit<Shot, 'id' | 'order'>>, coalesce?: boolean) => void
+  moveShot: (sceneId: string, shotId: string, dir: -1 | 1) => void
+  /** Copia el plano (con sus imágenes y videos) justo después. Devuelve el id nuevo. */
+  duplicateShot: (sceneId: string, shotId: string) => string | undefined
+  /** Quita el plano y lo manda a la papelera. */
+  removeShot: (sceneId: string, shotId: string) => void
+
   /** Regresa algo de la papelera a su lugar. Devuelve el error si no se pudo. */
   restoreTrash: (entryId: string) => string | null
   /** Borra para siempre una cosa de la papelera (o toda si no se da id). */
@@ -133,7 +145,7 @@ interface State {
   setPaused: (paused: boolean) => void
   /** Vuelve a leer el proyecto abierto desde el disco (al retomar esta ventana). */
   reloadCurrent: () => Promise<void>
-  backupNow: (reason?: 'auto' | 'before-restore' | 'before-import') => Promise<void>
+  backupNow: (reason?: 'auto' | 'before-restore' | 'before-import' | 'before-coverage') => Promise<void>
   restoreSnapshot: (snapshotId: string) => Promise<void>
 }
 
@@ -241,7 +253,15 @@ export const useProject = create<State>()((set, get) => {
     })
     // Si al guardar se unieron cambios de Claude, mostrar el resultado unido.
     void store.onMerged(() => {
-      if (!saveTimer) void get().reloadCurrent()
+      if (saveTimer) return
+      const before = new Set((get().project?.trash ?? []).map((e) => e.id))
+      void get()
+        .reloadCurrent()
+        .then(() => {
+          // Choques plano por plano: avisar que la otra versión quedó en la papelera (no se pierde en silencio).
+          const n = (get().project?.trash ?? []).filter((e) => !before.has(e.id) && e.kind === 'shot' && e.conflict).length
+          if (n) toast(`${n === 1 ? 'Un plano se cambió' : `${n} planos se cambiaron`} en la app y fuera de ella a la vez. La otra versión quedó en la Papelera.`, 'info')
+        })
     })
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
@@ -608,6 +628,73 @@ export const useProject = create<State>()((set, get) => {
       if (!relation) return
       const trash = addToTrash(cur.project, { kind: 'relation', relation })
       commit({ ...cur, project: { ...cur.project, relations: cur.project.relations!.filter((r) => r.id !== id), trash } })
+    },
+
+    async convertToCoverage(sceneId) {
+      const sc = get().scenes[sceneId]
+      if (!sc || hasCoverage(sc)) return false
+      // Respaldo antes de convertir (regla de protección 4). Deshacer lo regresa idéntico.
+      await get().backupNow('before-coverage')
+      const cur = snap()
+      const now = cur?.scenes[sceneId]
+      if (!cur || !now || hasCoverage(now)) return false
+      const updated = convertToCoverage(now)
+      updated.status = deriveStatus(updated)
+      commit({ project: cur.project, scenes: { ...cur.scenes, [sceneId]: updated } })
+      return true
+    },
+
+    addShot(sceneId, afterId) {
+      const sc = get().scenes[sceneId]
+      if (!sc || !hasCoverage(sc)) return undefined
+      const list = renumberShots(sc.shots!)
+      const at = afterId ? list.findIndex((s) => s.id === afterId) + 1 : list.length
+      const shot: Shot = { id: uid('sh_'), order: 0, name: `Plano ${list.length + 1}`, duration: 3, updatedAt: nowIso() }
+      list.splice(at || list.length, 0, shot)
+      patchScene(sceneId, (s) => ({ ...s, shots: renumberShots(list.map((x, i) => ({ ...x, order: i }))) }))
+      return shot.id
+    },
+
+    updateShot(sceneId, shotId, patch, coalesce) {
+      patchScene(
+        sceneId,
+        (s) => ({ ...s, shots: s.shots?.map((x) => (x.id === shotId ? { ...x, ...patch, updatedAt: nowIso() } : x)) }),
+        coalesce ? `shot:${shotId}:${Object.keys(patch).join(',')}` : undefined,
+        coalesce ? 500 : 0,
+      )
+    },
+
+    moveShot(sceneId, shotId, dir) {
+      const sc = get().scenes[sceneId]
+      if (!sc?.shots?.some((x) => x.id === shotId)) return
+      patchScene(sceneId, (s) => ({ ...s, shots: moveShot(s.shots!, shotId, dir) }))
+    },
+
+    duplicateShot(sceneId, shotId) {
+      const sc = get().scenes[sceneId]
+      const list = sc?.shots ? renumberShots(sc.shots) : []
+      const i = list.findIndex((x) => x.id === shotId)
+      if (i < 0) return undefined
+      const [copy] = copyShots([list[i]])!
+      const now = nowIso()
+      list.splice(i + 1, 0, { ...copy, name: `${list[i].name} (copia)`, updatedAt: now })
+      patchScene(sceneId, (s) => ({ ...s, shots: list.map((x, k) => (x.order === k ? x : { ...x, order: k, updatedAt: now })) }))
+      return copy.id
+    },
+
+    removeShot(sceneId, shotId) {
+      const cur = snap()
+      const sc = cur?.scenes[sceneId]
+      const list = sc?.shots ? renumberShots(sc.shots) : []
+      const index = list.findIndex((x) => x.id === shotId)
+      if (!cur || !sc || index < 0) return
+      // Los archivos no se borran: el plano va a la papelera y se puede recuperar.
+      const trash = addToTrash(cur.project, { kind: 'shot', sceneId, shot: list[index], index })
+      const now = nowIso()
+      const shots = list.filter((x) => x.id !== shotId).map((x, k) => (x.order === k ? x : { ...x, order: k, updatedAt: now }))
+      const updated = { ...sc, shots, updatedAt: now }
+      updated.status = deriveStatus(updated)
+      commit({ project: { ...cur.project, trash }, scenes: { ...cur.scenes, [sceneId]: updated } })
     },
 
     restoreTrash(entryId) {

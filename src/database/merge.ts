@@ -84,6 +84,6 @@ export function mergeProjects(base: ProjectData | null, disk: ProjectData, local
   const decisions = mergeById(base.project.decisions, disk.project.decisions, local.project.decisions, localWins)
   let project: Project = { ...proj, sceneIds: ids, ...(phases ? { phases } : {}), ...(decisions ? { decisions } : {}) }
   // Si los dos cambiaron el mismo plano, la versión que perdió se guarda en la papelera.
-  for (const x of lostShots) project = { ...project, trash: addToTrash(project, { kind: 'shot', ...x }) }
+  for (const x of lostShots) project = { ...project, trash: addToTrash(project, { kind: 'shot', ...x, conflict: true }) }
   return { project, scenes }
 }

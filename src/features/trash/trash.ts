@@ -24,7 +24,7 @@ const KIND_LABEL: Record<TrashEntry['kind'], string> = {
   version: 'Video',
   shot: 'Plano',
 }
-export const trashKindLabel = (e: TrashEntry) => KIND_LABEL[e.kind]
+export const trashKindLabel = (e: TrashEntry) => (e.kind === 'shot' && e.conflict ? 'Plano · otra versión' : KIND_LABEL[e.kind])
 
 /** Nombre corto para mostrar en la lista. */
 export function trashLabel(e: TrashEntry, project: Project, scenes: Record<string, Scene>): string {
@@ -95,9 +95,12 @@ export function restoreFromTrash(project: Project, scenes: Record<string, Scene>
     const sc = scenes[e.sceneId]
     if (!sc) return { error: 'La escena de ese plano ya no existe. Recupera primero la escena.' }
     const shots = sc.shots ?? []
-    if (shots.some((s) => s.id === e.shot.id)) return { error: 'Ese plano ya está en la escena.' }
+    const there = shots.some((s) => s.id === e.shot.id)
+    // La otra versión de un choque regresa junto a la que ganó (con id nuevo), para compararlas.
+    if (there && !e.conflict) return { error: 'Ese plano ya está en la escena.' }
+    const back = there ? { ...e.shot, id: uid('sh_'), name: `${e.shot.name} (otra versión)` } : e.shot
     const list = [...shots].sort((a, b) => a.order - b.order)
-    list.splice(Math.min(e.index, list.length), 0, e.shot)
+    list.splice(Math.min(there ? e.index + 1 : e.index, list.length), 0, back)
     return { project: p, scenes: { ...scenes, [sc.id]: { ...sc, shots: list.map((s, i) => ({ ...s, order: i })), updatedAt: nowIso() } } }
   }
   if (e.kind === 'relation') {

@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, Plus, X } from 'lucide-react'
+import { sceneDuration } from '../../features/coverage/shots'
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -35,6 +36,8 @@ function Frame({ sceneId, frame, n, count }: { sceneId: string; frame: Storyboar
 
 export function FramesStrip({ sceneId }: { sceneId: string }) {
   const frames = useProject((s) => s.scenes[sceneId]?.storyboardFrames)
+  const scene = useProject((s) => s.scenes[sceneId])
+  const shots = scene?.shots?.length ?? 0
   const addFrames = useProject((s) => s.addFrames)
   const accept = async (files: File[]) => {
     const assets = await importFiles(files, 'image')
@@ -50,6 +53,19 @@ export function FramesStrip({ sceneId }: { sceneId: string }) {
   const sorted = [...(frames ?? [])].sort((a, b) => a.order - b.order)
   return (
     <div>
+      {shots > 0 && (
+        <button
+          className="mb-2 flex w-full items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-left text-[12.5px] text-ink-2 hover:border-line-2"
+          onClick={() => useUI.setState({ view: 'bible' })}
+          title="Los planos se editan en Preproducción, dentro de la escena"
+        >
+          <Clapperboard size={14} className="text-ink-3" />
+          <span className="flex-1">
+            Cobertura: {shots} plano{shots === 1 ? '' : 's'} · {Math.round(sceneDuration(scene!) * 10) / 10} s
+          </span>
+          <span className="text-ink-3">Ver en Preproducción →</span>
+        </button>
+      )}
       <div className="mb-1.5 flex items-center justify-between">
         <span className="label">Fotogramas intermedios <span className="text-ink-3">(opcional)</span></span>
       </div>

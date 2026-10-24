@@ -1,7 +1,8 @@
 // Continuidad narrativa: etapas de la historia (ANTES / DESPUÉS), decisiones del director
 // y un auditor sin IA que avisa contradicciones en el guion. Solo avisa: nunca cambia nada.
-import type { BibleItem, Decision, Phase, Project, Scene } from '../../types'
+import type { BibleItem, Decision, Phase, Project, Scene, Shot } from '../../types'
 import { fold } from '../script-search/find'
+import { hasCoverage } from '../coverage/shots'
 
 export type Severity = 'high' | 'review' | 'low'
 
@@ -14,6 +15,7 @@ export type AuditField =
   | 'generationPrompt'
   | 'startPrompt'
   | 'endPrompt'
+  | 'continuity'
 
 export interface Finding {
   id: string
@@ -21,6 +23,8 @@ export interface Finding {
   rule: 1 | 2 | 3 | 4 | 5
   severity: Severity
   sceneId?: string
+  /** Plano de la cobertura donde aparece (si es texto de un plano). */
+  shotId?: string
   itemId?: string
   field?: AuditField
   /** Pedacito exacto del texto donde aparece. */
@@ -47,6 +51,25 @@ const FIELDS: { field: AuditField; get: (s: Scene) => string | undefined }[] = [
   { field: 'endPrompt', get: (s) => s.prep?.end?.prompt },
 ]
 
+/** Texto de cada plano de la cobertura (la escena guarda guion y diálogo; el plano, lo suyo). */
+const SHOT_FIELDS: { field: AuditField; get: (s: Shot) => string | undefined }[] = [
+  { field: 'action', get: (s) => s.action },
+  { field: 'cameraDirection', get: (s) => s.cameraDirection },
+  { field: 'soundDirection', get: (s) => s.sound },
+  { field: 'continuity', get: (s) => s.continuity },
+  { field: 'generationPrompt', get: (s) => s.generationPrompt },
+  { field: 'startPrompt', get: (s) => s.prep?.start?.prompt },
+  { field: 'endPrompt', get: (s) => s.prep?.end?.prompt },
+]
+
+/** Todos los textos que revisa el auditor en una escena: los suyos y los de cada plano. */
+function textsOf(s: Scene): { field: AuditField; text: string; shot?: Shot }[] {
+  const out: { field: AuditField; text: string; shot?: Shot }[] = FIELDS.map(({ field, get }) => ({ field, text: get(s) ?? '' }))
+  if (hasCoverage(s))
+    for (const shot of s.shots!) for (const { field, get } of SHOT_FIELDS) out.push({ field, text: get(shot) ?? '', shot })
+  return out
+}
+
 const FIELD_LABEL: Record<AuditField, string> = {
   action: 'acción',
   dialogue: 'diálogo',
@@ -55,6 +78,7 @@ const FIELD_LABEL: Record<AuditField, string> = {
   generationPrompt: 'prompt de generación',
   startPrompt: 'prompt de imagen inicial',
   endPrompt: 'prompt de imagen final',
+  continuity: 'nota de continuidad',
 }
 
 /** Palabras que niegan lo que viene después («ya no hay», «sin», «ningún»…). */
@@ -137,7 +161,7 @@ export function auditContinuity(project: Project, scenes: Scene[]): Finding[] {
   const phases = phasesOf(project)
   const out: Finding[] = []
   const add = (f: Omit<Finding, 'id'>) =>
-    out.push({ ...f, id: [f.rule, f.sceneId ?? '', f.itemId ?? '', f.field ?? ''].join(':') })
+    out.push({ ...f, id: [f.rule, f.sceneId ?? '', f.itemId ?? '', f.field ?? '', ...(f.shotId ? [f.shotId] : [])].join(':') })
 
   const phaseIds = new Set(phases.map((ph) => ph.id))
   const phaseIndex = new Map(phases.map((ph, i) => [ph.id, i]))
@@ -210,31 +234,35 @@ export function auditContinuity(project: Project, scenes: Scene[]): Finding[] {
     for (const it of items) {
       const allowed = (it.onlyIn ?? []).filter((id) => phaseIds.has(id))
       if (!allowed.length || allowed.includes(ph.id)) continue
-      for (const { field, get } of FIELDS) {
-        const mentions = itemMentions(get(s) ?? '', it)
+      for (const { field, text, shot } of textsOf(s)) {
+        const mentions = itemMentions(text, it)
         if (!mentions.length) continue
         const plain = mentions.find((m) => !m.negated)
         const where = allowed.map(phaseName).join(', ')
+        const inShot = shot ? ` (plano «${shot.name}»)` : ''
+        const ref = shot ? { shotId: shot.id } : {}
         if (plain)
           add({
             rule: 1,
             severity: 'high',
             sceneId: s.id,
+            ...ref,
             itemId: it.id,
             field,
             quote: plain.quote,
-            problem: `«${it.name}» aparece en la escena «${s.title}» (${ph.name}), pero solo va en: ${where}.`,
-            suggestion: `Quítalo del ${FIELD_LABEL[field]} o cambia la etapa de la escena.`,
+            problem: `«${it.name}» aparece en la escena «${s.title}»${inShot} (${ph.name}), pero solo va en: ${where}.`,
+            suggestion: `Quítalo del ${FIELD_LABEL[field]}${shot ? ' del plano' : ''} o cambia la etapa de la escena.`,
           })
         else
           add({
             rule: 2,
             severity: 'review',
             sceneId: s.id,
+            ...ref,
             itemId: it.id,
             field,
             quote: mentions[0].quote,
-            problem: `«${it.name}» se menciona negado en la escena «${s.title}» (${ph.name}), y solo va en: ${where}.`,
+            problem: `«${it.name}» se menciona negado en la escena «${s.title}»${inShot} (${ph.name}), y solo va en: ${where}.`,
             suggestion: 'Si solo dice que ya no está, puede estar bien. Revisa que no se vea en la imagen.',
           })
       }

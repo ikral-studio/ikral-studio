@@ -196,6 +196,26 @@ export function v1LossReport(scenes: Scene[]): string[] {
     const media = shots.some((sh) => shotMediaIds(sh).length) ? ' Las imágenes y videos de los planos no viajan en el JSON.' : ''
     const what = lost.length ? `; se pierden ${lost.join(', ')} de cada plano` : ''
     out.push(`Escena ${i + 1} «${s.title}»: ${shots.length === 1 ? '1 plano se vuelve' : `${shots.length} planos se unen en`} uno${what}.${media}`)
+    const total = sceneDuration(s)
+    if (total > V1_MAX_DURATION)
+      out.push(`Escena ${i + 1} «${s.title}»: sus planos suman ${round1(total)} s y JSON v1 acepta hasta ${V1_MAX_DURATION} s. En el archivo queda como ${V1_MAX_DURATION} s (en tu proyecto no cambia). Exporta como v2 para conservarla completa.`)
+  })
+  return out
+}
+
+/** Máximo de segundos por escena (o plano) que acepta el JSON. */
+export const V1_MAX_DURATION = 600
+const round1 = (n: number) => Math.round(n * 10) / 10
+
+/** Planos que duran más de lo que acepta el JSON v2 (se avisa; en el proyecto no cambian). */
+export function v2DurationWarnings(scenes: Scene[]): string[] {
+  const out: string[] = []
+  scenes.forEach((s, i) => {
+    if (!hasCoverage(s)) return
+    shotsOf(s).forEach((sh, k) => {
+      if (sh.duration > V1_MAX_DURATION)
+        out.push(`Escena ${i + 1}, plano ${k + 1} «${sh.name}»: dura ${round1(sh.duration)} s y el JSON acepta hasta ${V1_MAX_DURATION} s. En el archivo queda como ${V1_MAX_DURATION} s (en tu proyecto no cambia).`)
+    })
   })
   return out
 }
@@ -215,7 +235,7 @@ export function flattenToV1(scene: Scene): Pick<Scene['script'], 'action' | 'cam
     cameraDirection: join(sc.cameraDirection, (s, n) => (s.cameraDirection ? `${label(s, n)}: ${s.cameraDirection}` : undefined)),
     soundDirection: join(sc.soundDirection, (s, n) => (s.sound ? `${label(s, n)}: ${s.sound}` : undefined)),
     generationPrompt: join(sc.generationPrompt, (s, n) => (s.generationPrompt ? `${label(s, n)}: ${s.generationPrompt}` : undefined)),
-    plannedDuration: Math.min(600, Math.max(0.5, sceneDuration(scene))),
+    plannedDuration: Math.min(V1_MAX_DURATION, Math.max(0.5, sceneDuration(scene))),
   }
 }
 
@@ -223,6 +243,8 @@ export function flattenToV1(scene: Scene): Pick<Scene['script'], 'action' | 'cam
  * Une los planos de una escena editada en dos lugares a la vez, plano por plano.
  * - Planos distintos cambiados de cada lado: se quedan los dos cambios.
  * - Plano nuevo de cualquier lado: se respeta. Plano borrado por uno: se queda borrado.
+ * - Borrado de un lado y cambiado del otro: se queda borrado, pero la versión cambiada va en `conflicts`
+ *   (a la papelera) para no perder ese cambio.
  * - El mismo plano cambiado de los dos lados: gana el más reciente; el otro va en `conflicts` (a la papelera).
  */
 export function mergeShots(base: Shot[] | undefined, disk: Shot[] | undefined, local: Shot[] | undefined, preferLocal: boolean): { shots: Shot[] | undefined; conflicts: Shot[] } {
@@ -237,7 +259,11 @@ export function mergeShots(base: Shot[] | undefined, disk: Shot[] | undefined, l
     const a = d.get(x.id)
     const c = l.get(x.id)
     const old = b.get(x.id)
-    if (old && (!a || !c)) continue
+    if (old && (!a || !c)) {
+      const kept = (a ?? c)!
+      if (kept.updatedAt !== old.updatedAt) conflicts.push(kept)
+      continue
+    }
     if (!a || !c) {
       out.push(x)
       continue

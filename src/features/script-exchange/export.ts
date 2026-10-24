@@ -1,7 +1,7 @@
 // Exportar el guion como JSON de intercambio (el mismo formato que se importa).
 // v2 lleva los planos; v1 los une en un solo texto por escena (con aviso de lo que se pierde).
 import type { Project, Scene, Shot } from '../../types'
-import { flattenToV1, hasCoverage, shotsOf, v1LossReport } from '../coverage/shots'
+import { flattenToV1, hasCoverage, shotsOf, v1LossReport, v2DurationWarnings, V1_MAX_DURATION } from '../coverage/shots'
 import { SCRIPT_FORMAT, SCRIPT_VERSION, SCRIPT_VERSION_SHOTS, type ImportedShot, type ScriptFile } from './schema'
 
 export type ScriptVersion = typeof SCRIPT_VERSION | typeof SCRIPT_VERSION_SHOTS
@@ -9,7 +9,7 @@ export type ScriptVersion = typeof SCRIPT_VERSION | typeof SCRIPT_VERSION_SHOTS
 /** Versión que conviene por defecto: v2 solo si alguna escena tiene planos. */
 export const defaultScriptVersion = (scenes: Scene[]): ScriptVersion => (scenes.some(hasCoverage) ? SCRIPT_VERSION_SHOTS : SCRIPT_VERSION)
 
-const clampDuration = (n: number) => Math.min(600, Math.max(0.5, n || 0.5))
+const clampDuration = (n: number) => Math.min(V1_MAX_DURATION, Math.max(0.5, n || 0.5))
 
 function shotOut(s: Shot): ImportedShot {
   const out: ImportedShot = { name: s.name.trim() || 'Plano', duration: clampDuration(s.duration) }
@@ -64,8 +64,8 @@ export function buildScriptFile(project: Project, scenes: Scene[], version: Scri
   }
 }
 
-/** Para el botón de exportar: el texto JSON y, si es v1 con planos, el aviso de lo que se pierde. */
+/** Para el botón de exportar: el texto JSON y el aviso de lo que se pierde (v1 con planos, o duraciones de más). */
 export function exportScriptJson(project: Project, scenes: Scene[], version?: ScriptVersion): { json: string; warnings: string[] } {
   const file = buildScriptFile(project, scenes, version)
-  return { json: JSON.stringify(file, null, 2), warnings: file.version === SCRIPT_VERSION ? v1LossReport(scenes) : [] }
+  return { json: JSON.stringify(file, null, 2), warnings: file.version === SCRIPT_VERSION ? v1LossReport(scenes) : v2DurationWarnings(scenes) }
 }

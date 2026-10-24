@@ -12,6 +12,7 @@ import { requestFramePreview } from '../../features/chat/requests'
 import { IMAGE_ACCEPT } from '../scenes/MediaSlot'
 import { pad2, uid } from '../../utils'
 import { TryThumb } from './CharacterSheet'
+import { CoveragePanel } from '../scenes/CoveragePanel'
 
 /** Una de las dos imágenes de la escena: la aprobada grande, su prompt y sus pruebas. */
 function FrameBox({ sceneId, slot, n }: { sceneId: string; slot: FrameSlot; n: number }) {
@@ -217,6 +218,7 @@ export function FramesPanel() {
                     )}
                     <FrameBox sceneId={s.id} slot="start" n={i + 1} />
                     <FrameBox sceneId={s.id} slot="end" n={i + 1} />
+                    <CoveragePanel sceneId={s.id} />
                   </div>
                 )}
               </li>
