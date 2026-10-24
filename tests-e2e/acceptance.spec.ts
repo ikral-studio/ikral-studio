@@ -885,7 +885,7 @@ test('extra · continuidad: etapas, objeto solo en ANTES y aviso de «papelitos�
   await expect(sec.getByText('Sin avisos de continuidad')).toBeVisible()
   // GPT: en la web no hay Codex, el botón avisa con calma y no hace nada
   const gpt = sec.getByLabel('Revisión con GPT')
-  await expect(gpt.getByRole('button', { name: 'Revisar con GPT' })).toBeDisabled()
+  await expect(gpt.getByRole('button', { name: 'Revisar guion con GPT' })).toBeDisabled()
   await expect(gpt.getByText('Disponible en la app de Mac.')).toBeVisible()
   // Se guardó: al recargar siguen las etapas
   await page.reload()

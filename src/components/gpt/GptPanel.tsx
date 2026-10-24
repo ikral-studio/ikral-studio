@@ -164,8 +164,16 @@ export function GptPanel() {
   const latest = reviews[0]
   return (
     <div className="flex flex-col gap-2" aria-label="Revisión con GPT">
-      <p className="text-[13px] text-ink-3">GPT revisa texto e imágenes aprobadas y solo propone. Tú decides.</p>
-      <ConsultGptButton busy={busy} onClick={consult} />
+      <p className="text-[13px] text-ink-3">GPT revisa el guion como guionista (coherencia entre escenas) y la continuidad de las imágenes aprobadas. Solo propone: tú decides.</p>
+      <textarea
+        className="field !text-[14px]"
+        rows={2}
+        aria-label="Instrucciones de guionismo para GPT"
+        placeholder="Instrucciones para GPT. Ej.: en una escena van los papelitos o la app, nunca los dos."
+        value={project.bible?.reviewNotes ?? ''}
+        onChange={(e) => useProject.getState().setBible({ reviewNotes: e.target.value })}
+      />
+      <ConsultGptButton busy={busy} onClick={consult} label="Revisar guion con GPT" />
       {message && (
         <p className="text-[13.5px] text-ink-2" role="status">
           {message}

@@ -54,6 +54,8 @@ export interface BibleAnswers {
   castIdea?: string
   /** Se pidió a Claude sacar del guion estas listas y todavía no llegan. */
   suggestingItems?: ItemKind[]
+  /** Instrucciones de guionismo del director para la revisión con GPT (ej.: «en una escena, papelitos o app, no los dos»). */
+  reviewNotes?: string
 }
 
 export interface Character {

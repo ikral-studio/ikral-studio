@@ -67,7 +67,9 @@ La app escribe `chat-usuario.json`; Claude solo escribe `chat-claude.json`. El b
 
 ## Revisión de continuidad con GPT
 
-En la Biblia → «Etapas y decisiones», el botón «Revisar con GPT» (solo en la app de Mac) corre `codex exec` en modo solo lectura con la sesión de ChatGPT ya iniciada en la Mac. Manda texto (etapas, decisiones aprobadas, elementos con sus etapas, escenas y planos, avisos locales) y hasta 12 miniaturas de imágenes inicial/final. No manda prompts de generación, intentos, chat ni videos.
+En la Biblia → «Etapas y decisiones», el botón «Revisar guion con GPT» (solo en la app de Mac) corre `codex exec` en modo solo lectura con la sesión de ChatGPT ya iniciada en la Mac. GPT revisa como guionista (lógica entre escenas, no mezclar el antes y el después, locaciones, objetos, diálogos, fichas que mezclan etapas) y la continuidad. Manda texto (reglas de guionista, instrucciones del director, etapas, decisiones aprobadas, elementos con sus etapas, fichas de la Biblia con descripción corta, escenas y planos, avisos locales) y hasta 12 miniaturas de imágenes inicial/final.
+
+- Arriba del botón hay una caja «Instrucciones para GPT» (`project.bible.reviewNotes`): el director escribe sus reglas de guionismo (ej.: «en una escena van los papelitos o la app, nunca los dos») y GPT las sigue. No manda prompts de generación, intentos, chat ni videos.
 
 - GPT responde con el esquema `src/features/gpt/schemas/continuity.json`; si el formato no sirve, se descarta sin cambiar nada.
 - Las propuestas se guardan en `gpt-revisiones.json` (las 20 revisiones más nuevas). La escribe solo la app: Claude y otros asistentes no la editan.

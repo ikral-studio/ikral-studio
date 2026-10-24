@@ -111,6 +111,22 @@ describe('revisión con GPT · paquete', () => {
     }
   })
 
+  it('manda reglas de guionista, instrucciones del director y fichas de la Biblia', () => {
+    const { project, scenes } = sample()
+    const withNotes = {
+      ...project,
+      bible: { ...project.bible, reviewNotes: 'En una escena van los papelitos o la app, nunca los dos.' },
+      locations: [{ id: 'l1', name: 'Pase de cocina', description: 'Comandas de papel y luego tablet con LISTO.', prompt: 'PROMPT-LOC-SECRETO' }],
+    }
+    const { prompt } = buildContinuityPacket(withNotes, scenes)
+    expect(prompt).toContain('como guionista')
+    expect(prompt).toContain('no debe mezclar lo de antes y lo de después')
+    expect(prompt).toContain('En una escena van los papelitos o la app, nunca los dos.')
+    expect(prompt).toContain('- Locación «Pase de cocina»: Comandas de papel y luego tablet con LISTO.')
+    expect(prompt).not.toContain('PROMPT-LOC-SECRETO')
+    expect(buildContinuityPacket({ ...project, bible: {} }, scenes).prompt).toContain('Instrucciones de guionismo del director (síguelas):\n(ninguna)')
+  })
+
   it('pone tope a las imágenes', () => {
     const { project } = sample()
     const many = buildExample(Array.from({ length: 10 }, (_, i): [string, string, string] => [`E${i}`, 'antes', '']))
