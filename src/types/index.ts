@@ -14,6 +14,8 @@ export interface Project {
   characters?: Character[]
   /** Sugerencia de personajes que hizo Claude (paso 5 de la Biblia), esperando que se acepte. */
   suggestion?: CharacterSuggestion[]
+  /** Sugerencias de locaciones, objetos o vestuario que Claude sacó del guion, esperando que se acepten. */
+  itemSuggestions?: Partial<Record<ItemKind, ItemSuggestion[]>>
   /** Biblia: locaciones (lugares donde pasa la historia). */
   locations?: BibleItem[]
   /** Biblia: objetos importantes. */
@@ -44,6 +46,8 @@ export interface BibleAnswers {
   suggesting?: boolean
   /** Idea general de los personajes para la sugerencia (paso 5). */
   castIdea?: string
+  /** Se pidió a Claude sacar del guion estas listas y todavía no llegan. */
+  suggestingItems?: ItemKind[]
 }
 
 export interface Character {
@@ -85,6 +89,14 @@ export interface BibleItem {
 }
 
 export type BibleKind = 'characters' | 'locations' | 'props' | 'wardrobe'
+export type ItemKind = Exclude<BibleKind, 'characters'>
+
+/** Locación, objeto o vestuario que Claude sugiere a partir del guion. */
+export interface ItemSuggestion {
+  name: string
+  note?: string
+  description: string
+}
 
 export interface Relation {
   id: string

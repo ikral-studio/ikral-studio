@@ -1,8 +1,10 @@
 // Secciones de la Biblia: personajes, locaciones, objetos, vestuario y relaciones.
 import { useState } from 'react'
-import { Heart, Plus, Trash2, X } from 'lucide-react'
+import { Check, Heart, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
+import { isDesktop } from '../../database/db'
+import { requestItemSuggestions } from '../../features/chat/requests'
 import { useMediaUrl } from '../../features/media-library/media'
 import { findCharacters } from '../../features/bible/bible'
 import { KIND_ES, itemStatus } from '../../features/bible/items'
@@ -11,7 +13,7 @@ import { Modal } from '../common/Overlays'
 import { ImportScriptButton } from '../sidebar/Sidebar'
 import { ItemSheet } from './CharacterSheet'
 import { ItemCard, Section } from './bibleUi'
-import type { BibleItem, BibleKind, Character } from '../../types'
+import type { BibleItem, BibleKind, Character, ItemKind } from '../../types'
 
 /** Botón «+ Nuevo …» que se vuelve cajita para escribir el nombre. */
 function AddButton({ kind, onAdded }: { kind: BibleKind; onAdded: (id: string) => void }) {
@@ -103,17 +105,93 @@ export function CharactersSection() {
   )
 }
 
+/** Lo que Claude sugirió sacando del guion: aceptar una, todas o descartar. Mientras llega, una ruedita. */
+function ItemSuggestions({ kind }: { kind: ItemKind }) {
+  const list = useProject((s) => s.project?.itemSuggestions?.[kind])
+  const waiting = useProject((s) => !!s.project?.bible?.suggestingItems?.includes(kind))
+  const { acceptItemSuggestion, dismissItemSuggestion, setBible } = useProject.getState()
+  const stopWaiting = () => setBible({ suggestingItems: useProject.getState().project?.bible?.suggestingItems?.filter((k) => k !== kind) })
+  if (waiting && !list?.length)
+    return (
+      <div className="flex items-center gap-2 text-[14px] text-[#ddd6fe]">
+        <Loader2 size={16} className="animate-spin" /> Claude está leyendo el guion… las {KIND_ES[kind].many.toLowerCase()} aparecerán aquí.
+        <button className="btn btn-sm btn-ghost" onClick={stopWaiting}>
+          Cancelar espera
+        </button>
+      </div>
+    )
+  if (!list?.length) return null
+  return (
+    <div className="flex flex-col gap-2 rounded-[12px] border border-[#7c3aed]/50 bg-[#7c3aed]/10 p-3" aria-label={`Sugerencia de ${KIND_ES[kind].many.toLowerCase()}`}>
+      <div className="text-[14px] font-semibold text-[#ddd6fe]">✨ Claude sugiere {list.length} {KIND_ES[kind].many.toLowerCase()} del guion</div>
+      <ul className="flex flex-col gap-1.5">
+        {list.map((it) => (
+          <li key={it.name} className="flex items-start gap-3 rounded-[10px] border border-line bg-card p-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="text-[15px] font-semibold">
+                {it.name}
+                {it.note && <span className="ml-2 text-[12.5px] font-normal text-ink-3">{it.note}</span>}
+              </div>
+              <p className="text-[13px] leading-snug text-ink-2">{it.description}</p>
+            </div>
+            <button
+              className="btn btn-sm shrink-0"
+              onClick={() => {
+                acceptItemSuggestion(kind, it.name)
+                toast(`${it.name} quedó en la lista`)
+              }}
+            >
+              <Check size={13} /> Aceptar
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <button
+          className="btn !h-10 !border-ok/60"
+          onClick={() => {
+            acceptItemSuggestion(kind)
+            toast('Listo: todas quedaron en la lista')
+          }}
+        >
+          <Check size={16} /> Aceptar todas
+        </button>
+        <button className="btn !h-10" onClick={() => dismissItemSuggestion(kind)}>
+          <X size={15} /> Descartar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /** 3, 4, 5 · Locaciones, objetos y vestuario. */
-export function ItemsSection({ kind, n, empty }: { kind: Exclude<BibleKind, 'characters'>; n: number; empty: string }) {
+export function ItemsSection({ kind, n, empty }: { kind: ItemKind; n: number; empty: string }) {
   const project = useProject((s) => s.project)
   const [openId, setOpenId] = useState<string>()
   if (!project) return null
   const list = project[kind] ?? []
   const canon = list.filter((it) => itemStatus(it) === 'canon').length
   const who = (it: BibleItem) => project.characters?.find((c) => c.id === it.characterId)?.name
+  const canSuggest = kind === 'locations' && isDesktop() && project.sceneIds.length > 0
+  const waiting = !!project.bible?.suggestingItems?.includes(kind)
 
   return (
-    <Section n={n} title={KIND_ES[kind].many} count={`${canon}/${list.length}`} action={<AddButton kind={kind} onAdded={setOpenId} />}>
+    <Section
+      n={n}
+      title={KIND_ES[kind].many}
+      count={`${canon}/${list.length}`}
+      action={
+        <>
+          {canSuggest && (
+            <button className="btn !h-9 !px-3 !text-[13.5px]" disabled={waiting} onClick={() => void requestItemSuggestions(kind)}>
+              <Sparkles size={15} /> Sugerir del guion
+            </button>
+          )}
+          <AddButton kind={kind} onAdded={setOpenId} />
+        </>
+      }
+    >
+      <ItemSuggestions kind={kind} />
       {list.length === 0 ? (
         <p className="text-[14px] text-ink-3">{empty}</p>
       ) : (

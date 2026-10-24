@@ -1,7 +1,7 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
-import { applySuggestion } from '../features/bible/bible'
+import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, FramePlan, BibleItem, BibleKind, ItemKind, Project, Relation, Scene, ScriptField, Settings, VideoVersion } from '../types'
+import { applyItemSuggestion, applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
 import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
 import type { ImportedScene, ScriptFile } from '../features/script-exchange/schema'
@@ -75,6 +75,8 @@ interface State {
   /** Aceptar la sugerencia de un personaje (o de todos si no se da nombre). */
   acceptSuggestion: (name?: string) => void
   dismissSuggestion: () => void
+  acceptItemSuggestion: (kind: ItemKind, name?: string) => void
+  dismissItemSuggestion: (kind: ItemKind) => void
   addCustomField: (name: string) => void
   renameCustomField: (fieldId: string, name: string) => void
   removeCustomField: (fieldId: string) => void
@@ -606,6 +608,18 @@ export const useProject = create<State>()((set, get) => {
       const cur = snap()
       if (!cur) return
       commit({ ...cur, project: { ...cur.project, suggestion: undefined } })
+    },
+
+    acceptItemSuggestion(kind, name) {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: applyItemSuggestion(cur.project, kind, name) })
+    },
+
+    dismissItemSuggestion(kind) {
+      const cur = snap()
+      if (!cur) return
+      commit({ ...cur, project: { ...cur.project, itemSuggestions: { ...cur.project.itemSuggestions, [kind]: undefined } } })
     },
 
     setCamera(id, camera) {

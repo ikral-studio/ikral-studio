@@ -4,6 +4,7 @@ import { isDesktop, sendChat } from '../../database/db'
 import { toast } from '../../stores/uiStore'
 import { pad2, uid } from '../../utils'
 import { charactersInScene } from '../project-style/style'
+import type { ItemKind } from '../../types'
 
 /** Escenas a las que les falta imagen inicial o final. */
 export function scenesMissingImages(): string[] {
@@ -121,4 +122,21 @@ export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe
     request: { type: 'item-preview', kind, itemId, name: it.name, prompt },
   })
   toast('Pedido enviado a Claude. La imagen aparecerá aquí')
+}
+
+/** Biblia: pedir a Claude que lea el guion y sugiera las locaciones (u objetos, vestuario). Llegan como sugerencia para aceptar. */
+export async function requestItemSuggestions(kind: ItemKind) {
+  const { project, setBible } = useProject.getState()
+  if (!project || !isDesktop()) return
+  if (!project.sceneIds.length) return toast('Primero carga el guion para que Claude lo lea', 'info')
+  const what = kind === 'locations' ? '📍 las locaciones (escenarios)' : kind === 'props' ? '📦 los objetos importantes' : '👕 el vestuario de cada personaje'
+  setBible({ suggestingItems: [...new Set([...(project.bible?.suggestingItems ?? []), kind])] })
+  await sendChat(project.id, {
+    id: uid('msg_'),
+    from: 'user',
+    at: new Date().toISOString(),
+    text: `✨ Lee el guion (${project.sceneIds.length} escenas) y sugiere ${what} con el estilo de la Biblia.`,
+    request: { type: 'item-suggestions', kind },
+  })
+  toast('Pedido enviado a Claude. Las sugerencias aparecerán aquí ✨')
 }

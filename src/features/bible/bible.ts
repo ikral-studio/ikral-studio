@@ -1,6 +1,6 @@
 // Biblia del proyecto: preguntas de estilo y personajes que salen en el guion.
 // Las respuestas se agregan al prompt para que todo el video se vea igual.
-import type { Character, Project, Scene } from '../../types'
+import type { BibleItem, Character, ItemKind, Project, Scene } from '../../types'
 import { parseDialogue } from '../dialogue/lines'
 import { charactersInScene } from '../project-style/style'
 import { uid } from '../../utils'
@@ -158,4 +158,20 @@ export function applySuggestion(p: Project, name?: string): Project {
   }
   const rest = (p.suggestion ?? []).filter((s) => !take.includes(s))
   return { ...p, characters, suggestion: rest.length ? rest : undefined }
+}
+
+/** Pasa las locaciones (u objetos, vestuario) que sugirió Claude a la lista: una o todas. Si ya existe, solo llena lo que falte. */
+export function applyItemSuggestion(p: Project, kind: ItemKind, name?: string): Project {
+  const all = p.itemSuggestions?.[kind] ?? []
+  const take = all.filter((s) => name === undefined || key(s.name) === key(name))
+  if (!take.length) return p
+  const list: BibleItem[] = [...(p[kind] ?? [])]
+  for (const s of take) {
+    const i = list.findIndex((it) => key(it.name) === key(s.name))
+    if (i >= 0) list[i] = { ...list[i], description: list[i].description || s.description, note: list[i].note || s.note }
+    else list.push({ id: uid(kind === 'locations' ? 'loc_' : kind === 'props' ? 'obj_' : 'ves_'), name: s.name.trim(), description: s.description, ...(s.note ? { note: s.note } : {}) })
+  }
+  const rest = all.filter((s) => !take.includes(s))
+  const itemSuggestions = { ...p.itemSuggestions, [kind]: rest.length ? rest : undefined }
+  return { ...p, [kind]: list, itemSuggestions }
 }

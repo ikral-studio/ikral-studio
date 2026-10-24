@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createProjectData, createScene } from '../features/scene-management/factory'
 import { generationPrompt } from '../features/script-sync/derive'
-import { applySuggestion, bibleAnswered, characterContext, findCharacters, suggestionPrompt } from '../features/bible/bible'
+import { applyItemSuggestion, applySuggestion, bibleAnswered, characterContext, findCharacters, suggestionPrompt } from '../features/bible/bible'
 
 describe('biblia del proyecto', () => {
   const p = createProjectData('Promo')
@@ -38,6 +38,18 @@ describe('biblia del proyecto', () => {
     const all = applySuggestion(one)
     expect(all.characters?.map((c) => [c.name, c.description])).toEqual([['Mesero', 'joven, mandil negro'], ['Ana', 'señora alegre']])
     expect(all.suggestion).toBeUndefined()
+  })
+
+  it('aceptar locaciones sugeridas las pasa a la lista sin repetir', () => {
+    const q = { ...p, locations: [{ id: 'l1', name: 'Cocina', description: '' }], itemSuggestions: { locations: [
+      { name: 'cocina', note: 'Interior', description: 'cocina de taquería' },
+      { name: 'Calle', description: 'banqueta de noche' },
+    ] } }
+    const one = applyItemSuggestion(q, 'locations', 'Cocina')
+    expect(one.locations).toEqual([{ id: 'l1', name: 'Cocina', note: 'Interior', description: 'cocina de taquería' }])
+    const all = applyItemSuggestion(one, 'locations')
+    expect(all.locations?.map((l) => l.name)).toEqual(['Cocina', 'Calle'])
+    expect(all.itemSuggestions?.locations).toBeUndefined()
   })
 
   it('el guion da contexto de cada personaje', () => {
