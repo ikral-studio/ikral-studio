@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Puente de coordinación (tools/coord-bridge.mjs). Instalar (lo hace Kyo, una vez):
+     cp tools/coord-bridge.plist ~/Library/LaunchAgents/com.ikral.coord-bridge.plist
+     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ikral.coord-bridge.plist
+     Apagar: launchctl bootout gui/$(id -u)/com.ikral.coord-bridge  ·  Pausar: touch ~/.ikral-coord-pausa -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.ikral.coord-bridge</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/Users/kyo/Documents/editor de storiborad/ikral-studio/tools/coord-bridge.mjs</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/Users/kyo/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key><string>/Users/kyo</string>
+  </dict>
+  <key>StartInterval</key><integer>45</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardErrorPath</key><string>/Users/kyo/Library/Logs/ikral-coord.err.log</string>
+</dict>
+</plist>
