@@ -80,3 +80,11 @@
 - Publicado: no.
 - Commit: ver «Mini Monitor: barras de uso arriba».
 - Pendiente: M5, probar a mano ventana, menú y voz.
+
+2026-10-24 15:45 · IKRAL Studio · «Aceptada» honesta en GPT
+- Agregado: [código] src/features/gpt/done.ts — texto que dice lo que de verdad cambió.
+- Cambiado: [código] paneles GPT de Biblia, guion, cobertura y edición — si no cambió nada, lo dicen.
+- Arreglado: propuestas viejas «Aceptada» sin cambios ya no parecen corregidas.
+- Publicado: no.
+- Commit: efe5f54
+- Pendiente: el director escoge restaurante o food truck; recompilar app de Mac.
