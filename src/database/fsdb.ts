@@ -435,8 +435,8 @@ export async function moveLibrary(projectId: string, dest: string): Promise<stri
   if (!folders.has(projectId)) await scan()
   const from = folders.get(projectId)
   if (!from) throw new Error('No encontré la biblioteca del proyecto')
-  let to = dest.replace(/\/+$/, '')
-  if (!to.endsWith(LIBRARY_EXT)) to += LIBRARY_EXT
+  // Sin «.ikral» queda como carpeta normal (se puede abrir en Finder y meter cosas); con «.ikral», como biblioteca.
+  const to = dest.replace(/\/+$/, '')
   if (to === from) return from
   if (await exists(to, BASE)) throw new Error('Ya hay algo con ese nombre ahí. Elige otro nombre.')
   unwatch?.()
@@ -476,12 +476,15 @@ export async function openLibrary(path: string): Promise<string> {
 }
 
 /**
- * Copia las imágenes del proyecto a una carpeta normal (fuera de la biblioteca) con nombres claros,
+ * Copia las imágenes del proyecto a la carpeta «Imágenes» del proyecto con nombres claros,
  * para usarlas en otras apps. No borra nada de lo que ya haya ahí. Devuelve la carpeta.
  */
-export async function exportImagesFolder(title: string, entries: { id: string; path: string }[]): Promise<string> {
-  await ready
-  const dest = `${ROOT}/Imágenes/${safeFilename(title)}`
+export async function exportImagesFolder(projectId: string, entries: { id: string; path: string }[]): Promise<string> {
+  if (!folders.has(projectId)) await scan()
+  const dir = folders.get(projectId)
+  if (!dir) throw new Error('No encontré la carpeta del proyecto')
+  // Dentro de la carpeta del proyecto, para que todo quede junto donde lo guardaste.
+  const dest = `${dir}/Imágenes`
   for (const { id, path } of entries) {
     const m = await findMedia(id)
     if (!m || m.asset.kind !== 'image' || !(await exists(mediaPath(m.dir, m.asset), BASE))) continue

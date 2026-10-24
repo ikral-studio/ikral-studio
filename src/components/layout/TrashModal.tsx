@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { History, ImageOff, RotateCcw, Trash2, X, Images } from 'lucide-react'
+import { History, ImageOff, RotateCcw, Trash2, X, Images, Save } from 'lucide-react'
 import { isDesktop } from '../../database/db'
-import { showImagesInFinder } from '../../features/projects/library'
+import { saveLibraryAs, showImagesInFinder } from '../../features/projects/library'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -140,6 +140,22 @@ export function FinderButton({ label = false }: { label?: boolean }) {
     >
       <Images size={label ? 16 : 17} />
       {label && 'Ver en Finder'}
+    </button>
+  )
+}
+
+/** Botón «Guardar como»: escoges la carpeta donde vive el proyecto (solo app de escritorio). */
+export function SaveAsButton({ label = false }: { label?: boolean }) {
+  if (!isDesktop()) return null
+  return (
+    <button
+      className={label ? 'btn !h-9' : 'icon-btn'}
+      onClick={() => void saveLibraryAs()}
+      title="Guardar como: escoge dónde guardar el proyecto (una carpeta normal con todos sus archivos)"
+      aria-label="Guardar proyecto como"
+    >
+      <Save size={label ? 16 : 17} />
+      {label && 'Guardar como'}
     </button>
   )
 }

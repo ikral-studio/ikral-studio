@@ -1,34 +1,31 @@
 // Bibliotecas (como en Final Cut): cada proyecto es un paquete «Nombre.ikral» con todo adentro,
 // que se puede guardar en cualquier carpeta o disco y abrir desde ahí (también con doble clic en Finder).
-import { exportImagesFolder, isDesktop, moveLibrary, openLibrary, projectFolderPath } from '../../database/db'
+import { exportImagesFolder, isDesktop, moveLibrary, openLibrary } from '../../database/db'
 import { orderedScenes } from '../script-sync/derive'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
 import { releaseAllUrls } from '../media-library/media'
 import { safeFilename } from '../../utils'
 
-/** «Guardar biblioteca en…»: eliges dónde y la biblioteca del proyecto abierto se mueve ahí. */
+/** «Guardar como»: eliges dónde y con qué nombre; el proyecto (con todos sus archivos) pasa a esa carpeta y la app sigue trabajando ahí. */
 export async function saveLibraryAs(): Promise<boolean> {
   const { project, flushSave } = useProject.getState()
   if (!project || !isDesktop()) return false
   await flushSave()
-  const [{ save }, { dirname }] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/api/path')])
-  const now = await projectFolderPath(project.id)
-  const start = now ? await dirname(now) : undefined
+  const [{ save }, { documentDir }] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/api/path')])
   const dest = await save({
-    title: 'Guardar biblioteca en…',
-    defaultPath: start ? `${start}/${safeFilename(project.title)}.ikral` : `${safeFilename(project.title)}.ikral`,
-    filters: [{ name: 'Biblioteca de IKRAL Studio', extensions: ['ikral'] }],
+    title: 'Guardar proyecto como…',
+    defaultPath: `${await documentDir()}/${safeFilename(project.title)}`,
   })
   if (!dest) return false
   try {
     const to = await moveLibrary(project.id, dest)
     releaseAllUrls()
     await useProject.getState().openProject(project.id)
-    toast(`Biblioteca guardada en ${to.split('/').slice(-2).join('/')}`)
+    toast(`Proyecto guardado en la carpeta «${to.split('/').pop()}»`)
     return true
   } catch (e) {
-    toast(e instanceof Error ? e.message : 'No se pudo guardar la biblioteca', 'error')
+    toast(e instanceof Error ? e.message : 'No se pudo guardar el proyecto', 'error')
     return false
   }
 }
@@ -51,7 +48,8 @@ export async function openLibraryAt(path: string): Promise<boolean> {
 export async function pickLibrary(): Promise<boolean> {
   if (!isDesktop()) return false
   const { open } = await import('@tauri-apps/plugin-dialog')
-  const path = await open({ title: 'Abrir biblioteca', multiple: false, directory: false, filters: [{ name: 'Biblioteca de IKRAL Studio', extensions: ['ikral'] }] })
+  // Se escoge la carpeta del proyecto (las bibliotecas .ikral también se abren con doble clic en Finder).
+  const path = await open({ title: 'Abrir proyecto (escoge su carpeta)', multiple: false, directory: true })
   return typeof path === 'string' ? openLibraryAt(path) : false
 }
 
@@ -116,10 +114,10 @@ export async function showImagesInFinder() {
   try {
     const entries = friendlyImageNames()
     if (!entries.length) return toast('Este proyecto todavía no tiene imágenes', 'info')
-    const dir = await exportImagesFolder(project.title, entries)
+    const dir = await exportImagesFolder(project.id, entries)
     const { invoke } = await import('@tauri-apps/api/core')
     await invoke('mostrar_en_finder', { path: dir })
-    toast(`Listo: ${entries.length} imágenes en Documentos/IKRAL Studio/Imágenes`)
+    toast(`Listo: ${entries.length} imágenes en la carpeta «Imágenes» del proyecto`)
   } catch (e) {
     toast(e instanceof Error ? e.message : 'No se pudo abrir la carpeta', 'error')
   }

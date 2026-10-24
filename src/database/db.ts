@@ -15,7 +15,7 @@ type Backend = typeof idb & {
   projectFolderPath?: (projectId: string) => Promise<string | null>
   moveLibrary?: (projectId: string, dest: string) => Promise<string>
   openLibrary?: (path: string) => Promise<string>
-  exportImagesFolder?: (title: string, entries: { id: string; path: string }[]) => Promise<string>
+  exportImagesFolder?: (projectId: string, entries: { id: string; path: string }[]) => Promise<string>
   readChat?: (projectId: string) => Promise<{ user: ChatMessage[]; claude: { messages: ChatMessage[]; readUpTo?: string; lastSeen?: string; working?: string } }>
   sendChat?: (projectId: string, msg: ChatMessage) => Promise<void>
   onChatChange?: (cb: () => void) => () => void
@@ -76,9 +76,9 @@ export const openLibrary = async (path: string) => {
   if (!b.openLibrary) throw new Error('Solo en la app de escritorio')
   return b.openLibrary(path)
 }
-/** Solo escritorio: copia las imágenes con nombres claros a Documentos/IKRAL Studio/Imágenes/<proyecto>. */
-export const exportImagesFolder = async (title: string, entries: { id: string; path: string }[]) => {
+/** Solo escritorio: copia las imágenes con nombres claros a la carpeta «Imágenes» del proyecto. */
+export const exportImagesFolder = async (pid: string, entries: { id: string; path: string }[]) => {
   const b = await backend()
   if (!b.exportImagesFolder) throw new Error('Solo en la app de escritorio')
-  return b.exportImagesFolder(title, entries)
+  return b.exportImagesFolder(pid, entries)
 }

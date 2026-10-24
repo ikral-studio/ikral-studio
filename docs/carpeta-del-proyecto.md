@@ -17,7 +17,7 @@ IKRAL Studio/
 ## Bibliotecas (.ikral), como en Final Cut
 
 - Cada proyecto es una carpeta-paquete `Nombre.ikral`. En Finder se ve como un archivo con el ícono de IKRAL; por dentro es la misma carpeta de siempre (Terminal y Claude entran normal).
-- En la app: **Proyectos → «Guardar en…»** mueve la biblioteca a donde quieras (otro disco incluido; si es otro disco se copia, se revisa y luego se quita la de antes). **«Abrir biblioteca…»** abre una `.ikral` de cualquier lugar. También se abre con doble clic en Finder.
+- En la app: botón **«Guardar como»** (arriba, junto a «Ver en Finder» y «Papelera»): eliges dónde y con qué nombre; el proyecto pasa a esa **carpeta normal** (se abre en Finder y se pueden meter cosas) y la app sigue trabajando ahí. En otro disco se copia, se revisa y luego se quita la de antes. **«Ver en Finder»** copia las imágenes con nombres claros a `<carpeta del proyecto>/Imágenes/` y la abre. En Proyectos, **«Abrir carpeta de proyecto…»** abre uno de cualquier lugar; las `.ikral` también con doble clic en Finder.
 - Las bibliotecas fuera de `Proyectos/` se anotan en `ajustes.json` → `libraries` (rutas completas). Si el disco no está conectado, no aparecen hasta que se conecte.
 - Las carpetas viejas (sin `.ikral`) se renombran solas a `.ikral` al abrir la app.
 

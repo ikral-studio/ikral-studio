@@ -137,7 +137,7 @@ function ProjectsModal() {
         <>
           {isDesktop() && (
             <button className="btn" onClick={() => void pickLibrary().then((ok) => ok && close())} title="Abre un archivo .ikral que tengas en cualquier carpeta o disco">
-              <Library size={15} /> Abrir biblioteca…
+              <Library size={15} /> Abrir carpeta de proyecto…
             </button>
           )}
           <button className="btn" onClick={importZip} disabled={busy}>
@@ -164,7 +164,7 @@ function ProjectsModal() {
                 <button className="btn btn-sm" onClick={() => void saveLibraryAs().then((ok) => {
                   if (ok) void refresh()
                 })} title="Elige dónde guardar este proyecto (otra carpeta u otro disco). Se guarda como biblioteca .ikral con todo adentro.">
-                  <Save size={13} /> Guardar en…
+                  <Save size={13} /> Guardar como…
                 </button>
               )}
               {p.id === current ? (
