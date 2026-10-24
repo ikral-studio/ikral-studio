@@ -36,10 +36,10 @@ de David.
 
 ## 3. Estado del Blueprint (2026-10-24)
 
-13 de 23 tareas hechas (`npm run blueprint` da el número del momento). Ninguna tiene la ✅ del director todavía.
+14 de 23 tareas hechas (`npm run blueprint` da el número del momento). Ninguna tiene la ✅ del director todavía.
 
-- **Hechas:** 1.1–1.4, 2a–2d, 3a–3c, P1, P2 (cada una con su commit).
-- **En curso:** P4 (este Blueprint).
+- **Hechas:** 1.1–1.4, 2a–2d, 3a–3c, P1, P2, P4 (cada una con su commit; P4 marcada sola por `--aplicar`
+  después de que pasaron test y build).
 - **Pendientes:** 2.pub (publicar Fase 2, decide el director), 3d, 3e, 4 (Biblia PDF), P5 (esta ficha).
 - **Bloqueadas:** 3.real y 4.pub (necesitan al director), P3 (acceso en el Escritorio), P6 (push: el repo es público).
 
@@ -57,7 +57,7 @@ Esta sesión no puede escribir fuera de su carpeta. Texto para que se agregue ta
 ```
 NOTA-0048 · ABIERTA · de: IKRAL Studio (puente) · para: Panel ikral · 2026-10-24
 Ficha «IKRAL Studio» lista para registrar (DS-010; responde a NOTA-0025).
-Traspaso: ikral-studio/docs/panel/traspaso-ikral-studio.md · Blueprint: PLAN.md (13 de 23 hechas).
+Traspaso: ikral-studio/docs/panel/traspaso-ikral-studio.md · Blueprint: PLAN.md (14 de 23 hechas).
 Pide: registrar ficha + Blueprint con el «sí» de David; poner el nombre de la ficha en
 tools/monitor-projects.json (panelFicha) para enlazar el monitor. No hay migraciones preparadas aquí.
 ```

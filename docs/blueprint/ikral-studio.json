@@ -11,11 +11,26 @@
     "publicado": "https://ikral.com/studio/"
   },
   "fases": [
-    { "id": "1", "titulo": "Continuidad narrativa" },
-    { "id": "2", "titulo": "Cobertura cinematográfica" },
-    { "id": "3", "titulo": "ChatGPT integrado" },
-    { "id": "4", "titulo": "Biblia de Producción PDF" },
-    { "id": "P", "titulo": "Puente, monitor y registro en IKRAL" }
+    {
+      "id": "1",
+      "titulo": "Continuidad narrativa"
+    },
+    {
+      "id": "2",
+      "titulo": "Cobertura cinematográfica"
+    },
+    {
+      "id": "3",
+      "titulo": "ChatGPT integrado"
+    },
+    {
+      "id": "4",
+      "titulo": "Biblia de Producción PDF"
+    },
+    {
+      "id": "P",
+      "titulo": "Puente, monitor y registro en IKRAL"
+    }
   ],
   "tareas": [
     {
@@ -27,8 +42,14 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "cf9dbef" },
-        { "tipo": "prueba", "ref": "src/tests/continuity.test.ts (20 pruebas)" }
+        {
+          "tipo": "commit",
+          "ref": "cf9dbef"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/continuity.test.ts (20 pruebas)"
+        }
       ],
       "dependeDe": [],
       "siguiente": null,
@@ -43,10 +64,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "cf9dbef" },
-        { "tipo": "prueba", "ref": "src/tests/continuityStore.test.ts (10 pruebas)" }
+        {
+          "tipo": "commit",
+          "ref": "cf9dbef"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/continuityStore.test.ts (10 pruebas)"
+        }
       ],
-      "dependeDe": ["1.1"],
+      "dependeDe": [
+        "1.1"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -59,10 +88,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "cf9dbef" },
-        { "tipo": "prueba", "ref": "tests-e2e/acceptance.spec.ts (prueba «papelitos»)" }
+        {
+          "tipo": "commit",
+          "ref": "cf9dbef"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "tests-e2e/acceptance.spec.ts (prueba «papelitos»)"
+        }
       ],
-      "dependeDe": ["1.2"],
+      "dependeDe": [
+        "1.2"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -75,10 +112,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "url", "ref": "https://ikral.com/studio/" },
-        { "tipo": "prueba", "ref": "34/34 Playwright en la página publicada (bitácora 2026-10-24 00:15)" }
+        {
+          "tipo": "url",
+          "ref": "https://ikral.com/studio/"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "34/34 Playwright en la página publicada (bitácora 2026-10-24 00:15)"
+        }
       ],
-      "dependeDe": ["1.3"],
+      "dependeDe": [
+        "1.3"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -91,10 +136,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "52c670f" },
-        { "tipo": "prueba", "ref": "src/tests/coverage.test.ts (19 pruebas)" }
+        {
+          "tipo": "commit",
+          "ref": "52c670f"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/coverage.test.ts (19 pruebas)"
+        }
       ],
-      "dependeDe": ["1.3"],
+      "dependeDe": [
+        "1.3"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -106,8 +159,15 @@
       "estado": "hecho",
       "responsable": "Claude",
       "fecha": "2026-10-24",
-      "evidencia": [{ "tipo": "commit", "ref": "ec1abf6" }],
-      "dependeDe": ["2a"],
+      "evidencia": [
+        {
+          "tipo": "commit",
+          "ref": "ec1abf6"
+        }
+      ],
+      "dependeDe": [
+        "2a"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -120,10 +180,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "320a936" },
-        { "tipo": "prueba", "ref": "src/tests/coveragePlayback.test.ts (8) y 1 Playwright" }
+        {
+          "tipo": "commit",
+          "ref": "320a936"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/coveragePlayback.test.ts (8) y 1 Playwright"
+        }
       ],
-      "dependeDe": ["2b"],
+      "dependeDe": [
+        "2b"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -136,10 +204,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "3c2b696" },
-        { "tipo": "prueba", "ref": "src/tests/shotFrames.test.ts (7) y 1 Playwright" }
+        {
+          "tipo": "commit",
+          "ref": "3c2b696"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/shotFrames.test.ts (7) y 1 Playwright"
+        }
       ],
-      "dependeDe": ["2c"],
+      "dependeDe": [
+        "2c"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -152,7 +228,9 @@
       "responsable": "Director",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["2d"],
+      "dependeDe": [
+        "2d"
+      ],
       "siguiente": "Esperar autorización del director para publicar.",
       "director": null
     },
@@ -165,13 +243,23 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "ae80fed" },
-        { "tipo": "prueba", "ref": "src/tests/gpt.test.ts (14 con mocks)" }
+        {
+          "tipo": "commit",
+          "ref": "ae80fed"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/gpt.test.ts (14 con mocks)"
+        }
       ],
-      "dependeDe": ["2d"],
+      "dependeDe": [
+        "2d"
+      ],
       "siguiente": null,
       "director": null,
-      "verificar": { "asunto": "^Fase 3a " }
+      "verificar": {
+        "asunto": "^Fase 3a "
+      }
     },
     {
       "id": "3b",
@@ -182,13 +270,23 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "824587b" },
-        { "tipo": "prueba", "ref": "src/tests/gptScript.test.ts (16 con mocks) y 1 e2e" }
+        {
+          "tipo": "commit",
+          "ref": "824587b"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/gptScript.test.ts (16 con mocks) y 1 e2e"
+        }
       ],
-      "dependeDe": ["3a"],
+      "dependeDe": [
+        "3a"
+      ],
       "siguiente": null,
       "director": null,
-      "verificar": { "asunto": "^Fase 3b " }
+      "verificar": {
+        "asunto": "^Fase 3b "
+      }
     },
     {
       "id": "3c",
@@ -199,13 +297,23 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "5c55e8d" },
-        { "tipo": "prueba", "ref": "src/tests/gptBible.test.ts (16 con mocks) y 1 e2e" }
+        {
+          "tipo": "commit",
+          "ref": "5c55e8d"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/gptBible.test.ts (16 con mocks) y 1 e2e"
+        }
       ],
-      "dependeDe": ["3b"],
+      "dependeDe": [
+        "3b"
+      ],
       "siguiente": null,
       "director": null,
-      "verificar": { "asunto": "^Fase 3c " }
+      "verificar": {
+        "asunto": "^Fase 3c "
+      }
     },
     {
       "id": "3d",
@@ -216,10 +324,14 @@
       "responsable": "Claude",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["3c"],
+      "dependeDe": [
+        "3c"
+      ],
       "siguiente": "Siguiente etapa del encadenamiento 3a → 4 (la toma el puente).",
       "director": null,
-      "verificar": { "asunto": "^Fase 3d " }
+      "verificar": {
+        "asunto": "^Fase 3d "
+      }
     },
     {
       "id": "3e",
@@ -230,10 +342,14 @@
       "responsable": "Claude",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["3d"],
+      "dependeDe": [
+        "3d"
+      ],
       "siguiente": null,
       "director": null,
-      "verificar": { "asunto": "^Fase 3e " }
+      "verificar": {
+        "asunto": "^Fase 3e "
+      }
     },
     {
       "id": "3.real",
@@ -244,7 +360,9 @@
       "responsable": "Director",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["3a"],
+      "dependeDe": [
+        "3a"
+      ],
       "siguiente": "Requiere instalar la app de Mac y una sesión con Codex: autorización del director.",
       "director": null
     },
@@ -257,10 +375,14 @@
       "responsable": "Claude",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["3e"],
+      "dependeDe": [
+        "3e"
+      ],
       "siguiente": null,
       "director": null,
-      "verificar": { "asunto": "^Fase 4 " }
+      "verificar": {
+        "asunto": "^Fase 4 "
+      }
     },
     {
       "id": "4.pub",
@@ -271,7 +393,9 @@
       "responsable": "Director",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["4"],
+      "dependeDe": [
+        "4"
+      ],
       "siguiente": "Requiere autorización expresa para publicar.",
       "director": null
     },
@@ -284,9 +408,18 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "e04b574" },
-        { "tipo": "commit", "ref": "f5c5a0c" },
-        { "tipo": "prueba", "ref": "tools/coord-bridge.test.mjs" }
+        {
+          "tipo": "commit",
+          "ref": "e04b574"
+        },
+        {
+          "tipo": "commit",
+          "ref": "f5c5a0c"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "tools/coord-bridge.test.mjs"
+        }
       ],
       "dependeDe": [],
       "siguiente": null,
@@ -301,11 +434,22 @@
       "responsable": "Claude",
       "fecha": "2026-10-24",
       "evidencia": [
-        { "tipo": "commit", "ref": "cf4228d" },
-        { "tipo": "commit", "ref": "da82e93" },
-        { "tipo": "prueba", "ref": "tools/coord-monitor.test.mjs" }
+        {
+          "tipo": "commit",
+          "ref": "cf4228d"
+        },
+        {
+          "tipo": "commit",
+          "ref": "da82e93"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "tools/coord-monitor.test.mjs"
+        }
       ],
-      "dependeDe": ["P1"],
+      "dependeDe": [
+        "P1"
+      ],
       "siguiente": null,
       "director": null
     },
@@ -317,8 +461,15 @@
       "estado": "bloqueado",
       "responsable": "Claude",
       "fecha": null,
-      "evidencia": [{ "tipo": "commit", "ref": "6286fe0" }],
-      "dependeDe": ["P2"],
+      "evidencia": [
+        {
+          "tipo": "commit",
+          "ref": "6286fe0"
+        }
+      ],
+      "dependeDe": [
+        "P2"
+      ],
       "siguiente": "Correr una vez `npm run acceso-monitor` desde una sesión con permiso de escribir en el Escritorio.",
       "director": null
     },
@@ -327,14 +478,31 @@
       "fase": "P",
       "titulo": "Blueprint con checklist y validador de evidencia",
       "criterio": "«hecho» solo con evidencia verificable; un comentario o acuse nunca cuenta; resumen en el monitor.",
-      "estado": "en curso",
+      "estado": "hecho",
       "responsable": "Claude",
       "fecha": "2026-10-24",
-      "evidencia": [{ "tipo": "prueba", "ref": "tools/blueprint.test.mjs" }],
-      "dependeDe": ["P2"],
-      "siguiente": "Pasa a «hecho» con el commit de esta tarea (npm run blueprint lo comprueba).",
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "tools/blueprint.test.mjs"
+        },
+        {
+          "tipo": "commit",
+          "ref": "f6c7955"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "npm test y npm run build pasaron (comprobación automática 2026-10-24)"
+        }
+      ],
+      "dependeDe": [
+        "P2"
+      ],
+      "siguiente": null,
       "director": null,
-      "verificar": { "asunto": "^Puente: Blueprint con checklist" }
+      "verificar": {
+        "asunto": "^Puente: Blueprint con checklist"
+      }
     },
     {
       "id": "P5",
@@ -345,7 +513,9 @@
       "responsable": "Panel ikral",
       "fecha": null,
       "evidencia": [],
-      "dependeDe": ["P4"],
+      "dependeDe": [
+        "P4"
+      ],
       "siguiente": "Dejar NOTA para «Panel ikral» con docs/panel/traspaso-ikral-studio.md.",
       "director": null
     },

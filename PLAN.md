@@ -3,8 +3,8 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 13 de 23 hechas · 1 en curso · 4 bloqueadas · 5 pendientes · 0 aprobadas por el director.
-**Siguiente:** P4 · Blueprint con checklist y validador de evidencia
+**Avance:** 14 de 23 hechas · 0 en curso · 4 bloqueadas · 5 pendientes · 0 aprobadas por el director.
+**Siguiente:** 2.pub · Publicar Fase 2 y probar en la página real
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 
@@ -99,11 +99,10 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Evidencia: commit `6286fe0`
   - Depende de: P2
   - Siguiente: Correr una vez `npm run acceso-monitor` desde una sesión con permiso de escribir en el Escritorio.
-- [~] **P4 · Blueprint con checklist y validador de evidencia** — Claude · 2026-10-24
+- [x] **P4 · Blueprint con checklist y validador de evidencia** — Claude · 2026-10-24
   - Criterio: «hecho» solo con evidencia verificable; un comentario o acuse nunca cuenta; resumen en el monitor.
-  - Evidencia: prueba: tools/blueprint.test.mjs
+  - Evidencia: prueba: tools/blueprint.test.mjs · commit `f6c7955` · prueba: npm test y npm run build pasaron (comprobación automática 2026-10-24)
   - Depende de: P2
-  - Siguiente: Pasa a «hecho» con el commit de esta tarea (npm run blueprint lo comprueba).
 - [ ] **P5 · Ficha de IKRAL Studio en el Panel** — Panel ikral
   - Criterio: La sesión del Panel registra la ficha (Blueprint, inventario, bitácora) con el «sí» del director.
   - Depende de: P4
