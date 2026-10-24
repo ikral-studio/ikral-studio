@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-/// Las apps abiertas desde el Dock traen un PATH mínimo: también se busca en Homebrew.
+/// Las apps abiertas desde el Dock traen un PATH mínimo: también se busca en Homebrew y en npm global.
 fn find_codex() -> Option<PathBuf> {
   let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
     .map(|p| std::env::split_paths(&p).collect())
@@ -15,6 +15,7 @@ fn find_codex() -> Option<PathBuf> {
   dirs.push("/usr/local/bin".into());
   if let Some(home) = std::env::var_os("HOME") {
     dirs.push(Path::new(&home).join(".local/bin"));
+    dirs.push(Path::new(&home).join(".npm-global/bin"));
   }
   dirs.into_iter().map(|d| d.join("codex")).find(|p| p.is_file())
 }

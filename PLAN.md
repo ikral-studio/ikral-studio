@@ -3,7 +3,7 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 17 de 25 hechas · 0 en curso · 6 bloqueadas · 2 pendientes · 0 aprobadas por el director.
+**Avance:** 18 de 26 hechas · 0 en curso · 6 bloqueadas · 2 pendientes · 0 aprobadas por el director.
 **Siguiente:** C2 · Respaldo único verificado antes de publicar
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
@@ -74,7 +74,7 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 - [!] **3.real · Prueba real con Codex en la app de Mac** — Director
   - Criterio: Los casos de examples.ts dan los hallazgos esperados con GPT de verdad (pocas veces, sin gastar límite).
   - Depende de: 3a
-  - Siguiente: Autorizado por el director el 2026-10-24 (Issue #1, comentario 6388369161). Intento del puente: bloqueado por permisos de la sesión automática (solo puede usar la carpeta del proyecto; no puede correr codex, cargo ni escribir en /Applications). El paquete local es del 2026-10-23, antes de las Fases 2–4. Falta correrlo en una sesión de Claude Code con esos permisos.
+  - Siguiente: 2026-10-24: Codex real responde (1 llamada, sesión de ChatGPT). Arreglado que la app no encontraba Codex en ~/.npm-global/bin. Falta un clic del director en «Consultar GPT» dentro de la app.
 
 ## Fase 4 · Biblia de Producción PDF
 
@@ -89,6 +89,10 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 
 ## Fase C · Cierre y lanzamiento de Studio
 
+- [x] **C0 · QA visual en el Mac: novedades visibles** — Claude · 2026-10-24
+  - Criterio: App instalada es la última; cobertura, planos, GPT y Biblia PDF se ven y se alcanzan desde Edición; capturas y demo de 3 pasos.
+  - Evidencia: prueba: docs/qa/2026-10-24-qa-visual.md · prueba: docs/qa/2026-10-24-capturas/ (13 capturas) y e2e «cobertura visible en Edición»
+  - Depende de: 4
 - [!] **C1 · Primer flujo completo de punta a punta con un proyecto de ejemplo** — Director
   - Criterio: En la app de Mac: etapas → guion → cobertura → Consultar GPT real (aceptar y deshacer) → Biblia de Producción PDF que abre y se lee bien. Hoy solo hay e2e por partes en la web, con GPT simulado.
   - Depende de: 4, 3.real

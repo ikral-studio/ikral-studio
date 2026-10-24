@@ -393,7 +393,7 @@
       "dependeDe": [
         "3a"
       ],
-      "siguiente": "Autorizado por el director el 2026-10-24 (Issue #1, comentario 6388369161). Intento del puente: bloqueado por permisos de la sesión automática (solo puede usar la carpeta del proyecto; no puede correr codex, cargo ni escribir en /Applications). El paquete local es del 2026-10-23, antes de las Fases 2–4. Falta correrlo en una sesión de Claude Code con esos permisos.",
+      "siguiente": "2026-10-24: Codex real responde (1 llamada, sesión de ChatGPT). Arreglado que la app no encontraba Codex en ~/.npm-global/bin. Falta un clic del director en «Consultar GPT» dentro de la app.",
       "director": null
     },
     {
@@ -440,6 +440,30 @@
         "4"
       ],
       "siguiente": "Requiere autorización expresa para publicar.",
+      "director": null
+    },
+    {
+      "id": "C0",
+      "fase": "C",
+      "titulo": "QA visual en el Mac: novedades visibles",
+      "criterio": "App instalada es la última; cobertura, planos, GPT y Biblia PDF se ven y se alcanzan desde Edición; capturas y demo de 3 pasos.",
+      "estado": "hecho",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "prueba",
+          "ref": "docs/qa/2026-10-24-qa-visual.md"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "docs/qa/2026-10-24-capturas/ (13 capturas) y e2e «cobertura visible en Edición»"
+        }
+      ],
+      "dependeDe": [
+        "4"
+      ],
+      "siguiente": null,
       "director": null
     },
     {

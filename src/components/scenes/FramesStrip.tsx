@@ -1,7 +1,9 @@
-import { ChevronLeft, ChevronRight, Clapperboard, Plus, X } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Plus, X } from 'lucide-react'
 import { sceneDuration } from '../../features/coverage/shots'
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
+import { CoveragePanel } from './CoveragePanel'
 import { useMediaUrl } from '../../features/media-library/media'
 import { importFiles } from '../../features/scene-management/actions'
 import { mediaDragProps, pickFiles, useFileDrop } from '../../hooks/useFileDrop'
@@ -39,6 +41,7 @@ export function FramesStrip({ sceneId }: { sceneId: string }) {
   const scene = useProject((s) => s.scenes[sceneId])
   const shots = scene?.shots?.length ?? 0
   const addFrames = useProject((s) => s.addFrames)
+  const [coverageOpen, setCoverageOpen] = useState(false)
   const accept = async (files: File[]) => {
     const assets = await importFiles(files, 'image')
     if (assets.length) {
@@ -53,19 +56,27 @@ export function FramesStrip({ sceneId }: { sceneId: string }) {
   const sorted = [...(frames ?? [])].sort((a, b) => a.order - b.order)
   return (
     <div>
-      {shots > 0 && (
+      <div className="mb-2 rounded-lg border border-line">
         <button
-          className="mb-2 flex w-full items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-left text-[12.5px] text-ink-2 hover:border-line-2"
-          onClick={() => useUI.setState({ view: 'bible' })}
-          title="Los planos se editan en Preproducción, dentro de la escena"
+          className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-ink-2 hover:text-ink"
+          onClick={() => setCoverageOpen(!coverageOpen)}
+          aria-expanded={coverageOpen}
+          title="Planos de la escena: general, detalle, inserto… con su imagen inicial y final"
         >
           <Clapperboard size={14} className="text-ink-3" />
           <span className="flex-1">
-            Cobertura: {shots} plano{shots === 1 ? '' : 's'} · {Math.round(sceneDuration(scene!) * 10) / 10} s
+            {shots > 0
+              ? `Cobertura: ${shots} plano${shots === 1 ? '' : 's'} · ${Math.round(sceneDuration(scene!) * 10) / 10} s`
+              : 'Cobertura: un solo plano · divídela en planos'}
           </span>
-          <span className="text-ink-3">Ver en Preproducción →</span>
+          {coverageOpen ? <ChevronDown size={14} className="text-ink-3" /> : <ChevronRight size={14} className="text-ink-3" />}
         </button>
-      )}
+        {coverageOpen && (
+          <div className="border-t border-line p-2.5">
+            <CoveragePanel sceneId={sceneId} />
+          </div>
+        )}
+      </div>
       <div className="mb-1.5 flex items-center justify-between">
         <span className="label">Fotogramas intermedios <span className="text-ink-3">(opcional)</span></span>
       </div>

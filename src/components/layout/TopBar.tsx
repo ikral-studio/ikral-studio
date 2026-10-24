@@ -246,8 +246,8 @@ export function TopBar() {
         <button className="icon-btn" onClick={exportNle} disabled={exporting} title="Exportar edición para Premiere, Final Cut o DaVinci" aria-label="Exportar edición para editor de video">
           <Film size={17} />
         </button>
-        <button className="icon-btn" onClick={() => useUI.setState({ modal: 'pdf' })} disabled={exporting} title="Portafolio PDF o Biblia de Producción completa" aria-label="Exportar portafolio PDF">
-          <BookImage size={17} />
+        <button className="btn !h-9" onClick={() => useUI.setState({ modal: 'pdf' })} disabled={exporting} title="Portafolio PDF o Biblia de Producción completa" aria-label="Exportar portafolio PDF">
+          <BookImage size={16} /> Biblia PDF
         </button>
         <button className="icon-btn" onClick={exportScript} title="Exportar guion (Markdown)" aria-label="Exportar guion">
           <FileDown size={17} />

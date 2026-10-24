@@ -1096,3 +1096,18 @@ test('extra · cobertura 2d: imagen inicial por plano, pasar a Edición, duplica
   await again.getByRole('button', { name: 'Abrir plano 1' }).click()
   await expect(again.getByRole('img', { name: 'Imagen inicial del plano 1 de escena 01 aprobada' })).toBeVisible()
 })
+
+test('extra · cobertura visible en Edición: abrir, pasar a cobertura y agregar plano sin ir a Preproducción', async ({ page }) => {
+  await freshProject(page, 'Cobertura en Edición')
+  await addScenes(page, 1)
+  const c = card(page, 1)
+  const toggle = c.getByRole('button', { name: /Cobertura: un solo plano/ })
+  await expect(toggle).toBeVisible()
+  await toggle.click()
+  const cov = c.getByRole('region', { name: 'Cobertura de escena' })
+  await cov.getByRole('button', { name: 'Pasar a cobertura' }).click()
+  await cov.getByRole('button', { name: 'Agregar plano' }).click()
+  await expect(cov.getByRole('list', { name: 'Planos de la escena' }).getByRole('listitem')).toHaveCount(2)
+  await expect(c.getByRole('button', { name: /Cobertura: 2 planos/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Exportar portafolio PDF' })).toContainText('Biblia PDF')
+})
