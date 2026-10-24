@@ -15,6 +15,8 @@ import {
   editProposal,
   isStale,
   markAskedClaude,
+  proposalSpeechText,
+  reviewSummarySpeechText,
   undoProposal,
   type GptProposal,
   type GptReview,
@@ -23,6 +25,7 @@ import {
 } from '../../features/gpt/proposals'
 import { pad2, uid } from '../../utils'
 import { ConsultGptButton } from './ConsultGptButton'
+import { ListenButton } from '../common/ListenButton'
 
 const SEVERITY: Record<GptSeverity, { label: string; cls: string }> = {
   alta: { label: 'Alta', cls: 'border-bad/50 bg-bad/10' },
@@ -78,6 +81,9 @@ function ProposalRow({ p, n, stale, onAccept, onEdit, onDiscard, onAskClaude, on
       ) : (
         p.rule && <div className="pl-3 text-[13px]">Regla propuesta: «{p.rule}»</div>
       )}
+      <div className="pl-3 pt-0.5">
+        <ListenButton id={`gpt-proposal:${p.id}`} text={proposalSpeechText(p, n)} />
+      </div>
       <div className="flex flex-wrap gap-1.5 pl-3 pt-0.5">
         {p.status === 'pending' ? (
           <>
@@ -184,6 +190,7 @@ export function GptPanel() {
           <p className="text-[13.5px] text-ink-2">
             Última revisión de GPT ({new Date(latest.at).toLocaleString()}): {latest.summary}
           </p>
+          <ListenButton id={`gpt-review:${latest.id}:resumen`} text={reviewSummarySpeechText(latest)} label="Escuchar resumen" />
           {latest.proposals.length > 0 && (
             <ul className="flex flex-col gap-1.5" aria-label="Propuestas de GPT">
               {latest.proposals.map((p) => (

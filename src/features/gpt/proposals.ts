@@ -195,3 +195,24 @@ export function claudeRequestText(p: GptProposal, sceneNumber?: number): string 
     .filter(Boolean)
     .join('\n')
 }
+
+/** Texto completo de un hallazgo para escucharlo (problema, evidencia, corrección y regla: nada se salta). */
+export function proposalSpeechText(p: GptProposal, sceneNumber?: number): string {
+  const end = (s: string) => (/[.!?…]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
+  return [
+    `Hallazgo de prioridad ${p.severity}${sceneNumber ? `, escena ${String(sceneNumber).padStart(2, '0')}` : ''}.`,
+    `Problema: ${end(p.problem)}`,
+    p.evidence && `Evidencia: ${end(p.evidence)}`,
+    p.correction && `Corrección: ${end(p.correction)}`,
+    p.rule && `Regla propuesta: ${end(p.rule)}`,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+/** Texto del resumen inicial de una revisión para escucharlo. */
+export function reviewSummarySpeechText(r: Pick<GptReview, 'summary' | 'proposals'>): string {
+  const n = r.proposals.length
+  const count = n ? `GPT propone ${n} ${n === 1 ? 'cambio' : 'cambios'}.` : 'GPT no encontró problemas.'
+  return `Resumen de la revisión de GPT. ${r.summary.trim()} ${count}`.replace(/\s+/g, ' ').trim()
+}
