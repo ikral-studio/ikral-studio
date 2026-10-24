@@ -393,7 +393,7 @@
       "dependeDe": [
         "3a"
       ],
-      "siguiente": "3a–3e solo se probaron con mocks; el único GPT real fue el piloto del 2026-10-23 (antes del código de la Fase 3). Requiere instalar la app de Mac y una sesión con Codex: autorización del director.",
+      "siguiente": "Autorizado por el director el 2026-10-24 (Issue #1, comentario 6388369161). Intento del puente: bloqueado por permisos de la sesión automática (solo puede usar la carpeta del proyecto; no puede correr codex, cargo ni escribir en /Applications). El paquete local es del 2026-10-23, antes de las Fases 2–4. Falta correrlo en una sesión de Claude Code con esos permisos.",
       "director": null
     },
     {
@@ -455,7 +455,7 @@
         "4",
         "3.real"
       ],
-      "siguiente": "Depende de 3.real (instalar la app de Mac y Codex con autorización del director).",
+      "siguiente": "Autorizado (2026-10-24, comentario 6388369161). Depende de 3.real, bloqueado por permisos de la sesión automática del puente.",
       "director": null
     },
     {

@@ -74,7 +74,7 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 - [!] **3.real · Prueba real con Codex en la app de Mac** — Director
   - Criterio: Los casos de examples.ts dan los hallazgos esperados con GPT de verdad (pocas veces, sin gastar límite).
   - Depende de: 3a
-  - Siguiente: 3a–3e solo se probaron con mocks; el único GPT real fue el piloto del 2026-10-23 (antes del código de la Fase 3). Requiere instalar la app de Mac y una sesión con Codex: autorización del director.
+  - Siguiente: Autorizado por el director el 2026-10-24 (Issue #1, comentario 6388369161). Intento del puente: bloqueado por permisos de la sesión automática (solo puede usar la carpeta del proyecto; no puede correr codex, cargo ni escribir en /Applications). El paquete local es del 2026-10-23, antes de las Fases 2–4. Falta correrlo en una sesión de Claude Code con esos permisos.
 
 ## Fase 4 · Biblia de Producción PDF
 
@@ -92,7 +92,7 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 - [!] **C1 · Primer flujo completo de punta a punta con un proyecto de ejemplo** — Director
   - Criterio: En la app de Mac: etapas → guion → cobertura → Consultar GPT real (aceptar y deshacer) → Biblia de Producción PDF que abre y se lee bien. Hoy solo hay e2e por partes en la web, con GPT simulado.
   - Depende de: 4, 3.real
-  - Siguiente: Depende de 3.real (instalar la app de Mac y Codex con autorización del director).
+  - Siguiente: Autorizado (2026-10-24, comentario 6388369161). Depende de 3.real, bloqueado por permisos de la sesión automática del puente.
 - [ ] **C2 · Respaldo único verificado antes de publicar** — Claude
   - Criterio: Un respaldo completo en /Volumes/c/respaldos/ikral-studio/ que se abre y se restaura; el último es studio-20261024-000702-antes-fase1.tgz (antes de las Fases 2–4).
   - Depende de: 4
