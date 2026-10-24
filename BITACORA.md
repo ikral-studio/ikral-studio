@@ -1,3 +1,14 @@
+2026-10-24 15:38 · IKRAL Studio · Guion vs Biblia: restaurante o food truck
+- Agregado: [código] src/features/continuity/setting.ts — detecta «la historia dice X, la Biblia dice Y», vista previa de impacto, aplicar y deshacer.
+- Agregado: [diseño] SettingConflictCard — una pregunta con 🔊 y 3 caminos (adaptar, mantener, transformación); no escoge sola.
+- Agregado: [código] src/tests/setting.test.ts — 11 pruebas con proyecto inventado: antes/después, guardar/abrir, Deshacer, Cmd+Z, Canon intacto.
+- Agregado: [imagen] docs/qa/capturas/16-lugar-guion-vs-biblia.png — captura de la pregunta y la vista previa.
+- Cambiado: [asistente] reglas de GPT — papel en unas escenas y app en otras no es mezcla; 3 opciones de lugar sin asumir.
+- Cambiado: [documento] diagnóstico GPT, carpeta-del-proyecto.md (settingChange) y Blueprint tarea 1.5.
+- Publicado: no.
+- Commit: 9be42d5
+- Pendiente: recompilar la app de Mac y que el director escoja un camino.
+
 2026-10-24 15:35 · IKRAL Studio · App instalada con estados por escena
 - Cambiado: [código] /Applications/IKRAL Studio.app — versión 4a1e9bc (estados por escena, revisión GPT honesta, botón 🔊 Escuchar).
 - Seguridad: compilada solo desde commits (sin cambios a medio hacer); respaldo de la app anterior en /Volumes/c/respaldos/ikral-studio/app/.

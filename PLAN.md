@@ -3,8 +3,8 @@
 > Generado desde `docs/blueprint/ikral-studio.json` con `npm run blueprint`. No editar a mano.
 > Fuente oficial: la ficha del proyecto en el Panel de IKRAL. «hecho» solo con evidencia verificable; ✅ = aprobada por el director.
 
-**Avance:** 20 de 32 hechas · 3 en curso · 6 bloqueadas · 3 pendientes · 0 aprobadas por el director.
-**Siguiente:** UX1 · «🎬 Planos de cámara» a la vista (adiós «Cobertura» escondida)
+**Avance:** 20 de 33 hechas · 4 en curso · 6 bloqueadas · 3 pendientes · 0 aprobadas por el director.
+**Siguiente:** 1.5 · Guion vs Biblia: lugar (restaurante → food truck) con decisión del director
 
 Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
 
@@ -25,6 +25,11 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Criterio: Respaldo verificado antes; Playwright pasa en la página publicada.
   - Evidencia: https://ikral.com/studio/ · prueba: 34/34 Playwright en la página publicada (bitácora 2026-10-24 00:15)
   - Depende de: 1.3
+- [~] **1.5 · Guion vs Biblia: lugar (restaurante → food truck) con decisión del director** — Claude · 2026-10-24
+  - Criterio: Una sola pregunta ≤200 caracteres con 🔊; 3 caminos sin asumir ninguno; vista previa de impacto; aplicar en un paso con Deshacer y Cmd+Z; imágenes, Canon y diálogos sin tocar. Diagnóstico: «Aceptar» solo guardaba la regla; el cambio a food truck fue a propósito (prueba de estrés).
+  - Evidencia: commit `9be42d5` · prueba: src/tests/setting.test.ts (11) con proyecto inventado; npm test 340/340; npm run build OK; demo lugar (Playwright) OK, captura 16-lugar-guion-vs-biblia.png
+  - Depende de: 1.3
+  - Siguiente: Probar en la app de Mac recompilada y que el director escoja un camino.
 
 ## Fase 2 · Cobertura cinematográfica
 

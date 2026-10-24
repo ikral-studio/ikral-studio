@@ -136,6 +136,30 @@
       "director": null
     },
     {
+      "id": "1.5",
+      "fase": "1",
+      "titulo": "Guion vs Biblia: lugar (restaurante → food truck) con decisión del director",
+      "criterio": "Una sola pregunta ≤200 caracteres con 🔊; 3 caminos sin asumir ninguno; vista previa de impacto; aplicar en un paso con Deshacer y Cmd+Z; imágenes, Canon y diálogos sin tocar. Diagnóstico: «Aceptar» solo guardaba la regla; el cambio a food truck fue a propósito (prueba de estrés).",
+      "estado": "en curso",
+      "responsable": "Claude",
+      "fecha": "2026-10-24",
+      "evidencia": [
+        {
+          "tipo": "commit",
+          "ref": "9be42d5"
+        },
+        {
+          "tipo": "prueba",
+          "ref": "src/tests/setting.test.ts (11) con proyecto inventado; npm test 340/340; npm run build OK; demo lugar (Playwright) OK, captura 16-lugar-guion-vs-biblia.png"
+        }
+      ],
+      "dependeDe": [
+        "1.3"
+      ],
+      "siguiente": "Probar en la app de Mac recompilada y que el director escoja un camino.",
+      "director": null
+    },
+    {
       "id": "2a",
       "fase": "2",
       "titulo": "Planos: datos, shotsOf y JSON v2",
