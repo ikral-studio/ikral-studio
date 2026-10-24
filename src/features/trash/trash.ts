@@ -1,6 +1,6 @@
 // Papelera: lo borrado se guarda dentro del proyecto (project.trash) para poder recuperarlo.
 import type { BibleItem, Character, Project, Scene, TrashEntry } from '../../types'
-import { prepMediaIds } from '../bible/frames'
+import { sceneMediaIds, shotMediaIds } from '../coverage/shots'
 import { nowIso, uid } from '../../utils'
 
 /** Máximo de cosas en la papelera; las más viejas se van solas. */
@@ -22,6 +22,7 @@ const KIND_LABEL: Record<TrashEntry['kind'], string> = {
   wardrobe: 'Vestuario',
   relation: 'Relación',
   version: 'Video',
+  shot: 'Plano',
 }
 export const trashKindLabel = (e: TrashEntry) => KIND_LABEL[e.kind]
 
@@ -33,6 +34,7 @@ export function trashLabel(e: TrashEntry, project: Project, scenes: Record<strin
     return `${name(e.relation.a)} ↔ ${name(e.relation.b)}${e.relation.label ? ' · ' + e.relation.label : ''}`
   }
   if (e.kind === 'version') return `De la escena «${scenes[e.sceneId]?.title ?? 'que ya no existe'}»`
+  if (e.kind === 'shot') return `${e.shot.name || 'Plano sin nombre'} · escena «${scenes[e.sceneId]?.title ?? 'que ya no existe'}»`
   return e.item.name || 'Sin nombre'
 }
 
@@ -40,6 +42,7 @@ export function trashLabel(e: TrashEntry, project: Project, scenes: Record<strin
 export function trashImage(e: TrashEntry): string | undefined {
   if (e.kind === 'scene') return e.scene.startImageId ?? e.scene.storyboardFrames[0]?.mediaId
   if (e.kind === 'version') return e.version.previewMediaId
+  if (e.kind === 'shot') return e.shot.startImageId ?? e.shot.references?.[0]?.mediaId
   if (e.kind === 'relation') return undefined
   return e.item.imageId ?? e.item.tries?.[0]?.mediaId
 }
@@ -54,21 +57,12 @@ function versionMedia(v: Scene['videoVersions'][number]): string[] {
   return ids
 }
 
-function sceneMedia(s: Scene): string[] {
-  const ids: string[] = []
-  if (s.startImageId) ids.push(s.startImageId)
-  if (s.endImageId) ids.push(s.endImageId)
-  ids.push(...prepMediaIds(s))
-  s.storyboardFrames.forEach((f) => ids.push(f.mediaId))
-  s.videoVersions.forEach((v) => ids.push(...versionMedia(v)))
-  return ids
-}
-
 /** Archivos que usa la papelera (la limpieza automática no los debe borrar). */
 export function trashMediaIds(project: Project): string[] {
   const ids: string[] = []
   for (const e of project.trash ?? []) {
-    if (e.kind === 'scene') ids.push(...sceneMedia(e.scene))
+    if (e.kind === 'scene') ids.push(...sceneMediaIds(e.scene))
+    else if (e.kind === 'shot') ids.push(...shotMediaIds(e.shot))
     else if (e.kind === 'version') ids.push(...versionMedia(e.version))
     else if (e.kind !== 'relation') {
       if (e.item.imageId) ids.push(e.item.imageId)
@@ -96,6 +90,15 @@ export function restoreFromTrash(project: Project, scenes: Record<string, Scene>
     if (!sc) return { error: 'La escena de ese video ya no existe. Recupera primero la escena.' }
     if (sc.videoVersions.some((v) => v.id === e.version.id)) return { error: 'Ese video ya está en la escena.' }
     return { project: p, scenes: { ...scenes, [sc.id]: { ...sc, videoVersions: [...sc.videoVersions, e.version], activeVideoVersionId: sc.activeVideoVersionId ?? e.version.id } } }
+  }
+  if (e.kind === 'shot') {
+    const sc = scenes[e.sceneId]
+    if (!sc) return { error: 'La escena de ese plano ya no existe. Recupera primero la escena.' }
+    const shots = sc.shots ?? []
+    if (shots.some((s) => s.id === e.shot.id)) return { error: 'Ese plano ya está en la escena.' }
+    const list = [...shots].sort((a, b) => a.order - b.order)
+    list.splice(Math.min(e.index, list.length), 0, e.shot)
+    return { project: p, scenes: { ...scenes, [sc.id]: { ...sc, shots: list.map((s, i) => ({ ...s, order: i })), updatedAt: nowIso() } } }
   }
   if (e.kind === 'relation') {
     const has = (id: string) => p.characters?.some((c) => c.id === id)

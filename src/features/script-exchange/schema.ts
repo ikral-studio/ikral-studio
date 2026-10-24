@@ -1,4 +1,5 @@
-// Formato de intercambio de guiones con IA (ChatGPT, Claude…): "ikral-studio-script" v1.
+// Formato de intercambio de guiones con IA (ChatGPT, Claude…): "ikral-studio-script" v1 y v2.
+// v2 = v1 + planos opcionales por escena (`scenes[].shots[]`). Un v1 entra igual que siempre.
 // Solo texto narrativo: nunca archivos, rutas ni IDs internos. No es el respaldo .zip.
 import { z } from 'zod'
 import { cameraIds, cameraIdsForAI } from '../camera/camera'
@@ -6,7 +7,9 @@ import type { CameraCategoryId } from '../camera/library'
 
 export const SCRIPT_FORMAT = 'ikral-studio-script'
 export const SCRIPT_VERSION = 1
-export const LIMITS = { maxChars: 1_000_000, maxScenes: 500, maxText: 5000, maxTitle: 200, maxPronunciations: 50, maxFields: 20, maxFieldName: 40 }
+/** Versión con planos (cobertura). */
+export const SCRIPT_VERSION_SHOTS = 2
+export const LIMITS = { maxChars: 1_000_000, maxScenes: 500, maxText: 5000, maxTitle: 200, maxPronunciations: 50, maxFields: 20, maxFieldName: 40, maxShots: 50 }
 
 const text = z.string().max(LIMITS.maxText, `máximo ${LIMITS.maxText} caracteres`)
 
@@ -51,18 +54,34 @@ const sceneScript = z
   })
   .strict()
 
+const shot = z
+  .object({
+    name: z.string().trim().min(1, 'el plano necesita nombre').max(LIMITS.maxTitle),
+    duration: z.number().min(0.5, 'mínimo 0.5 s').max(600, 'máximo 600 s').default(3),
+    action: text.optional(),
+    dialogueLines: z.array(z.number().int().min(0)).max(200).optional(),
+    sound: text.optional(),
+    continuity: text.optional(),
+    camera: cameraSchema.optional(),
+    cameraDirection: text.optional(),
+    generationPrompt: text.optional(),
+  })
+  .strict()
+
 const scene = z
   .object({
     title: z.string().trim().min(1, 'la escena necesita título').max(LIMITS.maxTitle),
     plannedDuration: z.number().min(0.5, 'mínimo 0.5 s').max(600, 'máximo 600 s').default(8),
     script: sceneScript,
+    /** Solo en version 2. Sin planos = la escena es un solo plano. */
+    shots: z.array(shot).max(LIMITS.maxShots, `máximo ${LIMITS.maxShots} planos`).optional(),
   })
   .strict()
 
 export const scriptFileSchema = z
   .object({
     format: z.literal(SCRIPT_FORMAT, { error: `«format» debe ser "${SCRIPT_FORMAT}"` }),
-    version: z.literal(SCRIPT_VERSION, { error: `«version» debe ser ${SCRIPT_VERSION}` }),
+    version: z.union([z.literal(SCRIPT_VERSION), z.literal(SCRIPT_VERSION_SHOTS)], { error: `«version» debe ser ${SCRIPT_VERSION} o ${SCRIPT_VERSION_SHOTS}` }),
     project: z
       .object({
         title: z.string().trim().min(1, 'falta el título del proyecto').max(LIMITS.maxTitle),
@@ -78,9 +97,16 @@ export const scriptFileSchema = z
     scenes: z.array(scene).min(1, 'no hay escenas').max(LIMITS.maxScenes, `máximo ${LIMITS.maxScenes} escenas`),
   })
   .strict()
+  .superRefine((f, ctx) => {
+    if (f.version !== SCRIPT_VERSION) return
+    f.scenes.forEach((s, i) => {
+      if (s.shots) ctx.addIssue({ code: 'custom', path: ['scenes', i, 'shots'], message: `los planos («shots») solo van con "version": ${SCRIPT_VERSION_SHOTS}` })
+    })
+  })
 
 export type ScriptFile = z.infer<typeof scriptFileSchema>
 export type ImportedScene = ScriptFile['scenes'][number]
+export type ImportedShot = NonNullable<ImportedScene['shots']>[number]
 
 export const EXAMPLE: ScriptFile = {
   format: SCRIPT_FORMAT,
@@ -139,6 +165,11 @@ const FIELD_NAMES: Record<string, string> = {
   transition: 'Transición',
   speed: 'Velocidad',
   customFields: 'Campos extra del proyecto',
+  shots: 'Planos',
+  duration: 'Duración del plano',
+  sound: 'Sonido',
+  continuity: 'Continuidad',
+  dialogueLines: 'Líneas de diálogo',
   style: 'Estilo visual',
   characters: 'Personajes',
   description: 'Descripción',
@@ -151,6 +182,9 @@ function describePath(path: PropertyKey[]): string {
     const p = path[i]
     if (p === 'scenes' && typeof path[i + 1] === 'number') {
       parts.push(`Escena ${(path[i + 1] as number) + 1}`)
+      i++
+    } else if (p === 'shots' && typeof path[i + 1] === 'number') {
+      parts.push(`Plano ${(path[i + 1] as number) + 1}`)
       i++
     } else if (p === 'pronunciations' && typeof path[i + 1] === 'number') {
       parts.push(`Pronunciación ${(path[i + 1] as number) + 1}`)
@@ -213,7 +247,7 @@ export function parseSceneText(raw: string): SceneParseResult {
   }
   const r = scene.safeParse(json)
   if (!r.success) {
-    const wrapped = parseScriptText(JSON.stringify({ format: SCRIPT_FORMAT, version: SCRIPT_VERSION, project: { title: 'x' }, scenes: [json] }))
+    const wrapped = parseScriptText(JSON.stringify({ format: SCRIPT_FORMAT, version: SCRIPT_VERSION_SHOTS, project: { title: 'x' }, scenes: [json] }))
     return wrapped.ok ? { ok: false, errors: ['JSON no válido'] } : { ok: false, errors: wrapped.errors }
   }
   return { ok: true, scene: r.data, customFields: [], hasDuration: 'plannedDuration' in (json as object) }
@@ -259,6 +293,7 @@ ${cameraIdsForAI()}
 - Escribe los nombres comerciales correctamente (por ejemplo "TuApp.digital"); la pronunciación va solo en "pronunciations".
 - NO inventes rutas de imágenes, archivos, enlaces, identificadores internos ni referencias a medios. No agregues campos que no estén aquí.
 - Si más adelante te pido UNA sola escena (por ejemplo, una que faltó), responde con este mismo formato completo pero con un solo elemento en "scenes".
+- PLANOS (opcional, solo si te pido cobertura o varios planos por escena): usa "version": ${SCRIPT_VERSION_SHOTS} y agrega a la escena "shots": lista ordenada de planos. Cada plano: "name" (ej. "Detalle de manos"), "duration" (segundos), y opcionales "action", "sound", "continuity" (nota de continuidad), "cameraDirection", "generationPrompt", "camera" (mismos códigos de arriba) y "dialogueLines" (números de línea del diálogo de la escena que caen en ese plano, desde 0). El guion y los diálogos se quedan en "script" de la escena. Sin planos, usa "version": ${SCRIPT_VERSION}.
 
 Ejemplo válido:
 ${JSON.stringify(example, null, 2)}

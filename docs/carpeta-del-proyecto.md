@@ -42,7 +42,13 @@ Puedes editar `proyecto.json` mientras la app está abierta: la app detecta el c
   - **Regla para Claude: lee siempre las decisiones con `status: 'approved'` y respétalas** en guion, prompts e imágenes. No escribas en escenas de una etapa un objeto cuyo `onlyIn` no la incluya.
   - **Claude nunca aprueba.** Si propones una regla, agrégala con `proposedBy: 'claude'`, `status: 'proposed'`, sin `approvedBy`, y con `updatedAt`. Solo el director la aprueba en la app.
   - Si cambias una escena, actualiza su `updatedAt`; si cambias una decisión, el `updatedAt` de esa decisión (así la app une bien los cambios hechos al mismo tiempo).
-- Papelera: `project.trash` = `[{ id, deletedAt, kind, … }]` (kind `scene` con `scene` e `index`; `characters`/`locations`/`props`/`wardrobe` con `item` y `relations?`; `relation`; `version` con `sceneId` y `version`). Si borras algo, mándalo ahí en vez de perderlo; sus archivos no se limpian.
+- Cobertura (planos dentro de una escena; opcional, una escena sin `shots` es UN plano con sus campos de siempre):
+  - `scenes[].shots` = `[{ id, order, name, duration, action?, dialogueLines?, sound?, continuity?, camera?, cameraDirection?, prep?, startImageId?, endImageId?, generationPrompt?, references?, videoVersions?, activeVideoVersionId?, updatedAt }]`. `references` = fotogramas `{ id, mediaId, order }`; `prep`, `videoVersions` y `camera` igual que en la escena.
+  - El guion (`script.action`, `script.dialogue`), la etapa y los campos extra se quedan en la escena; cada plano lleva sus datos técnicos. Duración de la escena = suma de `duration` de sus planos.
+  - No conviertas escenas tú solo: «Pasar a cobertura» lo decide el director en la app. Si una escena ya tiene `shots`, puedes cambiar sus planos: usa ids nuevos `sh_…` para planos nuevos, no cambies ids existentes y actualiza el `updatedAt` del plano y de la escena (la app une los cambios plano por plano).
+  - Para quitar un plano, mándalo a la papelera (`kind: 'shot'`, `sceneId`, `shot`, `index`) en vez de borrarlo.
+- JSON de guion para IA (`ikral-studio-script`): `version: 1` sin planos (igual que siempre) o `version: 2` con `scenes[].shots[]` (`name`, `duration` y opcionales `action`, `sound`, `continuity`, `cameraDirection`, `generationPrompt`, `camera`, `dialogueLines`). Nunca lleva archivos ni ids.
+- Papelera: `project.trash` = `[{ id, deletedAt, kind, … }]` (kind `scene` con `scene` e `index`; `characters`/`locations`/`props`/`wardrobe` con `item` y `relations?`; `relation`; `version` con `sceneId` y `version`; `shot` con `sceneId`, `shot` e `index`). Si borras algo, mándalo ahí en vez de perderlo; sus archivos no se limpian.
 
 ## Chat con Claude
 

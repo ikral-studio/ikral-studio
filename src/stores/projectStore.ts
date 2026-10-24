@@ -11,6 +11,7 @@ import { cloneScene, createProjectData, createScene, defaultTracks } from '../fe
 import { clipAt, deriveStatus, placedClips, versionClips, withClips } from '../features/script-sync/derive'
 import { createDemoProject } from '../features/projects/demo'
 import { cleanContinuity } from '../features/continuity/continuity'
+import { applyShotText, shotsFromText } from '../features/coverage/shots'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 interface Snapshot {
@@ -994,6 +995,7 @@ export const useProject = create<State>()((set, get) => {
           camera: sc.script.camera,
           extras,
         }
+        if (sc.shots?.length) s.shots = shotsFromText(sc.shots)
         s.status = deriveStatus(s)
         return s
       })
@@ -1049,6 +1051,8 @@ export const useProject = create<State>()((set, get) => {
           camera: data.script.camera ?? scene.script.camera,
           extras,
         },
+        // Planos: cada uno recibe su texto nuevo y conserva sus imágenes y videos.
+        ...(data.shots?.length ? { shots: applyShotText(scene.shots, data.shots) } : {}),
         updatedAt: nowIso(),
       }
       updated.status = deriveStatus(updated)

@@ -3,7 +3,8 @@ import JSZip from 'jszip'
 import { bulkGetMedia, importProjectData } from '../../database/db'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../../types'
 import { extFromMime, nowIso, uid } from '../../utils'
-import { mapPrep, prepMediaIds } from '../bible/frames'
+import { mapPrep } from '../bible/frames'
+import { copyShots, sceneMediaIds } from '../coverage/shots'
 import { bibleMediaIds, mapBibleMedia } from '../bible/items'
 
 const FORMAT = 'ikral-studio-backup'
@@ -20,20 +21,7 @@ interface Manifest {
 export async function exportProjectZip(project: Project, scenes: Scene[]): Promise<Blob> {
   const zip = new JSZip()
   const used = new Set<string>()
-  scenes.forEach((s) => {
-    if (s.startImageId) used.add(s.startImageId)
-    if (s.endImageId) used.add(s.endImageId)
-    prepMediaIds(s).forEach((id) => used.add(id))
-    s.storyboardFrames.forEach((f) => used.add(f.mediaId))
-    s.videoVersions.forEach((v) => {
-      used.add(v.mediaId)
-      if (v.previewMediaId) used.add(v.previewMediaId)
-      v.clips?.forEach((c) => {
-        used.add(c.mediaId)
-        if (c.previewMediaId) used.add(c.previewMediaId)
-      })
-    })
-  })
+  scenes.forEach((s) => sceneMediaIds(s).forEach((id) => used.add(id)))
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
   bibleMediaIds(project).forEach((id) => used.add(id))
   const records = await bulkGetMedia([...used])
@@ -115,6 +103,7 @@ export async function importProjectZip(file: Blob): Promise<string> {
         .filter((f) => mediaMap.has(f.mediaId))
         .map((f) => ({ ...f, id: uid('fr_'), mediaId: mediaMap.get(f.mediaId)! })),
       script: { ...s.script, pronunciations: s.script.pronunciations ?? [] },
+      shots: copyShots(s.shots, mapMedia),
       videoVersions,
       activeVideoVersionId: s.activeVideoVersionId ? vmap.get(s.activeVideoVersionId) : undefined,
     }

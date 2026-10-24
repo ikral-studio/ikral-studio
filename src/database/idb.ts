@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { MediaAsset, MediaRecord, Project, Scene } from '../types'
-import { prepMediaIds } from '../features/bible/frames'
+import { sceneMediaIds } from '../features/coverage/shots'
 import { bibleMediaIds } from '../features/bible/items'
 import { trashMediaIds } from '../features/trash/trash'
 
@@ -119,20 +119,7 @@ export async function deleteProject(id: string) {
 /** Borra los archivos del proyecto que ya ninguna escena usa. */
 export async function collectGarbage(projectId: string, scenes: Scene[], extraUsed?: string[]) {
   const used = new Set<string>()
-  for (const s of scenes) {
-    if (s.startImageId) used.add(s.startImageId)
-    if (s.endImageId) used.add(s.endImageId)
-    prepMediaIds(s).forEach((id) => used.add(id))
-    s.storyboardFrames.forEach((f) => used.add(f.mediaId))
-    s.videoVersions.forEach((v) => {
-      used.add(v.mediaId)
-      if (v.previewMediaId) used.add(v.previewMediaId)
-      v.clips?.forEach((c) => {
-        used.add(c.mediaId)
-        if (c.previewMediaId) used.add(c.previewMediaId)
-      })
-    })
-  }
+  for (const s of scenes) sceneMediaIds(s).forEach((id) => used.add(id))
   extraUsed?.forEach((id) => used.add(id))
   // Los respaldos automáticos también cuentan: si se restaura uno, sus archivos deben seguir ahí.
   const snaps = await db.snapshots.where('projectId').equals(projectId).toArray()
@@ -145,20 +132,7 @@ export async function collectGarbage(projectId: string, scenes: Scene[], extraUs
 
 export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
   const used: string[] = []
-  for (const s of scenes) {
-    if (s.startImageId) used.push(s.startImageId)
-    if (s.endImageId) used.push(s.endImageId)
-    used.push(...prepMediaIds(s))
-    s.storyboardFrames.forEach((f) => used.push(f.mediaId))
-    s.videoVersions.forEach((v) => {
-      used.push(v.mediaId)
-      if (v.previewMediaId) used.push(v.previewMediaId)
-      v.clips?.forEach((c) => {
-        used.push(c.mediaId)
-        if (c.previewMediaId) used.push(c.previewMediaId)
-      })
-    })
-  }
+  for (const s of scenes) used.push(...sceneMediaIds(s))
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
   used.push(...bibleMediaIds(project), ...trashMediaIds(project))
   return used

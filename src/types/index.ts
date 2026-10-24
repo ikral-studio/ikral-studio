@@ -152,6 +152,7 @@ export type TrashEntry = { id: string; deletedAt: string } & (
   | { kind: BibleKind; item: BibleItem | Character; relations?: Relation[] }
   | { kind: 'relation'; relation: Relation }
   | { kind: 'version'; sceneId: string; version: VideoVersion }
+  | { kind: 'shot'; sceneId: string; shot: Shot; index: number }
 )
 
 /** Propuesta de la imagen inicial o final de una escena (Preproducción). */
@@ -270,6 +271,11 @@ export interface Scene {
   prep?: { start?: FramePlan; end?: FramePlan }
   /** Etapa de la historia donde ocurre (id de `project.phases`). */
   phaseId?: string
+  /**
+   * Cobertura: varios planos dentro de la escena. Sin `shots` = un solo plano implícito
+   * armado con los campos de la escena (léelos siempre con `shotsOf(scene)`).
+   */
+  shots?: Shot[]
   storyboardFrames: StoryboardFrame[]
   script: SceneScript
   videoVersions: VideoVersion[]
@@ -279,6 +285,38 @@ export interface Scene {
   reviewed: boolean
   collapsed: boolean
   createdAt: string
+  updatedAt: string
+}
+
+/** Un plano de la cobertura. La escena guarda guion y diálogos; el plano, sus datos técnicos. */
+export interface Shot {
+  /** Estable: no cambia al reordenar. */
+  id: string
+  order: number
+  /** Nombre corto (ej.: «Detalle de manos»). */
+  name: string
+  /** Segundos. */
+  duration: number
+  /** Qué pasa en este plano. */
+  action?: string
+  /** Líneas del diálogo de la escena que caen en este plano (índices desde 0). */
+  dialogueLines?: number[]
+  sound?: string
+  /** Nota de continuidad (ej.: «la carne ya está volteada»). */
+  continuity?: string
+  camera?: CameraSpec
+  /** Texto libre de cámara (encuadre, movimiento). */
+  cameraDirection?: string
+  prep?: { start?: FramePlan; end?: FramePlan }
+  startImageId?: string
+  endImageId?: string
+  /** Prompt de video propio del plano. */
+  generationPrompt?: string
+  /** Fotogramas de referencia (los «Fotogramas intermedios» de hoy). */
+  references?: StoryboardFrame[]
+  videoVersions?: VideoVersion[]
+  activeVideoVersionId?: string
+  /** Para unir cambios plano por plano (Claude y la app a la vez). */
   updatedAt: string
 }
 

@@ -2,6 +2,8 @@
 // (por ejemplo, Claude escribió proyecto.json mientras David seguía editando en la app).
 // Regla: por escena gana la versión editada más recientemente; lo que uno agregó o borró se respeta.
 import type { Project, Scene } from '../types'
+import { mergeShots } from '../features/coverage/shots'
+import { addToTrash } from '../features/trash/trash'
 
 export interface ProjectData {
   project: Project
@@ -59,11 +61,19 @@ export function mergeProjects(base: ProjectData | null, disk: ProjectData, local
   }
   ids = ids.filter((id) => !deletedLocal.has(id) && !deletedDisk.has(id) && (localMap.has(id) || diskMap.has(id)))
 
+  const baseScenes = new Map(base.scenes.map((s) => [s.id, s]))
+  const lostShots: { sceneId: string; shot: NonNullable<Scene['shots']>[number]; index: number }[] = []
   const scenes = ids.map((id) => {
     const l = localMap.get(id)
     const d = diskMap.get(id)
-    if (l && d) return later(l.updatedAt, d.updatedAt) ? l : d
-    return (l ?? d)!
+    if (!l || !d) return (l ?? d)!
+    const localNewer = later(l.updatedAt, d.updatedAt)
+    const win = localNewer ? l : d
+    if (!l.shots && !d.shots) return win
+    // Los planos se unen uno por uno: si Claude cambió el plano 2 y la app el 4, se quedan los dos.
+    const { shots, conflicts } = mergeShots(baseScenes.get(id)?.shots, d.shots, l.shots, localNewer)
+    conflicts.forEach((shot) => lostShots.push({ sceneId: id, shot, index: shot.order }))
+    return { ...win, ...(shots ? { shots } : {}) }
   })
 
   // Datos del proyecto (título, estilo, música…): gana el más reciente, pero con el orden unido.
@@ -72,5 +82,8 @@ export function mergeProjects(base: ProjectData | null, disk: ProjectData, local
   // Etapas y decisiones se unen una por una, para que lo que agregó Claude no se pierda.
   const phases = mergeById(base.project.phases, disk.project.phases, local.project.phases, localWins)
   const decisions = mergeById(base.project.decisions, disk.project.decisions, local.project.decisions, localWins)
-  return { project: { ...proj, sceneIds: ids, ...(phases ? { phases } : {}), ...(decisions ? { decisions } : {}) }, scenes }
+  let project: Project = { ...proj, sceneIds: ids, ...(phases ? { phases } : {}), ...(decisions ? { decisions } : {}) }
+  // Si los dos cambiaron el mismo plano, la versión que perdió se guarda en la papelera.
+  for (const x of lostShots) project = { ...project, trash: addToTrash(project, { kind: 'shot', ...x }) }
+  return { project, scenes }
 }

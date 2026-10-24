@@ -24,7 +24,7 @@ describe('formato para IA', () => {
     const bad = JSON.parse(sample)
     bad.scenes[1].script.dialogue = 42
     bad.scenes[0].startImage = '/Users/x/foto.png'
-    bad.version = 2
+    bad.version = 3
     const r = parseScriptText(JSON.stringify(bad))
     expect(r.ok).toBe(false)
     const errs = (r as { errors: string[] }).errors.join('\n')

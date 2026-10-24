@@ -1,6 +1,7 @@
 import type { AudioTrack, Project, Scene, SceneScript } from '../../types'
 import { nowIso, uid } from '../../utils'
 import { deriveStatus } from '../script-sync/derive'
+import { copyShots } from '../coverage/shots'
 
 export const emptyScript = (): SceneScript => ({
   action: '',
@@ -53,6 +54,7 @@ export function cloneScene(src: Scene): Scene {
     },
     videoVersions: versions,
     activeVideoVersionId: src.activeVideoVersionId ? idMap.get(src.activeVideoVersionId) : undefined,
+    shots: copyShots(src.shots),
     reviewed: false,
     createdAt: t,
     updatedAt: t,
