@@ -29,8 +29,10 @@ const read = (f, d) => {
   }
 }
 const write = (f, data) => {
-  writeFileSync(f + '.tmp', JSON.stringify(data, null, 2))
-  renameSync(f + '.tmp', f)
+  // Temporal único: si otra sesión también escucha, no chocan.
+  const tmp = `${f}.${process.pid}.tmp`
+  writeFileSync(tmp, JSON.stringify(data, null, 2))
+  renameSync(tmp, f)
 }
 
 /** Si la lectura en voz alta (/hablar) está prendida en esta Mac, también lee la respuesta del chat. */
@@ -85,7 +87,13 @@ if (cmd === 'escuchar') {
       }
     }
     if (Date.now() - beat > 20000) {
-      targets().forEach((d) => touchOf(d))
+      targets().forEach((d) => {
+        try {
+          touchOf(d)
+        } catch {
+          // Un latido fallido no detiene la escucha.
+        }
+      })
       beat = Date.now()
     }
   }, 1500)
