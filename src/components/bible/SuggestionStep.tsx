@@ -49,7 +49,7 @@ function IdeaBox({ names }: { names: string[] }) {
       {isDesktop() ? (
         suggesting ? (
           <div className="flex items-center gap-2 text-[14px] text-[#ddd6fe]">
-            <Loader2 size={16} className="animate-spin" /> Claude está generando los personajes… aparecerán aquí.
+            <Loader2 size={16} className="animate-spin" /> Claude está generando los personajes y las locaciones… aparecerán aquí.
             <button className="btn btn-sm btn-ghost" onClick={() => useProject.getState().setBible({ suggesting: false })}>
               Cancelar espera
             </button>

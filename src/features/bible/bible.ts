@@ -168,8 +168,12 @@ export function applyItemSuggestion(p: Project, kind: ItemKind, name?: string): 
   const list: BibleItem[] = [...(p[kind] ?? [])]
   for (const s of take) {
     const i = list.findIndex((it) => key(it.name) === key(s.name))
-    if (i >= 0) list[i] = { ...list[i], description: list[i].description || s.description, note: list[i].note || s.note }
-    else list.push({ id: uid(kind === 'locations' ? 'loc_' : kind === 'props' ? 'obj_' : 'ves_'), name: s.name.trim(), description: s.description, ...(s.note ? { note: s.note } : {}) })
+    const old: BibleItem = i >= 0 ? list[i] : { id: uid(kind === 'locations' ? 'loc_' : kind === 'props' ? 'obj_' : 'ves_'), name: s.name.trim(), description: '' }
+    const tries = s.imageId && !old.tries?.some((t) => t.mediaId === s.imageId) ? [...(old.tries ?? []), { id: uid('try_'), mediaId: s.imageId, at: new Date().toISOString() }] : old.tries
+    const note = old.note || s.note
+    const next: BibleItem = { ...old, description: old.description || s.description, ...(note ? { note } : {}), ...(s.imageId && !old.imageId ? { imageId: s.imageId } : {}), ...(tries ? { tries } : {}) }
+    if (i >= 0) list[i] = next
+    else list.push(next)
   }
   const rest = all.filter((s) => !take.includes(s))
   const itemSuggestions = { ...p.itemSuggestions, [kind]: rest.length ? rest : undefined }

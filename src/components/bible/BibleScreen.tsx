@@ -235,7 +235,7 @@ export function BibleScreen() {
               </Question>
               <hr className="border-line" />
               <Question icon={<Wand2 size={17} />} title="Crear propuesta visual">
-                <p className="-mt-1 text-[13.5px] text-ink-3">Escribe la idea y Claude propone cómo se ve cada personaje, con su imagen.</p>
+                <p className="-mt-1 text-[13.5px] text-ink-3">Escribe la idea y Claude propone cómo se ve cada personaje y cada locación, con su imagen.</p>
                 <SuggestionStep names={found.map((c) => c.name)} />
               </Question>
               <hr className="border-line" />

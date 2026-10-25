@@ -195,6 +195,8 @@ export interface ItemSuggestion {
   name: string
   note?: string
   description: string
+  /** Imagen de prueba que hizo Claude con ChatGPT (al aceptar pasa a la ficha, como con los personajes). */
+  imageId?: string
 }
 
 export interface Relation {

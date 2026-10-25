@@ -52,6 +52,19 @@ describe('biblia del proyecto', () => {
     expect(all.itemSuggestions?.locations).toBeUndefined()
   })
 
+  it('la imagen de una locación sugerida pasa a la ficha al aceptarla', () => {
+    const q = { ...p, locations: [{ id: 'l1', name: 'Cocina', description: '', imageId: 'canon' }], itemSuggestions: { locations: [
+      { name: 'Cocina', description: 'cocina', imageId: 'img1' },
+      { name: 'Calle', description: 'banqueta', imageId: 'img2' },
+    ] } }
+    const r = applyItemSuggestion(q, 'locations')
+    const [cocina, calle] = r.locations ?? []
+    expect(cocina.imageId).toBe('canon')
+    expect(cocina.tries?.map((t) => t.mediaId)).toEqual(['img1'])
+    expect(calle.imageId).toBe('img2')
+    expect(calle.tries?.map((t) => t.mediaId)).toEqual(['img2'])
+  })
+
   it('el guion da contexto de cada personaje', () => {
     s1.script.action = 'Ana entra cargando bolsas. Llueve.'
     const ctx = characterContext('ana', [s1, s2])

@@ -83,7 +83,8 @@ export async function requestSuggestion(names: string[]) {
     text: `💡 Sugiere cómo se ve cada personaje (${names.join(', ')}) con el estilo de la Biblia${idea ? `. Idea: «${idea}»` : ''}, y haz su imagen con ChatGPT.`,
     request: { type: 'character-suggestions', names, idea },
   })
-  toast('Pedido enviado a Claude por el chat 💡')
+  await requestItemSuggestions('locations', true)
+  toast('Pedido enviado a Claude: personajes y locaciones, con su imagen 💡')
 }
 
 /** Preproducción: pedir a Claude una prueba de la imagen inicial o final de una escena (la hace con Codex/ChatGPT). */
@@ -154,18 +155,18 @@ export async function requestItemPreview(kind: 'locations' | 'props' | 'wardrobe
 }
 
 /** Biblia: pedir a Claude que lea el guion y sugiera las locaciones (u objetos, vestuario). Llegan como sugerencia para aceptar. */
-export async function requestItemSuggestions(kind: ItemKind) {
+export async function requestItemSuggestions(kind: ItemKind, images = false) {
   const { project, setBible } = useProject.getState()
   if (!project || !isDesktop()) return
-  if (!project.sceneIds.length) return toast('Primero carga el guion para que Claude lo lea', 'info')
+  if (!project.sceneIds.length) return images ? undefined : toast('Primero carga el guion para que Claude lo lea', 'info')
   const what = kind === 'locations' ? '📍 las locaciones (escenarios)' : kind === 'props' ? '📦 los objetos importantes' : '👕 el vestuario de cada personaje'
   setBible({ suggestingItems: [...new Set([...(project.bible?.suggestingItems ?? []), kind])] })
   await sendChat(project.id, {
     id: uid('msg_'),
     from: 'user',
     at: new Date().toISOString(),
-    text: `✨ Lee el guion (${project.sceneIds.length} escenas) y sugiere ${what} con el estilo de la Biblia.`,
-    request: { type: 'item-suggestions', kind },
+    text: `✨ Lee el guion (${project.sceneIds.length} escenas) y sugiere ${what} con el estilo de la Biblia${images ? ', y haz la imagen de cada una con ChatGPT' : ''}.`,
+    request: { type: 'item-suggestions', kind, ...(images ? { images: true } : {}) },
   })
-  toast('Pedido enviado a Claude. Las sugerencias aparecerán aquí ✨')
+  if (!images) toast('Pedido enviado a Claude. Las sugerencias aparecerán aquí ✨')
 }

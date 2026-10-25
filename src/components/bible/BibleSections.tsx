@@ -105,6 +105,16 @@ export function CharactersSection() {
   )
 }
 
+/** Imagen de prueba de una sugerencia. */
+function SuggestionThumb({ id, name }: { id: string; name: string }) {
+  const url = useMediaUrl(id)
+  return (
+    <div className="flex aspect-video w-[120px] shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-bg text-[12px] text-ink-3">
+      {url ? <img src={url} alt={`Sugerencia de ${name}`} className="h-full w-full object-cover" /> : 'Sin imagen'}
+    </div>
+  )
+}
+
 /** Lo que Claude sugirió sacando del guion: aceptar una, todas o descartar. Mientras llega, una ruedita. */
 function ItemSuggestions({ kind }: { kind: ItemKind }) {
   const list = useProject((s) => s.project?.itemSuggestions?.[kind])
@@ -127,6 +137,7 @@ function ItemSuggestions({ kind }: { kind: ItemKind }) {
       <ul className="flex flex-col gap-1.5">
         {list.map((it, i) => (
           <li key={i} className="flex items-start gap-3 rounded-[10px] border border-line bg-card p-2.5">
+            {it.imageId && <SuggestionThumb id={it.imageId} name={it.name} />}
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <input
