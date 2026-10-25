@@ -18,6 +18,7 @@ import { toast, useUI } from '../../stores/uiStore'
 import type { AudioClip, AudioTrack } from '../../types'
 import { accentFor } from '../common/StatusChip'
 import { GptEditToggle } from '../gpt/GptEditPanel'
+import { AssistantSlot } from '../gpt/AssistantSlot'
 
 const MIN_W = 76
 const LABEL_W = 184
@@ -413,6 +414,7 @@ export function Timeline() {
           </button>
         </div>
         <GptEditToggle />
+        <AssistantSlot />
         <div className="ml-auto flex items-center gap-1">
           <span className="mr-1 text-[11.5px] text-ink-3">Zoom</span>
           <button className="icon-btn sm" onClick={() => setPps((p) => clamp(p / 1.4, 4, 200))} aria-label="Alejar">

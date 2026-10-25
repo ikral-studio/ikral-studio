@@ -1,4 +1,4 @@
-// Ventanita de Claude que se abre con el botón «Claude» (abajo a la izquierda), en cualquier vista.
+// Ventanita de Claude que se abre con el botón «Claude» (en la barra de la línea de tiempo o abajo a la izquierda).
 // Mismo estilo que el aviso «Claude te escribió»: lo último de la plática y una cajita para escribirle.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -7,7 +7,8 @@ import { useProject } from '../../stores/projectStore'
 import { onChatChange, readChat, sendChat, type ChatMessage } from '../../database/db'
 import { pad2, uid } from '../../utils'
 
-export function ClaudeQuick({ onClose }: { onClose: () => void }) {
+/** docked: el botón está en la barra de la línea de tiempo; la ventanita se abre arriba a la derecha para no tapar las pistas. */
+export function ClaudeQuick({ onClose, docked = false }: { onClose: () => void; docked?: boolean }) {
   const projectId = useProject((s) => s.project?.id)
   const selected = useProject((s) => s.selectedSceneId)
   const sceneLabel = useProject((s) => {
@@ -51,7 +52,7 @@ export function ClaudeQuick({ onClose }: { onClose: () => void }) {
   }
 
   return createPortal(
-    <div className="no-print fixed bottom-[76px] left-5 z-[80] flex w-[min(400px,calc(100vw-32px))] flex-col gap-2 rounded-[14px] border border-[#7c3aed]/70 bg-card p-3 shadow-2xl shadow-black/60" role="region" aria-label="Ventanita de Claude">
+    <div className={`no-print fixed ${docked ? 'right-5 top-16' : 'bottom-[76px] left-5'} z-[80] flex w-[min(400px,calc(100vw-32px))] flex-col gap-2 rounded-[14px] border border-[#7c3aed]/70 bg-card p-3 shadow-2xl shadow-black/60`} role="region" aria-label="Ventanita de Claude">
       <div className="flex items-center gap-2">
         <Sparkles size={15} className="text-[#c4b5fd]" />
         <span className="flex-1 text-[13px] font-semibold">Claude</span>
