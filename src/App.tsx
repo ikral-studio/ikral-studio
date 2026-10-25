@@ -18,7 +18,7 @@ import { ClaudeChat } from './components/chat/ClaudeChat'
 import { BibleScreen } from './components/bible/BibleScreen'
 import { HomeScreen } from './components/home/HomeScreen'
 import { isDesktop } from './database/db'
-import { GptFloat } from './components/gpt/GptFloat'
+import { GptBridge } from './components/gpt/GptBridge'
 import { startTabGuard } from './features/session/tabGuard'
 import { clamp } from './utils'
 
@@ -231,7 +231,7 @@ export default function App() {
       <ConfirmDialog />
       <Lightbox />
       <FullScreenImage />
-      {isDesktop() && hasProject && <GptFloat />}
+      {isDesktop() && <GptBridge />}
       <Toasts />
       <PausedOverlay />
     </>

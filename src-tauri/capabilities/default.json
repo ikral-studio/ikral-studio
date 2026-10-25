@@ -3,10 +3,12 @@
   "identifier": "default",
   "description": "Permisos de IKRAL Studio: tu carpeta de usuario y los discos externos (para guardar bibliotecas .ikral donde quieras)",
   "windows": [
-    "main"
+    "main",
+    "gpt"
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-set-always-on-top",
     "dialog:default",
     "drag:default",
     {

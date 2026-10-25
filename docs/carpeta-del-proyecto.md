@@ -116,12 +116,13 @@ En la línea de tiempo, el botón «Consultar GPT» abre un panel donde GPT revi
 - GPT responde con el esquema `src/features/gpt/schemas/edit.json` (máximo 10 propuestas): mover una escena, cambiar la duración de una escena (solo si no tiene cobertura), mover un plano o cambiar su duración. Escenas o planos que no existen, cambios que no cambian nada o duraciones malas se ignoran.
 - Aceptar usa las acciones normales (se deshace con ⌘Z y se guarda). Deshacer no pisa lo que editaste después. También: Editar, Descartar y Pedir a Claude. Si el orden o la duración cambió, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. No corta ni recorta videos.
 
-## Ventanita flotante de GPT
+## Ventana de GPT (ventana aparte de la Mac)
 
-- Botón «GPT» abajo a la izquierda (solo en la app de Mac, con un proyecto abierto). Abre una ventanita que se arrastra desde su barra, se minimiza (−, o doble clic en la barra) y queda encima de todas las vistas.
-- Plática libre: GPT ve el proyecto, el estilo, las etapas, las decisiones APROBADAS, la Biblia, las escenas en orden (acción y diálogos recortados) y cuál escena está abierta. No cambia nada.
-- Se guarda en `gpt-hilos.json` con `section: "chat"` y `sceneId: "project"`. «+» empieza otra conversación. 🔊 lee la respuesta en voz alta.
-- Posición y si está abierta o minimizada: en el navegador de la app (`ikral-studio:gpt-flotante`).
+- Botón «GPT» abajo a la izquierda (solo en la app de Mac, con un proyecto abierto). Abre una ventana de Mac propia (label `gpt`, comando `abrir_ventana_gpt`): se mueve, se cambia de tamaño y se minimiza como cualquier ventana. Si ya está abierta, el botón solo la trae al frente (nunca hay dos).
+- 📌 la deja siempre al frente (encendido por defecto; se recuerda en `ikral-studio:gpt-al-frente`). Al cerrar IKRAL Studio se cierra también.
+- La conversación vive en la ventana principal (`GptBridge`): ahí se consulta a GPT y se guarda. La ventana de GPT (`GptWindow`) solo muestra y pide, con eventos `gpt-chat:*` (`src/features/gpt/chatWindow.ts`).
+- Plática libre: GPT ve el proyecto, el estilo, las etapas, las decisiones APROBADAS, la Biblia y las escenas en orden. La casilla «Sobre Escena N» le dice cuál está abierta; sin marcar, habla del proyecto entero. No cambia nada.
+- Se guarda en `gpt-hilos.json` con `section: "chat"` y `sceneId: "project"`. «+» empieza otra conversación; con varias, se escogen arriba. 🔊 lee la respuesta. Para dictar: el dictado de la Mac en el cuadro de texto.
 
 ## Biblia de Producción PDF
 

@@ -58,6 +58,28 @@ fn bibliotecas_pendientes(state: tauri::State<Pendientes>) -> Vec<String> {
   std::mem::take(&mut *state.0.lock().unwrap())
 }
 
+/// Ventana aparte de GPT (como la de Claude Code): se mueve, se achica, se minimiza y queda al frente.
+/// Si ya existe, solo se muestra; nunca se abren dos.
+#[tauri::command]
+async fn abrir_ventana_gpt(app: tauri::AppHandle) -> Result<(), String> {
+  use tauri::Manager;
+  if let Some(w) = app.get_webview_window("gpt") {
+    let _ = w.unminimize();
+    w.show().map_err(|e| e.to_string())?;
+    w.set_focus().map_err(|e| e.to_string())?;
+    return Ok(());
+  }
+  tauri::WebviewWindowBuilder::new(&app, "gpt", tauri::WebviewUrl::App("index.html".into()))
+    .title("GPT · IKRAL Studio")
+    .inner_size(420.0, 620.0)
+    .min_inner_size(320.0, 280.0)
+    .resizable(true)
+    .always_on_top(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -65,7 +87,18 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_drag::init())
     .manage(Pendientes::default())
-    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder, gpt::consultar_gpt])
+    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder, gpt::consultar_gpt, abrir_ventana_gpt])
+    .on_window_event(|window, event| {
+      // Al cerrar la ventana principal, se cierra también la de GPT (si no, la app no termina).
+      use tauri::Manager;
+      if window.label() == "main" {
+        if let tauri::WindowEvent::Destroyed = event {
+          if let Some(w) = window.app_handle().get_webview_window("gpt") {
+            let _ = w.close();
+          }
+        }
+      }
+    })
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

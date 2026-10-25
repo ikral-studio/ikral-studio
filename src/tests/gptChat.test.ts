@@ -110,3 +110,16 @@ describe('ventanita de GPT · respuesta', () => {
     expect(mergeSection([edit], [chat], 'chat').map((t) => t.section).sort()).toEqual(['chat', 'edit'])
   })
 })
+
+describe('ventana aparte de GPT', () => {
+  it('reconoce la ventana «gpt» y no la principal', async () => {
+    const { isGptWindow } = await import('../features/gpt/chatWindow')
+    const w = window as unknown as Record<string, unknown>
+    expect(isGptWindow()).toBe(false)
+    w.__TAURI_INTERNALS__ = { metadata: { currentWindow: { label: 'main' } } }
+    expect(isGptWindow()).toBe(false)
+    w.__TAURI_INTERNALS__ = { metadata: { currentWindow: { label: 'gpt' } } }
+    expect(isGptWindow()).toBe(true)
+    delete w.__TAURI_INTERNALS__
+  })
+})
