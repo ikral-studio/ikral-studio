@@ -82,7 +82,7 @@ export function ConfirmDialog() {
         </>
       }
     >
-      <p className="text-[13px] leading-relaxed text-ink-2">{req.body}</p>
+      <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink-2">{req.body}</p>
     </Modal>
   )
 }

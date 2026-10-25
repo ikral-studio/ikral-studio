@@ -1,7 +1,8 @@
 // Pedidos a Claude desde botones de la app (van por el chat; Claude los atiende con su propio Claude Code).
 import { useProject } from '../../stores/projectStore'
 import { isDesktop, sendChat } from '../../database/db'
-import { toast } from '../../stores/uiStore'
+import { askConfirm, toast } from '../../stores/uiStore'
+import { missingRefs } from './missingRefs'
 import { pad2, uid } from '../../utils'
 import { charactersInScene } from '../project-style/style'
 import type { ItemKind } from '../../types'
@@ -38,6 +39,15 @@ export async function requestImages(sceneIds: string[]) {
   const { project, scenes } = useProject.getState()
   if (!project || !isDesktop()) return
   if (!sceneIds.length) return toast('Todas las escenas ya tienen imagen inicial y final 👍', 'info')
+  const missing = missingRefs(project, sceneIds.map((id) => scenes[id]).filter(Boolean))
+  if (missing.length) {
+    const ok = await askConfirm({
+      title: 'Oye, te faltan imágenes de referencia',
+      body: `Sin ellas, ChatGPT inventa cómo se ven o deja las pantallas en blanco:\n\n${missing.map((m) => `• ${m}`).join('\n')}\n\nAgrégalas en la Biblia antes de generar.`,
+      confirmLabel: 'Generar de todos modos',
+    })
+    if (!ok) return
+  }
   const label = (id: string) => `Escena ${pad2(project.sceneIds.indexOf(id) + 1)} · ${scenes[id]?.title ?? ''}`
   const one = sceneIds.length === 1
   await sendChat(project.id, {
