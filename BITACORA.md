@@ -1,3 +1,9 @@
+2026-10-24 20:50 · IKRAL Studio · Instalada en la Mac (Generar con locaciones)
+- Cambiado: [código] /Applications/IKRAL Studio.app — Generar también hace locaciones con imagen.
+- Publicado: no.
+- Commit: 696016e
+- Pendiente: nada.
+
 2026-10-24 20:49 · IKRAL Studio · Generar también hace las locaciones
 - Cambiado: [código] src/features/chat/requests.ts — Generar (paso 5) pide personajes y locaciones con imagen.
 - Agregado: [código] BibleSections.tsx — miniatura en cada locación sugerida.
