@@ -140,3 +140,11 @@
 - Publicado: no.
 - Commit: efe5f54
 - Pendiente: el director escoge restaurante o food truck; recompilar app de Mac.
+
+2026-10-25 07:13 · IKRAL Studio · Aviso de referencias faltantes al generar
+- Agregado: [código] src/features/chat/missingRefs.ts — revisa personajes, lugares, objetos y pantallas (celular, tablet, monitor, QR) sin imagen.
+- Cambiado: [código] requests.ts — «Generar» avisa qué falta y deja cancelar o generar de todos modos.
+- Agregado: [código] src/tests/missingRefs.test.ts — 2 pruebas (357 pasan).
+- Publicado: no.
+- Commit: c729c6e
+- Pendiente: instalar en la Mac (con «si» de Kyo).
