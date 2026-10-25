@@ -8,7 +8,7 @@ import type { ScriptProposal } from './script'
  * «coverage» = cobertura de una escena (sceneId = la escena) o un plano (sceneId = «<escena>#<plano>»).
  * «edit» = edición de toda la película: ritmo, orden y duración (sceneId = «project»).
  */
-export type GptSection = 'script' | 'bible' | 'coverage' | 'edit'
+export type GptSection = 'script' | 'bible' | 'coverage' | 'edit' | 'chat'
 
 export type GptProposalStatus = 'pending' | 'accepted' | 'discarded' | 'asked-claude'
 

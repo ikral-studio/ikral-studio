@@ -116,6 +116,13 @@ En la línea de tiempo, el botón «Consultar GPT» abre un panel donde GPT revi
 - GPT responde con el esquema `src/features/gpt/schemas/edit.json` (máximo 10 propuestas): mover una escena, cambiar la duración de una escena (solo si no tiene cobertura), mover un plano o cambiar su duración. Escenas o planos que no existen, cambios que no cambian nada o duraciones malas se ignoran.
 - Aceptar usa las acciones normales (se deshace con ⌘Z y se guarda). Deshacer no pisa lo que editaste después. También: Editar, Descartar y Pedir a Claude. Si el orden o la duración cambió, avisa «Esto cambió desde que GPT lo propuso» y pide confirmar. No corta ni recorta videos.
 
+## Ventanita flotante de GPT
+
+- Botón «GPT» abajo a la izquierda (solo en la app de Mac, con un proyecto abierto). Abre una ventanita que se arrastra desde su barra, se minimiza (−, o doble clic en la barra) y queda encima de todas las vistas.
+- Plática libre: GPT ve el proyecto, el estilo, las etapas, las decisiones APROBADAS, la Biblia, las escenas en orden (acción y diálogos recortados) y cuál escena está abierta. No cambia nada.
+- Se guarda en `gpt-hilos.json` con `section: "chat"` y `sceneId: "project"`. «+» empieza otra conversación. 🔊 lee la respuesta en voz alta.
+- Posición y si está abierta o minimizada: en el navegador de la app (`ikral-studio:gpt-flotante`).
+
 ## Biblia de Producción PDF
 
 El botón «Portafolio PDF» de la barra de arriba abre dos opciones (en la web y en la Mac):

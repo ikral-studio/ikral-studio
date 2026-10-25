@@ -13,6 +13,8 @@ import coverageSchemaText from './schemas/coverage.json?raw'
 import { buildCoveragePacket, parseCoverageResponse, toCoverageProposals, type CoverageThread } from './coverage'
 import editSchemaText from './schemas/edit.json?raw'
 import { buildEditPacket, parseEditResponse, toEditProposals, type EditThread } from './edit'
+import chatSchemaText from './schemas/chat.json?raw'
+import { buildChatPacket, parseChatResponse, type ChatThread } from './chat'
 import { addMessage, type GptThread } from './threads'
 
 /** Tiempo máximo de una consulta. */
@@ -168,6 +170,25 @@ export async function runEditConsult(project: Project, ordered: Scene[], thread:
     let next = addMessage(thread, { from: 'director', text: request.trim() })
     next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim(), proposals: toEditProposals(parsed.data, ordered) })
     return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary, seen: packet.seen } }
+  } catch (e) {
+    const kind = classifyGptError(e)
+    return { ok: false, kind, message: GPT_ERROR_TEXT[kind] }
+  }
+}
+
+export type ChatConsultResult = { ok: true; thread: ChatThread } | { ok: false; kind: GptErrorKind; message: string }
+
+/** Un mensaje del director en la ventanita flotante. Devuelve el hilo con el mensaje y la respuesta. Si falla, el hilo queda igual. */
+export async function runChatConsult(project: Project, ordered: Scene[], thread: ChatThread, request: string, current?: string | null, deps: GptDeps = defaultDeps): Promise<ChatConsultResult> {
+  if (!deps.desktop()) return { ok: false, kind: 'web', message: GPT_ERROR_TEXT.web }
+  const prompt = buildChatPacket(project, ordered, thread, request, current)
+  try {
+    const raw = await deps.consult({ prompt, schema: chatSchemaText, images: [], timeoutSecs: GPT_TIMEOUT_SECS })
+    const parsed = parseChatResponse(raw)
+    if (!parsed.ok) return { ok: false, kind: 'bad-format', message: GPT_ERROR_TEXT['bad-format'] }
+    let next = addMessage(thread, { from: 'director', text: request.trim() })
+    next = addMessage(next, { from: 'gpt', text: parsed.data.respuesta.trim() })
+    return { ok: true, thread: { ...next, summary: parsed.data.resumen_hilo.trim() || thread.summary } }
   } catch (e) {
     const kind = classifyGptError(e)
     return { ok: false, kind, message: GPT_ERROR_TEXT[kind] }

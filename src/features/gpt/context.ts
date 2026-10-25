@@ -49,7 +49,7 @@ const short = (text: string | undefined, max = 220) => {
 }
 
 /** Todas las fichas de la Biblia con su descripción corta (sin prompts ni imágenes). */
-function bibleLines(project: Project): string {
+export function bibleLines(project: Project): string {
   const groups: [string, { name: string; description?: string }[] | undefined][] = [
     ['Personaje', project.characters],
     ['Locación', project.locations],

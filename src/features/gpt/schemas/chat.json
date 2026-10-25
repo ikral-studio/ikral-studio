@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["respuesta", "resumen_hilo"],
+  "properties": {
+    "respuesta": { "type": "string" },
+    "resumen_hilo": { "type": "string" }
+  }
+}
