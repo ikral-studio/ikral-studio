@@ -1,3 +1,11 @@
+2026-10-24 21:23 · IKRAL Studio · Botón GPT | Claude en la barra
+- Agregado: [código] src/components/gpt/AssistantSlot.tsx — hueco en la barra de la línea de tiempo.
+- Cambiado: [código] GptBridge.tsx y ClaudeQuick.tsx — el botón va junto a «Consultar GPT»; la ventanita de Claude abre arriba a la derecha.
+- Arreglado: el botón flotante tapaba las pistas de música.
+- Publicado: no.
+- Commit: 102a126
+- Pendiente: instalar en la Mac.
+
 2026-10-24 20:50 · IKRAL Studio · Instalada en la Mac (Generar con locaciones)
 - Cambiado: [código] /Applications/IKRAL Studio.app — Generar también hace locaciones con imagen.
 - Publicado: no.
