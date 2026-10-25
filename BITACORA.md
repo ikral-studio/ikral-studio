@@ -1,3 +1,12 @@
+2026-10-24 18:22 · IKRAL Studio · Ventana aparte de GPT
+- Agregado: [código] src/components/gpt/GptWindow.tsx — ventana de Mac propia para platicar con GPT.
+- Agregado: [código] src/components/gpt/GptBridge.tsx y src/features/gpt/chatWindow.ts — botón «GPT» y puente con la principal.
+- Cambiado: [código] src-tauri/src/lib.rs — comando abrir_ventana_gpt (una sola, siempre al frente; se cierra con la app).
+- Quitado: [código] src/components/gpt/GptFloat.tsx.
+- Publicado: no.
+- Commit: 0af90f4
+- Pendiente: instalar en la Mac; asistente con cambios Antes→Después; arreglar prompt mixto Escena 03.
+
 2026-10-24 18:18 · IKRAL Studio · Ventanita flotante de GPT
 - Agregado: [diseño] src/components/gpt/GptFloat.tsx — ventanita de GPT que se arrastra, se minimiza y queda encima en todas las vistas (estilo del aviso de Claude).
 - Agregado: [asistente] src/features/gpt/chat.ts y schemas/chat.json — plática libre: GPT ve guion, Biblia y decisiones aprobadas; no cambia nada.
