@@ -6,6 +6,8 @@
   <string>IKRAL Studio usa el micrófono para que le hables a Claude en el chat.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>IKRAL Studio convierte tu voz en texto para el chat con Claude.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>IKRAL Studio guarda y abre tus proyectos en la carpeta Documentos.</string>
   <key>NSAppleEventsUsageDescription</key>
   <string>IKRAL Studio abre la Terminal para que Claude empiece a escuchar el chat.</string>
   <key>UTExportedTypeDeclarations</key>

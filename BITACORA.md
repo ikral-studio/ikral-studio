@@ -154,3 +154,10 @@
 - Publicado: no.
 - Commit: c729c6e
 - Pendiente: nada.
+
+2026-10-25 11:12 · IKRAL Studio · Permiso de Documentos en la app
+- Arreglado: la app instalada no podía abrir proyectos en Documentos («Operation not permitted») porque macOS no tenía texto para pedir permiso.
+- Agregado: [código] src-tauri/Info.plist — NSDocumentsFolderUsageDescription.
+- Publicado: no.
+- Commit: (este)
+- Pendiente: nada.
