@@ -1,10 +1,11 @@
-// En la ventana principal: botón «GPT» que abre la ventana aparte, y el puente que la atiende.
+// En la ventana principal: botón doble «GPT | Claude» (abre la ventana de GPT o la ventanita de Claude) y el puente que atiende a GPT.
 // Aquí vive la conversación (proyecto, consulta a GPT, guardado); la ventana de GPT solo muestra y pide.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { invoke } from '@tauri-apps/api/core'
 import { emitTo, listen } from '@tauri-apps/api/event'
-import { Bot } from 'lucide-react'
+import { Bot, Sparkles } from 'lucide-react'
+import { ClaudeQuick } from '../chat/ClaudeQuick'
 import { useProject } from '../../stores/projectStore'
 import { toast } from '../../stores/uiStore'
 import { readGptThreads } from '../../database/db'
@@ -27,6 +28,7 @@ export function GptBridge() {
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [claudeOpen, setClaudeOpen] = useState(false)
   const scenes = useMemo(() => (project ? orderedScenes(project, scenesMap) : []), [project, scenesMap])
 
   useEffect(() => {
@@ -114,15 +116,32 @@ export function GptBridge() {
   }, [])
 
   if (!project) return null
-  return createPortal(
-    <button
-      className="no-print fixed bottom-5 left-5 z-[80] flex h-11 items-center gap-2 rounded-full border border-[#10a37f]/70 bg-card px-4 text-[13px] font-semibold shadow-2xl shadow-black/60 hover:bg-card-2"
-      onClick={() => void invoke('abrir_ventana_gpt').catch(() => toast('No se pudo abrir la ventana de GPT', 'error'))}
-      aria-label="Abrir la ventana de GPT"
-      title="Abre GPT en una ventana aparte, siempre al frente"
-    >
-      <Bot size={16} className="text-[#6ee7b7]" /> GPT
-    </button>,
-    document.body,
+  return (
+    <>
+      {claudeOpen && <ClaudeQuick onClose={() => setClaudeOpen(false)} />}
+      {createPortal(
+        <div className="no-print fixed bottom-5 left-5 z-[80] flex h-11 overflow-hidden rounded-full border border-line bg-card text-[13px] font-semibold shadow-2xl shadow-black/60" role="group" aria-label="Asistentes">
+          <button
+            className="flex items-center gap-2 px-4 hover:bg-card-2"
+            onClick={() => void invoke('abrir_ventana_gpt').catch(() => toast('No se pudo abrir la ventana de GPT', 'error'))}
+            aria-label="Abrir la ventana de GPT"
+            title="Abre GPT en una ventana aparte, siempre al frente"
+          >
+            <Bot size={16} className="text-[#6ee7b7]" /> GPT
+          </button>
+          <span className="my-2 w-px bg-line" aria-hidden />
+          <button
+            className={`flex items-center gap-2 px-4 hover:bg-card-2 ${claudeOpen ? 'bg-card-2' : ''}`}
+            onClick={() => setClaudeOpen((o) => !o)}
+            aria-pressed={claudeOpen}
+            aria-label={claudeOpen ? 'Cerrar la ventanita de Claude' : 'Abrir la ventanita de Claude'}
+            title="Escríbele a Claude desde cualquier vista"
+          >
+            <Sparkles size={16} className="text-[#c4b5fd]" /> Claude
+          </button>
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }

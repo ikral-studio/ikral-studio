@@ -118,7 +118,7 @@ En la línea de tiempo, el botón «Consultar GPT» abre un panel donde GPT revi
 
 ## Ventana de GPT (ventana aparte de la Mac)
 
-- Botón «GPT» abajo a la izquierda (solo en la app de Mac, con un proyecto abierto). Abre una ventana de Mac propia (label `gpt`, comando `abrir_ventana_gpt`): se mueve, se cambia de tamaño y se minimiza como cualquier ventana. Si ya está abierta, el botón solo la trae al frente (nunca hay dos).
+- Botón doble «GPT | Claude» abajo a la izquierda, en todas las vistas (solo en la app de Mac, con un proyecto abierto). «Claude» abre una ventanita (`ClaudeQuick`) con lo último de la plática y una cajita para escribirle; manda al mismo chat de Claude. «GPT» abre una ventana de Mac propia (label `gpt`, comando `abrir_ventana_gpt`): se mueve, se cambia de tamaño y se minimiza como cualquier ventana. Si ya está abierta, el botón solo la trae al frente (nunca hay dos).
 - 📌 la deja siempre al frente (encendido por defecto; se recuerda en `ikral-studio:gpt-al-frente`). Al cerrar IKRAL Studio se cierra también.
 - La conversación vive en la ventana principal (`GptBridge`): ahí se consulta a GPT y se guarda. La ventana de GPT (`GptWindow`) solo muestra y pide, con eventos `gpt-chat:*` (`src/features/gpt/chatWindow.ts`).
 - Plática libre: GPT ve el proyecto, el estilo, las etapas, las decisiones APROBADAS, la Biblia y las escenas en orden. La casilla «Sobre Escena N» le dice cuál está abierta; sin marcar, habla del proyecto entero. No cambia nada.
