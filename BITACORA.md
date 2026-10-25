@@ -148,3 +148,9 @@
 - Publicado: no.
 - Commit: c729c6e
 - Pendiente: instalar en la Mac (con «si» de Kyo).
+
+2026-10-25 07:15 · IKRAL Studio · Instalado (aviso de referencias faltantes)
+- Cambiado: [código] /Applications/IKRAL Studio.app — instalada versión con el aviso y el botón GPT | Claude en la barra (respaldo verificado en /Volumes/c/respaldos/ikral-studio/app/).
+- Publicado: no.
+- Commit: c729c6e
+- Pendiente: nada.
