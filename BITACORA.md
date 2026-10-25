@@ -1,3 +1,10 @@
+2026-10-24 18:43 · IKRAL Studio · Botón doble GPT | Claude
+- Agregado: [código] src/components/chat/ClaudeQuick.tsx — ventanita de Claude que se abre en cualquier vista.
+- Cambiado: [código] src/components/gpt/GptBridge.tsx — botón doble «GPT | Claude» abajo a la izquierda.
+- Publicado: no.
+- Commit: 5bb6be4
+- Pendiente: instalar en la Mac.
+
 2026-10-24 18:22 · IKRAL Studio · Ventana aparte de GPT
 - Agregado: [código] src/components/gpt/GptWindow.tsx — ventana de Mac propia para platicar con GPT.
 - Agregado: [código] src/components/gpt/GptBridge.tsx y src/features/gpt/chatWindow.ts — botón «GPT» y puente con la principal.
