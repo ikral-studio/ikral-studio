@@ -1,3 +1,9 @@
+2026-10-24 18:52 · IKRAL Studio · Instalada en la Mac (GPT y Claude)
+- Cambiado: [código] /Applications/IKRAL Studio.app — versión con ventana de GPT y botón doble GPT | Claude.
+- Publicado: no.
+- Commit: 15d89e7
+- Pendiente: que el director pruebe los dos botones.
+
 2026-10-24 18:43 · IKRAL Studio · Botón doble GPT | Claude
 - Agregado: [código] src/components/chat/ClaudeQuick.tsx — ventanita de Claude que se abre en cualquier vista.
 - Cambiado: [código] src/components/gpt/GptBridge.tsx — botón doble «GPT | Claude» abajo a la izquierda.
