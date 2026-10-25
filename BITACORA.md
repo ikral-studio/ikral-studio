@@ -1,3 +1,12 @@
+2026-10-24 18:18 · IKRAL Studio · Ventanita flotante de GPT
+- Agregado: [diseño] src/components/gpt/GptFloat.tsx — ventanita de GPT que se arrastra, se minimiza y queda encima en todas las vistas (estilo del aviso de Claude).
+- Agregado: [asistente] src/features/gpt/chat.ts y schemas/chat.json — plática libre: GPT ve guion, Biblia y decisiones aprobadas; no cambia nada.
+- Agregado: [código] src/tests/gptChat.test.ts — 7 pruebas (paquete, formato, web, errores, guardado). Total 353/353.
+- Cambiado: [documento] carpeta-del-proyecto.md — sección «Ventanita flotante de GPT».
+- Publicado: no.
+- Commit: 864ff89
+- Pendiente: instalar en la Mac cuando Kyo lo pida.
+
 2026-10-24 15:38 · IKRAL Studio · Guion vs Biblia: restaurante o food truck
 - Agregado: [código] src/features/continuity/setting.ts — detecta «la historia dice X, la Biblia dice Y», vista previa de impacto, aplicar y deshacer.
 - Agregado: [diseño] SettingConflictCard — una pregunta con 🔊 y 3 caminos (adaptar, mantener, transformación); no escoge sola.
