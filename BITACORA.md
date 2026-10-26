@@ -174,3 +174,10 @@
 - Publicado: no.
 - Commit: solo esta entrada; el brief no entra al repo porque es público.
 - Pendiente: David elige concepto; el Panel liga el brief a la ficha del cliente (NOTA-0058/0059).
+
+2026-10-26 00:25 · IKRAL Studio · Los Cachetones: mecánicas en vez de producto + diagnóstico del Panel
+- Cambiado: [documento] docs/briefs/los-cachetones-brief-2026-10-26.md (local, sin Git) — ya no elige producto; tabla de mecánicas transferibles con estado 🔵/🟡/⚪.
+- Agregado: diagnóstico en el Issue #1: el Panel real vive en ~/Documents/ikral-memoria/panel (v28); el puente solo trabaja en ikral-studio.
+- Publicado: no.
+- Commit: solo esta entrada.
+- Pendiente: falta la maqueta oscura (no está en disco); la mejora del Panel la hace la sesión del Panel o un puente dirigido a ikral-memoria.
