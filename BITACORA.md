@@ -168,3 +168,9 @@
 - Publicado: no.
 - Commit: sin Git (archivos del proyecto en Documentos y respaldo en la unidad C).
 - Pendiente: conectar la 2.ª cuenta (djbanner) a Codex: falta verificar el teléfono por WhatsApp (OpenAI pidió esperar por exceso de intentos).
+
+2026-10-26 00:08 · IKRAL Studio · Los Cachetones: brief consolidado (borrador)
+- Agregado: [documento] docs/briefs/los-cachetones-brief-2026-10-26.md (local, sin Git) — junta la investigación ya hecha: patrones propios y del nicho, gaps, oportunidades, 3 conceptos y una prueba A/B.
+- Publicado: no.
+- Commit: solo esta entrada; el brief no entra al repo porque es público.
+- Pendiente: David elige concepto; el Panel liga el brief a la ficha del cliente (NOTA-0058/0059).
