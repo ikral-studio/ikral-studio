@@ -181,3 +181,9 @@
 - Publicado: no.
 - Commit: solo esta entrada.
 - Pendiente: falta la maqueta oscura (no está en disco); la mejora del Panel la hace la sesión del Panel o un puente dirigido a ikral-memoria.
+
+2026-10-26 00:27 · IKRAL Studio · Panel Los Cachetones: mapa de archivos y propuesta (sin editar)
+- Agregado: [documento] mapa de la ficha del cliente en ikral-memoria/panel/app.js y propuesta de mejora por sección, en el Issue #1.
+- Publicado: no.
+- Commit: solo esta entrada; el Panel no se tocó (el puente sigue encerrado en ikral-studio).
+- Pendiente: maqueta oscura; puente o sesión del Panel con permiso para ikral-memoria (OK de David).
