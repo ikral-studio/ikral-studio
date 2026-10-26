@@ -47,6 +47,9 @@ const env = process.env
 const REPO = 'ikral-studio/coordinacion'
 const ISSUE = 1
 const WORKDIR = join(homedir(), 'Documents', 'editor de storiborad', 'ikral-studio')
+/** Kraken es para todos: carpetas extra donde el puente puede trabajar (además de IKRAL Studio). */
+const PROYECTOS = { 'Panel de IKRAL (ikral-memoria: panel/, pruebas-panel/, agentes/)': join(homedir(), 'Documents', 'ikral-memoria') }
+const mapaProyectos = () => [`- IKRAL Studio: ${WORKDIR} (carpeta actual)`, ...Object.entries(PROYECTOS).map(([n, d]) => `- ${n}: ${d}`)].join('\n')
 const STATE_DIR = env.COORD_STATE_DIR || join(homedir(), 'Library', 'Application Support', 'ikral-coord')
 const STATE = join(STATE_DIR, 'state.json')
 const LOCK = join(STATE_DIR, 'lock.pid')
@@ -97,12 +100,14 @@ function acquireLock() {
 }
 
 /** Instrucción fija para Claude: el texto de la tarea NO va aquí; Claude lo lee y lo juzga contra el plan maestro. */
-const taskPrompt = (id, url) => `Eres Claude Code trabajando en IKRAL Studio, despertado por el puente automático de coordinación.
+const taskPrompt = (id, url) => `Eres Claude Code de IKRAL (Kraken), despertado por el puente automático de coordinación.
 ChatGPT dejó una tarea en el comentario ${id} del Issue #1 (${url}).
+Proyectos donde puedes trabajar (elige el que la tarea pida; si no dice, IKRAL Studio):
+${mapaProyectos()}
 1. Léela con: gh api repos/${REPO}/issues/comments/${id} --jq .body
-2. Arma tu contexto desde cero: docs/plan-maestro-ikral-studio.md, las últimas entradas de ../BITACORA.md, git log -10 y los últimos comentarios del Issue (gh issue view 1 -R ${REPO} --comments | tail -120). Ejecuta SOLO lo que esté dentro del plan maestro aprobado.
-3. Prohibido: git push, publicar o desplegar, borrar datos o proyectos, gastar dinero, tocar ikral-studio-codex o proyectos reales («SIN CEBOLLA»), trabajar fuera de esta carpeta. Si la tarea lo pide, repórtalo como bloqueo.
-4. Al final: npm test y npm run build, commit de trabajo, entrada en ../BITACORA.md y un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
+2. Arma tu contexto desde cero en la carpeta del proyecto elegido: su CLAUDE.md, plan o Blueprint, las últimas entradas de su bitácora, git log -10 (git -C <carpeta> log -10) y los últimos comentarios del Issue (gh issue view 1 -R ${REPO} --comments | tail -120). En IKRAL Studio ejecuta solo lo del plan maestro; en otro proyecto, solo lo que la tarea pide, en local.
+3. Prohibido: git push, publicar o desplegar (subir al servidor o a ikral.com), tocar producción (Supabase real, migraciones en producción), quitar la PAUSA de Kraken, borrar datos o proyectos, gastar dinero o créditos, credenciales nuevas, tocar ikral-studio-codex o proyectos reales («SIN CEBOLLA»), trabajar fuera de las carpetas de arriba. En el Panel: solo código y laboratorio local; publicar lo hace la sesión del Panel con el OK de David. Si la tarea pide algo prohibido, repórtalo como bloqueo.
+4. Al final: las pruebas del proyecto (IKRAL Studio: npm test y npm run build; Panel: node pruebas-panel/<archivo>.js de lo que tocaste), commit de trabajo SOLO de tus archivos en el repo de ese proyecto, entrada en su bitácora (IKRAL Studio: ../BITACORA.md; Panel: ikral-memoria/BITACORA.md) y un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
 
 /** Instrucción fija para una etapa del encadenamiento: sale del plan, no de texto de GitHub. */
 const stagePrompt = (stage, closed) => `Eres Claude Code trabajando en IKRAL Studio, despertado por el encadenamiento automático del plan maestro.
@@ -123,10 +128,11 @@ function runClaude(label, prompt) {
       prompt,
       '--permission-mode',
       'acceptEdits',
+      ...Object.values(PROYECTOS).flatMap((d) => ['--add-dir', d]),
       '--allowedTools',
-      'Read Edit Write Glob Grep Bash(npm *) Bash(npx *) Bash(node *) Bash(git status*) Bash(git diff*) Bash(git log*) Bash(git show*) Bash(git add *) Bash(git commit *) Bash(gh issue view *) Bash(gh issue comment *) Bash(gh api *) Bash(ls *) Bash(cat *) Bash(grep *) Bash(tail *) Bash(head *)',
+      'Read Edit Write Glob Grep Bash(npm *) Bash(npx *) Bash(node *) Bash(git status*) Bash(git -C *) Bash(cd *) Bash(git diff*) Bash(git log*) Bash(git show*) Bash(git add *) Bash(git commit *) Bash(gh issue view *) Bash(gh issue comment *) Bash(gh api *) Bash(ls *) Bash(cat *) Bash(grep *) Bash(tail *) Bash(head *)',
       '--disallowedTools',
-      'Bash(git push*) Bash(rm *) Bash(gh repo *) Bash(npm publish*)',
+      'Bash(git push*) Bash(git -C * push*) Bash(rm *) Bash(gh repo *) Bash(npm publish*)',
     ],
     { cwd: WORKDIR, encoding: 'utf8', timeout: TASK_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
   )
