@@ -161,3 +161,10 @@
 - Publicado: no.
 - Commit: (este)
 - Pendiente: nada.
+
+2026-10-25 15:55 · IKRAL Studio · SIN CEBOLLA: 13 imágenes con pantallas rehechas
+- Cambiado: [imagen] proyecto SIN CEBOLLA — 13 imágenes de escenas con celular/QR rehechas con Codex usando referencias; puestas en sus escenas.
+- Agregado: [código] /Volumes/c/respaldos/ikral-studio/escenas-sin-cebolla-real/aplicar-rehacer.mjs — pone las imágenes nuevas y guarda las viejas en viejas/.
+- Publicado: no.
+- Commit: sin Git (archivos del proyecto en Documentos y respaldo en la unidad C).
+- Pendiente: conectar la 2.ª cuenta (djbanner) a Codex: falta verificar el teléfono por WhatsApp (OpenAI pidió esperar por exceso de intentos).
