@@ -20,6 +20,9 @@ import {
   prune,
   recoverRunning,
   vitestSummary,
+  WORKSPACES,
+  askedWorkspace,
+  workspaceOf,
 } from './coord-bridge-core.mjs'
 
 const gpt = (id, body) => ({
@@ -162,5 +165,35 @@ describe('encadenamiento del plan maestro', () => {
     expect(vitestSummary(' Tests  139 passed (139)')).toEqual({ failed: 0, passed: 139, total: 139 })
     expect(vitestSummary(' Tests  2 failed | 137 passed (139)')).toEqual({ failed: 2, passed: 137, total: 139 })
     expect(vitestSummary('nada')).toBeNull()
+  })
+})
+
+describe('carpeta de trabajo (workspace)', () => {
+  it('sin línea WORKSPACE → IKRAL Studio (tareas viejas siguen igual)', () => {
+    expect(workspaceOf('[COORD-TASK] Fase 3a\nhaz algo del PANEL y de ikral-memoria')).toBe('studio')
+    expect(askedWorkspace('[COORD-TASK] nada')).toBeNull()
+  })
+  it('«WORKSPACE: panel» y sus alias → Panel', () => {
+    for (const b of ['WORKSPACE: panel', 'COORD-WORKSPACE: PANEL', '**WORKSPACE:** ikral-memoria', '- workspace: memoria', '`WORKSPACE: panel`'])
+      expect(workspaceOf(`[COORD-TASK] prueba\n${b}\nlee un archivo`)).toBe('panel')
+    expect(workspaceOf('[COORD-TASK] x\nWORKSPACE: studio')).toBe('studio')
+  })
+  it('no acepta rutas ni claves fuera de la lista', () => {
+    for (const b of ['WORKSPACE: /etc', 'WORKSPACE: ../ikral-studio-codex', 'WORKSPACE: ~/Documents', 'WORKSPACE: sin-cebolla', 'WORKSPACE: constructor', 'WORKSPACE: __proto__', 'WORKSPACE:'])
+      expect(workspaceOf(`[COORD-TASK] x\n${b}`)).toBeNull()
+  })
+  it('la lista cerrada solo tiene Studio y Panel, con rutas fijas', () => {
+    expect(Object.keys(WORKSPACES)).toEqual(['studio', 'panel'])
+    expect(WORKSPACES.panel.path).toEqual(['Documents', 'ikral-memoria'])
+    expect(WORKSPACES.studio.path).toEqual(['Documents', 'editor de storiborad', 'ikral-studio'])
+  })
+  it('ingest guarda el workspace; una clave mala queda «invalid» y no entra a la cola', () => {
+    const comments = [gpt(1, '[COORD-TASK] a\nWORKSPACE: panel'), gpt(2, '[COORD-TASK] b'), gpt(3, '[COORD-TASK] c\nWORKSPACE: /tmp')]
+    const { state } = ingest(normalizeState({ lastId: 0 }), comments, 5)
+    expect(state.tasks[1]).toMatchObject({ status: 'pending', workspace: 'panel' })
+    expect(state.tasks[2]).toMatchObject({ status: 'pending', workspace: 'studio' })
+    expect(state.tasks[3]).toMatchObject({ status: 'invalid', asked: '/tmp' })
+    expect(nextTask({ ...state, tasks: { 3: state.tasks[3] } }, 10)).toBeNull()
+    expect(prune(state, 5 + 31 * DEDUP_WINDOW_MS).tasks[3]).toBeUndefined()
   })
 })

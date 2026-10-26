@@ -18,7 +18,12 @@
 // Control: candado con PID (una sola ejecución), límite de tiempo por tarea, 1 reintento a los 10 min,
 // y deduplicación (mismo comentario o misma tarea repetida en 24 h no se corre dos veces). Lógica en coord-bridge-core.mjs.
 // Apagar: crear ~/.ikral-coord-pausa (pausa todo) o `launchctl bootout gui/$(id -u)/com.ikral.coord-bridge`.
-// Pruebas sin tocar el Issue: COORD_DRY_RUN=1 (no publica) · COORD_STATE_DIR · COORD_LOG · COORD_CLAUDE_BIN · COORD_TASK_TIMEOUT_MS.
+// Carpeta de trabajo: la tarea puede traer una línea «WORKSPACE: panel» → Claude arranca con cwd en ~/Documents/ikral-memoria.
+//   Sin esa línea → IKRAL Studio (como siempre). Solo claves de la lista cerrada WORKSPACES (coord-bridge-core.mjs);
+//   una clave desconocida rechaza la tarea. El puente avisa en el Issue qué carpeta tomó ANTES de arrancar a Claude.
+// Pruebas sin tocar el Issue: COORD_DRY_RUN=1 (no publica) · COORD_STATE_DIR · COORD_LOG · COORD_CLAUDE_BIN · COORD_TASK_TIMEOUT_MS
+//   · COORD_FAKE_COMMENTS=<archivo.json> y COORD_PAUSE_FILE=<archivo> (solo con COORD_DRY_RUN=1: comentarios de prueba en vez
+//   de los del Issue y otra ruta de pausa, para probar sin quitar la PAUSA real).
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
@@ -39,6 +44,7 @@ import {
   prune,
   recoverRunning,
   vitestSummary,
+  WORKSPACES,
 } from './coord-bridge-core.mjs'
 import { logEvent, writeMonitor } from './coord-monitor.mjs'
 import { taskTitle } from './coord-monitor-core.mjs'
@@ -46,18 +52,20 @@ import { taskTitle } from './coord-monitor-core.mjs'
 const env = process.env
 const REPO = 'ikral-studio/coordinacion'
 const ISSUE = 1
-const WORKDIR = join(homedir(), 'Documents', 'editor de storiborad', 'ikral-studio')
-/** Kraken es para todos: carpetas extra donde el puente puede trabajar (además de IKRAL Studio). */
-const PROYECTOS = { 'Panel de IKRAL (ikral-memoria: panel/, pruebas-panel/, agentes/)': join(homedir(), 'Documents', 'ikral-memoria') }
-const mapaProyectos = () => [`- IKRAL Studio: ${WORKDIR} (carpeta actual)`, ...Object.entries(PROYECTOS).map(([n, d]) => `- ${n}: ${d}`)].join('\n')
+/** Ruta de una clave de la lista cerrada (nunca sale del texto de GitHub). */
+const wsDir = (key) => join(homedir(), ...WORKSPACES[key].path)
+const WORKDIR = wsDir('studio')
+const PANEL_DIR = wsDir('panel')
+const mapaProyectos = () => [`- IKRAL Studio: ${WORKDIR} (carpeta actual)`, `- Panel de IKRAL (ikral-memoria: panel/, pruebas-panel/, agentes/): ${PANEL_DIR}`].join('\n')
 const STATE_DIR = env.COORD_STATE_DIR || join(homedir(), 'Library', 'Application Support', 'ikral-coord')
 const STATE = join(STATE_DIR, 'state.json')
 const LOCK = join(STATE_DIR, 'lock.pid')
 /** Candado de la versión anterior (carpeta): se respeta mientras siga fresco. */
 const OLD_LOCK = join(STATE_DIR, 'lock')
 const LOG = env.COORD_LOG || join(homedir(), 'Library', 'Logs', 'ikral-coord.log')
-const PAUSE = join(homedir(), '.ikral-coord-pausa')
 const DRY = env.COORD_DRY_RUN === '1'
+/** La PAUSA real solo se puede cambiar de sitio en modo prueba (COORD_DRY_RUN=1). */
+const PAUSE = DRY && env.COORD_PAUSE_FILE ? env.COORD_PAUSE_FILE : join(homedir(), '.ikral-coord-pausa')
 const CLAUDE = env.COORD_CLAUDE_BIN || 'claude'
 const TASK_TIMEOUT_MS = Number(env.COORD_TASK_TIMEOUT_MS) || 2 * 60 * 60 * 1000
 const STALE_MS = TASK_TIMEOUT_MS + 10 * 60 * 1000
@@ -109,6 +117,15 @@ ${mapaProyectos()}
 3. Prohibido: git push, publicar o desplegar (subir al servidor o a ikral.com), tocar producción (Supabase real, migraciones en producción), quitar la PAUSA de Kraken, borrar datos o proyectos, gastar dinero o créditos, credenciales nuevas, tocar ikral-studio-codex o proyectos reales («SIN CEBOLLA»), trabajar fuera de las carpetas de arriba. En el Panel: solo código y laboratorio local; publicar lo hace la sesión del Panel con el OK de David. Si la tarea pide algo prohibido, repórtalo como bloqueo.
 4. Al final: las pruebas del proyecto (IKRAL Studio: npm test y npm run build; Panel: node pruebas-panel/<archivo>.js de lo que tocaste), commit de trabajo SOLO de tus archivos en el repo de ese proyecto, entrada en su bitácora (IKRAL Studio: ../BITACORA.md; Panel: ikral-memoria/BITACORA.md) y un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
 
+/** Tarea con «WORKSPACE: panel»: Claude arranca DENTRO de ikral-memoria y solo trabaja ahí. */
+const panelTaskPrompt = (id, url) => `Eres Claude Code de IKRAL (Kraken), despertado por el puente automático de coordinación.
+Workspace: Panel de IKRAL. Tu carpeta actual es ${PANEL_DIR} (ikral-memoria: panel/, pruebas-panel/, agentes/). Trabaja SOLO aquí.
+ChatGPT dejó una tarea en el comentario ${id} del Issue #1 (${url}).
+1. Léela con: gh api repos/${REPO}/issues/comments/${id} --jq .body
+2. Arma tu contexto desde cero en esta carpeta: CLAUDE.md, el Blueprint o docs que la tarea nombre, las últimas entradas de BITACORA.md, git log -10 y los últimos comentarios del Issue (gh issue view 1 -R ${REPO} --comments | tail -120). Haz solo lo que la tarea pide, en local.
+3. Prohibido: git push, publicar o desplegar (subir al servidor o a ikral.com), tocar producción (Supabase real, migraciones en producción), quitar la PAUSA de Kraken, borrar datos o proyectos, gastar dinero o créditos, credenciales nuevas, tocar ikral-studio-codex o proyectos reales («SIN CEBOLLA»), trabajar fuera de esta carpeta. Solo código y laboratorio local; publicar lo hace la sesión del Panel con el OK de David. Si la tarea pide algo prohibido, repórtalo como bloqueo.
+4. Al final: si cambiaste algo, node pruebas-panel/<archivo>.js de lo que tocaste, commit de trabajo SOLO de tus archivos en este repo y entrada en BITACORA.md. Siempre: un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
+
 /** Instrucción fija para una etapa del encadenamiento: sale del plan, no de texto de GitHub. */
 const stagePrompt = (stage, closed) => `Eres Claude Code trabajando en IKRAL Studio, despertado por el encadenamiento automático del plan maestro.
 Tu tarea: la sub-etapa «${stage}» de docs/plan-maestro-ikral-studio.md, autorizada por su línea «Encadenamiento autorizado». Ya cerradas: ${[...closed].sort().join(', ') || 'ninguna'}.
@@ -119,8 +136,11 @@ Tu tarea: la sub-etapa «${stage}» de docs/plan-maestro-ikral-studio.md, autori
 5. Al final: entrada en ../BITACORA.md y un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
 
 /** Corre un Claude Code nuevo (proceso de vida corta). null si terminó bien; si no, el motivo. */
-function runClaude(label, prompt) {
-  log(`${label}: arranca ${CLAUDE} -p`)
+function runClaude(label, prompt, cwd = WORKDIR) {
+  if (!existsSync(cwd)) return `no existe la carpeta ${cwd}`
+  log(`${label}: arranca ${CLAUDE} -p en ${cwd}`)
+  // Studio puede leer el Panel (como antes); una tarea del Panel no recibe otras carpetas.
+  const extra = cwd === WORKDIR ? [PANEL_DIR] : []
   const r = spawnSync(
     CLAUDE,
     [
@@ -128,13 +148,13 @@ function runClaude(label, prompt) {
       prompt,
       '--permission-mode',
       'acceptEdits',
-      ...Object.values(PROYECTOS).flatMap((d) => ['--add-dir', d]),
+      ...extra.flatMap((d) => ['--add-dir', d]),
       '--allowedTools',
       'Read Edit Write Glob Grep Bash(npm *) Bash(npx *) Bash(node *) Bash(git status*) Bash(git -C *) Bash(cd *) Bash(git diff*) Bash(git log*) Bash(git show*) Bash(git add *) Bash(git commit *) Bash(gh issue view *) Bash(gh issue comment *) Bash(gh api *) Bash(ls *) Bash(cat *) Bash(grep *) Bash(tail *) Bash(head *)',
       '--disallowedTools',
       'Bash(git push*) Bash(git -C * push*) Bash(rm *) Bash(gh repo *) Bash(npm publish*)',
     ],
-    { cwd: WORKDIR, encoding: 'utf8', timeout: TASK_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
+    { cwd, encoding: 'utf8', timeout: TASK_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
   )
   const why = r.error?.code === 'ETIMEDOUT' ? 'tiempo agotado' : r.error ? r.error.message : `código ${r.status}`
   log(`${label}: terminó (${why})\n${(r.stdout ?? '').slice(-2000)}`)
@@ -168,10 +188,13 @@ function main() {
   if (!acquireLock()) return monitor()
   try {
     // Una línea JSON por comentario (los saltos de línea del texto van escapados).
-    const comments = gh('api', `repos/${REPO}/issues/${ISSUE}/comments`, '--paginate', '--jq', '.[] | tojson')
-      .split('\n')
-      .filter(Boolean)
-      .map((l) => JSON.parse(l))
+    const comments =
+      DRY && env.COORD_FAKE_COMMENTS
+        ? JSON.parse(readFileSync(env.COORD_FAKE_COMMENTS, 'utf8'))
+        : gh('api', `repos/${REPO}/issues/${ISSUE}/comments`, '--paginate', '--jq', '.[] | tojson')
+            .split('\n')
+            .filter(Boolean)
+            .map((l) => JSON.parse(l))
     const now = Date.now()
     let state = readState()
     // Primera vez: solo recuerda dónde va; no actúa sobre lo viejo.
@@ -196,6 +219,13 @@ function main() {
     for (const [id, t] of Object.entries(state.tasks))
       if (t.status === 'duplicate' && !t.reported) {
         post(`🔁 Puente: la tarea del comentario ${id} es igual a la del ${t.of}; no se corre otra vez.`)
+        state.tasks[id] = { ...t, reported: true }
+        saveState(state)
+      }
+    for (const [id, t] of Object.entries(state.tasks))
+      if (t.status === 'invalid' && !t.reported) {
+        post(`🚫 Puente: la tarea del comentario ${id} pide «WORKSPACE: ${t.asked}», que no está en la lista permitida (${Object.keys(WORKSPACES).join(', ')}). No se corre.`)
+        log(`tarea ${id}: workspace no permitido (${t.asked})`)
         state.tasks[id] = { ...t, reported: true }
         saveState(state)
       }
@@ -248,8 +278,12 @@ function main() {
         } else fail = v.why
       }
     } else {
-      post(`🤖 Puente: recibí la tarea (comentario ${id}, intento ${attempt} de ${MAX_ATTEMPTS}). Claude Code empieza ahora con contexto nuevo.`)
-      fail = runClaude(`tarea ${id} (intento ${attempt})`, taskPrompt(id, task.url))
+      // Tareas guardadas antes de este cambio no traen workspace: son de IKRAL Studio.
+      const ws = WORKSPACES[task.workspace] ? task.workspace : 'studio'
+      const cwd = wsDir(ws)
+      post(`🤖 Puente: recibí la tarea (comentario ${id}, intento ${attempt} de ${MAX_ATTEMPTS}). Workspace: **${WORKSPACES[ws].name}** (\`${cwd}\`). Claude Code empieza ahora con contexto nuevo.`)
+      log(`tarea ${id}: workspace ${ws} → ${cwd}`)
+      fail = runClaude(`tarea ${id} (intento ${attempt})`, ws === 'panel' ? panelTaskPrompt(id, task.url) : taskPrompt(id, task.url), cwd)
       event({ type: 'task-end', ok: !fail, why: fail ?? undefined, ...about })
     }
     const done = afterAttempt(task, !fail, Date.now())

@@ -29,6 +29,28 @@ export function classify(c) {
 /** Huella del texto de la tarea (sin espacios sobrantes) para detectar tareas repetidas. */
 export const taskHash = (body) => createHash('sha256').update(body.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 16)
 
+// ---- Carpeta de trabajo (workspace) ----
+// Lista cerrada: la tarea solo elige una CLAVE; la ruta la pone el puente. Nunca rutas del texto de GitHub.
+// Línea en la tarea: «WORKSPACE: panel» (o «COORD-WORKSPACE: panel»). Sin esa línea → IKRAL Studio (tareas viejas).
+
+/** Claves permitidas → ruta relativa a la carpeta personal de Kyo. */
+export const WORKSPACES = {
+  studio: { name: 'IKRAL Studio', path: ['Documents', 'editor de storiborad', 'ikral-studio'] },
+  panel: { name: 'Panel de IKRAL (ikral-memoria)', path: ['Documents', 'ikral-memoria'] },
+}
+const WORKSPACE_ALIASES = { studio: 'studio', 'ikral-studio': 'studio', panel: 'panel', 'ikral-panel': 'panel', 'ikral-memoria': 'panel', memoria: 'panel' }
+const WORKSPACE_LINE = /^[\s>*_`-]*(?:COORD-)?WORKSPACE\s*:\s*\**\s*([^\s*`<]*)/im
+
+/** Lo que pidió la tarea en su línea WORKSPACE (texto crudo), o null si no la tiene. */
+export const askedWorkspace = (body) => WORKSPACE_LINE.exec(body ?? '')?.[1] ?? null
+
+/** Clave de la lista cerrada para la tarea, o null si pidió una que no existe (la tarea se rechaza). */
+export function workspaceOf(body) {
+  const asked = askedWorkspace(body)
+  if (asked === null) return 'studio'
+  return Object.hasOwn(WORKSPACE_ALIASES, asked.toLowerCase()) ? WORKSPACE_ALIASES[asked.toLowerCase()] : null
+}
+
 /** Estado viejo ({ lastId }) o vacío → formato actual. */
 export function normalizeState(s) {
   if (!s || typeof s.lastId !== 'number') return null
@@ -59,13 +81,18 @@ export function ingest(state, comments, now) {
       controls.push({ id: c.id, kind })
     }
     if (kind !== 'task') continue
+    const workspace = workspaceOf(c.body)
+    if (!workspace) {
+      next.tasks[c.id] = { status: 'invalid', asked: askedWorkspace(c.body), attempts: 0, url: c.html_url, finishedAt: now }
+      continue
+    }
     const hash = taskHash(c.body)
     const twin = Object.entries(next.tasks).find(
       ([, t]) => t.hash === hash && (t.status === 'pending' || t.status === 'running' || (t.status === 'done' && now - (t.finishedAt ?? 0) < DEDUP_WINDOW_MS)),
     )
     next.tasks[c.id] = twin
-      ? { hash, status: 'duplicate', of: Number(twin[0]), attempts: 0, url: c.html_url, finishedAt: now }
-      : { hash, status: 'pending', attempts: 0, url: c.html_url, nextAt: now }
+      ? { hash, workspace, status: 'duplicate', of: Number(twin[0]), attempts: 0, url: c.html_url, finishedAt: now }
+      : { hash, workspace, status: 'pending', attempts: 0, url: c.html_url, nextAt: now }
   }
   return { state: next, pings, controls }
 }
@@ -171,7 +198,7 @@ export function recoverRunning(state, now) {
 /** Borra del estado las tareas terminadas hace más de 30 días (el estado no crece sin fin). */
 export function prune(state, now) {
   const keep = Object.entries(state.tasks).filter(
-    ([, t]) => !['done', 'failed', 'duplicate'].includes(t.status) || now - (t.finishedAt ?? now) < 30 * DEDUP_WINDOW_MS,
+    ([, t]) => !['done', 'failed', 'duplicate', 'invalid'].includes(t.status) || now - (t.finishedAt ?? now) < 30 * DEDUP_WINDOW_MS,
   )
   return { ...state, tasks: Object.fromEntries(keep) }
 }
