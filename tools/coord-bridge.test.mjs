@@ -30,6 +30,9 @@ import {
   relayDecision,
   wantsRelays,
   pauseLetsRelays,
+  scopeOf,
+  relayLimit,
+  MAX_RELAYS_CAP,
 } from './coord-bridge-core.mjs'
 
 const gpt = (id, body) => ({
@@ -250,6 +253,35 @@ describe('relevos de Kraken', () => {
     expect(s.tasks['relevo-9-2']).toMatchObject({ kind: 'relay', root: '9', n: 2, status: 'pending' })
     expect(nextTask({ ...s, tasks: { ...s.tasks, 'etapa-5a': { kind: 'stage', status: 'pending', nextAt: 0 } } }, T0)).toBe('relevo-9-2')
     expect(nextTask({ ...s, tasks: { ...s.tasks, 12: { status: 'pending', nextAt: 0 } } }, T0)).toBe('relevo-9-2') // termina lo empezado primero
+  })
+
+  it('Kraken autónomo: ALCANCE y RELEVOS solo valen en tareas de Kyo', () => {
+    expect(scopeOf('ALCANCE: publicar')).toEqual(['publicar'])
+    expect(scopeOf('**ALCANCE:** publicar, dinero, borrar, produccion')).toEqual(['publicar'])
+    expect(scopeOf('sin línea')).toEqual([])
+    expect(relayLimit('RELEVOS: 8')).toBe(8)
+    expect(relayLimit('RELEVOS: 99')).toBe(MAX_RELAYS_CAP)
+    expect(relayLimit('RELEVOS: 0')).toBe(MAX_RELAYS)
+    expect(relayLimit('')).toBe(MAX_RELAYS)
+    const body = '[COORD-TASK] objetivo\nKRAKEN: relevos\nALCANCE: publicar\nRELEVOS: 8'
+    const { state } = ingest({ lastId: 0, tasks: {}, chain: {} }, [kyo(5, body), gpt(6, `${body} (gpt)`), kyo(7, `${body}\nWORKSPACE: panel`)], T0)
+    expect(state.tasks[5]).toMatchObject({ relays: true, max: 8, alcance: ['publicar'] })
+    expect(state.tasks[6]).toMatchObject({ relays: true, max: 8 })
+    expect(state.tasks[6].alcance).toBeUndefined() // ChatGPT no puede autorizar publicar
+    expect(state.tasks[7].relays).toBeUndefined() // relevos solo en Studio
+  })
+
+  it('Kraken autónomo: lo autorizado no detiene; lo demás sigue siendo de David; tope por tarea', () => {
+    const pub = parseTurn('NECESITA-KYO: publicar · subir')
+    const done = parseReview({ veredicto: 'terminado' })
+    expect(relayDecision({ turn: pub, review: done, checks: ok, n: 1 }).action).toBe('kyo')
+    expect(relayDecision({ turn: pub, review: done, checks: ok, n: 1, alcance: ['publicar'] }).action).toBe('done')
+    expect(relayDecision({ turn: parseTurn('NECESITA-KYO: dinero · API'), review: null, checks: ok, n: 1, alcance: ['publicar'] }).action).toBe('kyo')
+    const fix = parseReview({ veredicto: 'corregir' })
+    expect(relayDecision({ turn: parseTurn(''), review: fix, checks: ok, n: MAX_RELAYS, max: 8 }).action).toBe('relay')
+    expect(relayDecision({ turn: parseTurn(''), review: fix, checks: ok, n: 8, max: 8 }).action).toBe('limit')
+    const s = enqueueRelay({ lastId: 9, tasks: {}, chain: {} }, 9, 2, { max: 8, alcance: ['publicar'] }, T0)
+    expect(s.tasks['relevo-9-2']).toMatchObject({ max: 8, alcance: ['publicar'] })
   })
 
   it('con PAUSA solo corren los relevos; «TOTAL» detiene todo', () => {
