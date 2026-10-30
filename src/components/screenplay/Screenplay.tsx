@@ -18,15 +18,15 @@ const PARTS: [keyof Scene['script'], string][] = [
   ['soundDirection', 'Sonido'],
 ]
 
-/** Pinta las coincidencias de la búsqueda. `nextHit` da el número global de cada una, en orden. */
-function Marked({ text, query, nextHit, current }: { text: string; query: string; nextHit: () => number; current: number }): ReactNode {
+/** Pinta las coincidencias de la búsqueda. `start` es el número global de la primera; las demás siguen en orden. */
+function Marked({ text, query, start, current }: { text: string; query: string; start: number; current: number }): ReactNode {
   const ranges = query ? findRanges(text, query) : []
   if (!ranges.length) return text
   const out: ReactNode[] = []
   let last = 0
-  for (const [a, b] of ranges) {
+  for (const [j, [a, b]] of ranges.entries()) {
     if (a > last) out.push(text.slice(last, a))
-    const n = nextHit()
+    const n = start + j
     out.push(
       <mark key={a} data-hit={n} className={`rounded-sm px-px text-black ${n === current ? 'bg-[#fbbf24] ring-2 ring-[#f59e0b]' : 'bg-[#fde68a]/80'}`}>
         {text.slice(a, b)}
@@ -100,10 +100,12 @@ export function Screenplay({ docked = false }: { docked?: boolean }) {
   const searchingRef = useRef(false)
   searchingRef.current = !!q
 
-  // Textos de cada escena en el mismo orden en que se pintan (para contar y para saber de qué escena es cada coincidencia).
-  const hitScenes = useMemo(() => {
-    if (!q) return [] as string[]
+  // Textos de cada escena en el mismo orden en que se pintan: de qué escena es cada coincidencia
+  // y en qué número global empieza cada texto (así cada render numera igual, sin contadores compartidos).
+  const { hitScenes, hitStarts } = useMemo(() => {
     const out: string[] = []
+    const starts: number[][] = []
+    if (!q) return { hitScenes: out, hitStarts: starts }
     scenes.forEach((s, i) => {
       const cam = cameraSpanish(s.script.camera)
       const texts = [
@@ -112,9 +114,13 @@ export function Screenplay({ docked = false }: { docked?: boolean }) {
         ...(cam ? [cam] : []),
         ...extraEntries(s, fields).map(([, v]) => v),
       ]
-      for (const t of texts) for (let n = findRanges(t, q).length; n > 0; n--) out.push(s.id)
+      starts[i] = texts.map((t) => {
+        const first = out.length
+        for (let n = findRanges(t, q).length; n > 0; n--) out.push(s.id)
+        return first
+      })
     })
-    return out
+    return { hitScenes: out, hitStarts: starts }
   }, [q, scenes, fields])
   const total = hitScenes.length
 
@@ -134,9 +140,6 @@ export function Screenplay({ docked = false }: { docked?: boolean }) {
     setSearching(false)
     setQuery('')
   }
-  let hitCount = 0
-  const nextHit = () => hitCount++
-
   // Al seleccionar una escena, llevar su sección a la vista dentro del guion (salvo mientras se busca).
   useEffect(() => {
     if (!selected || searchingRef.current) return
@@ -217,6 +220,7 @@ export function Screenplay({ docked = false }: { docked?: boolean }) {
           const cam = cameraSpanish(s.script.camera)
           const extras: [string, string][] = [...(cam ? ([['Cámara', cam]] as [string, string][]) : []), ...extraEntries(s, fields)]
           const active = s.id === selected
+          const start = (j: number) => hitStarts[i]?.[j] ?? 0
           return (
             <article
               key={s.id}
@@ -224,20 +228,20 @@ export function Screenplay({ docked = false }: { docked?: boolean }) {
               className={`-mx-2 mb-1 rounded-lg px-2 py-2 transition-colors ${active ? 'bg-sel/10' : ''} ${playingIndex === i ? 'ring-1 ring-sel/60' : ''}`}
             >
               <button className="text-left text-[13px] font-semibold hover:text-sel-2" onClick={() => selectScene(s.id, { seek: true })}>
-                <Marked text={`Escena ${pad2(i + 1)} · ${s.title}`} query={q} nextHit={nextHit} current={current} /> <span className="font-normal text-ink-3">({formatDuration(effectiveDuration(s))})</span>
+                <Marked text={`Escena ${pad2(i + 1)} · ${s.title}`} query={q} start={start(0)} current={current} /> <span className="font-normal text-ink-3">({formatDuration(effectiveDuration(s))})</span>
               </button>
               {parts.length === 0 && extras.length === 0 ? (
                 <p className="mt-0.5 text-[12px] italic text-ink-3">Sin guion todavía.</p>
               ) : (
                 <>
-                  {parts.map(([k, label]) => (
+                  {parts.map(([k, label], j) => (
                     <p key={k} className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-2">
-                      <span className="font-medium text-ink">{label}:</span> <Marked text={String(s.script[k])} query={q} nextHit={nextHit} current={current} />
+                      <span className="font-medium text-ink">{label}:</span> <Marked text={String(s.script[k])} query={q} start={start(1 + j)} current={current} />
                     </p>
                   ))}
-                  {extras.map(([name, v]) => (
+                  {extras.map(([name, v], j) => (
                     <p key={name} className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-2">
-                      <span className="font-medium text-ink">{name}:</span> <Marked text={v} query={q} nextHit={nextHit} current={current} />
+                      <span className="font-medium text-ink">{name}:</span> <Marked text={v} query={q} start={start(1 + parts.length + j)} current={current} />
                     </p>
                   ))}
                 </>
