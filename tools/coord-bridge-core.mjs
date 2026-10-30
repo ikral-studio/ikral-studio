@@ -94,9 +94,16 @@ export function ingest(state, comments, now) {
     )
     next.tasks[c.id] = twin
       ? { hash, workspace, status: 'duplicate', of: Number(twin[0]), attempts: 0, url: c.html_url, finishedAt: now }
-      : { hash, workspace, status: 'pending', attempts: 0, url: c.html_url, nextAt: now, ...(wantsRelays(c.body) && workspace === 'studio' ? { relays: true } : {}) }
+      : { hash, workspace, status: 'pending', attempts: 0, url: c.html_url, nextAt: now, ...relayFields(c, workspace) }
   }
   return { state: next, pings, controls }
+}
+
+/** Campos de relevos de una tarea nueva. El alcance solo vale si la publicó Kyo (sin app), nunca ChatGPT. */
+function relayFields(c, workspace) {
+  if (!wantsRelays(c.body) || workspace !== 'studio') return {}
+  const alcance = c.performed_via_github_app ? [] : scopeOf(c.body)
+  return { relays: true, max: relayLimit(c.body), ...(alcance.length ? { alcance } : {}) }
 }
 
 /** Orden de la cola: primero las tareas de ChatGPT (la más vieja primero) y después las etapas del plan. */
@@ -231,6 +238,24 @@ export const MAX_RELAYS = 4
 const KRAKEN_LINE = /^[\s>*_`-]*KRAKEN\s*:\s*\**\s*relevos\b/im
 export const wantsRelays = (body) => KRAKEN_LINE.test(body ?? '')
 
+// ---- Kraken autónomo (orden de David, 30 oct 2026) ----
+// Cuando David autoriza un objetivo y su alcance, Kraken lo completa sin confirmaciones intermedias.
+// La tarea de Kyo puede traer «ALCANCE: publicar» (publicar/desplegar/push dentro de ESE objetivo) y «RELEVOS: N».
+// Solo cuenta en tareas que publica Kyo; en las de ChatGPT se ignora. Lo demás de KYO_TOPICS sigue siendo de David.
+
+/** Lo único que una tarea de Kyo puede autorizar por adelantado. */
+export const GRANTABLE = ['publicar']
+const ALCANCE_LINE = /^[\s>*_`-]*ALCANCE\s*:\s*\**\s*([^\n*`<]+)/im
+/** Temas autorizados en la línea ALCANCE (solo los de GRANTABLE). */
+export const scopeOf = (body) => [...new Set((ALCANCE_LINE.exec(body ?? '')?.[1] ?? '').toLowerCase().split(/[\s,;·]+/).filter((w) => GRANTABLE.includes(w)))]
+/** Tope de relevos que una tarea puede pedir con «RELEVOS: N». */
+export const MAX_RELAYS_CAP = 12
+const RELEVOS_LINE = /^[\s>*_`-]*RELEVOS\s*:\s*\**\s*(\d+)/im
+export function relayLimit(body) {
+  const n = Number(RELEVOS_LINE.exec(body ?? '')?.[1])
+  return Number.isInteger(n) && n > 0 ? Math.min(n, MAX_RELAYS_CAP) : MAX_RELAYS
+}
+
 /** Con la PAUSA puesta solo corren las tareas con «KRAKEN: relevos» (nadie quita ni pone la PAUSA a mano).
  *  Si el archivo de PAUSA dice «TOTAL», se detiene todo, también los relevos. */
 export const pauseLetsRelays = (pauseText) => !/\bTOTAL\b/i.test(pauseText ?? '')
@@ -264,13 +289,14 @@ export function parseReview(raw) {
  * Kraken decide el siguiente paso tras un turno. turn = parseTurn, review = parseReview, checks = { ok, why }, n = turno actual (1…).
  * → { action: 'done' | 'relay' | 'kyo' | 'limit', why }
  */
-export function relayDecision({ turn, review, checks, n }) {
-  if (turn?.needsKyo) return { action: 'kyo', why: `Claude: ${turn.needsKyo.topic} · ${turn.needsKyo.why}` }
+export function relayDecision({ turn, review, checks, n, max = MAX_RELAYS, alcance = [] }) {
+  // Un tema que David ya autorizó en el ALCANCE de la tarea no la detiene.
+  if (turn?.needsKyo && !alcance.includes(turn.needsKyo.topic)) return { action: 'kyo', why: `Claude: ${turn.needsKyo.topic} · ${turn.needsKyo.why}` }
   if (review?.verdict === 'kyo') return { action: 'kyo', why: `Codex: ${review.notes.join(' · ') || 'decisión de David'}` }
   const more = !checks?.ok || review?.verdict === 'siguiente' || review?.verdict === 'corregir' || review?.verdict === 'invalido'
   if (!more) return { action: 'done', why: 'pruebas OK y Codex aprobó' }
   const why = !checks?.ok ? `comprobación: ${checks?.why}` : review.verdict === 'invalido' ? 'Codex no dio veredicto válido' : `Codex: ${review.verdict}`
-  if (n >= MAX_RELAYS) return { action: 'limit', why: `${why} y ya van ${n} turnos (tope ${MAX_RELAYS})` }
+  if (n >= max) return { action: 'limit', why: `${why} y ya van ${n} turnos (tope ${max})` }
   return { action: 'relay', why }
 }
 
