@@ -8,7 +8,6 @@
 // Si no das carpeta, usa el proyecto modificado más recientemente en Documentos/IKRAL Studio/Proyectos.
 import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 
 const ROOT = join(homedir(), 'Documents', 'IKRAL Studio', 'Proyectos')
@@ -33,15 +32,6 @@ const write = (f, data) => {
   const tmp = `${f}.${process.pid}.tmp`
   writeFileSync(tmp, JSON.stringify(data, null, 2))
   renameSync(tmp, f)
-}
-
-/** Si la lectura en voz alta (/hablar) está prendida en esta Mac, también lee la respuesta del chat. */
-function speak(text) {
-  const script = join(homedir(), '.claude', 'hablar-say.sh')
-  if (!existsSync(script) || !existsSync(join(homedir(), '.claude', 'hablar-on'))) return
-  const child = spawn('bash', [script], { detached: true, stdio: ['pipe', 'ignore', 'ignore'] })
-  child.stdin.end(JSON.stringify({ last_assistant_message: text }))
-  child.unref()
 }
 
 /** Bibliotecas (.ikral) de la carpeta normal más las guardadas en otros lugares (ajustes.json → libraries). */

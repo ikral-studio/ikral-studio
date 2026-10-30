@@ -158,7 +158,7 @@ export async function importFile(file: File, projectId: string, expect?: MediaKi
   }
   requestPersistentStorage()
   notify(record.id)
-  const { blob, thumb, ...asset } = record
+  const { blob: _blob, thumb: _thumb, ...asset } = record
   return asset
 }
 
