@@ -29,6 +29,7 @@ import {
   parseTurn,
   relayDecision,
   wantsRelays,
+  pauseLetsRelays,
 } from './coord-bridge-core.mjs'
 
 const gpt = (id, body) => ({
@@ -249,5 +250,16 @@ describe('relevos de Kraken', () => {
     expect(s.tasks['relevo-9-2']).toMatchObject({ kind: 'relay', root: '9', n: 2, status: 'pending' })
     expect(nextTask({ ...s, tasks: { ...s.tasks, 'etapa-5a': { kind: 'stage', status: 'pending', nextAt: 0 } } }, T0)).toBe('relevo-9-2')
     expect(nextTask({ ...s, tasks: { ...s.tasks, 12: { status: 'pending', nextAt: 0 } } }, T0)).toBe('relevo-9-2') // termina lo empezado primero
+  })
+
+  it('con PAUSA solo corren los relevos; «TOTAL» detiene todo', () => {
+    const tasks = { 3: { status: 'pending', nextAt: 0 }, 'etapa-5a': { kind: 'stage', status: 'pending', nextAt: 0 }, 7: { status: 'pending', nextAt: 0, relays: true } }
+    expect(nextTask({ tasks }, T0)).toBe(3)
+    expect(nextTask({ tasks }, T0, { onlyRelays: true })).toBe(7)
+    expect(nextTask({ tasks: { 3: tasks[3], 'etapa-5a': tasks['etapa-5a'] } }, T0, { onlyRelays: true })).toBeNull()
+    expect(pauseLetsRelays('')).toBe(true)
+    expect(pauseLetsRelays('pausa 26 oct')).toBe(true)
+    expect(pauseLetsRelays('TOTAL')).toBe(false)
+    expect(pauseLetsRelays('pausa total por Kyo')).toBe(false)
   })
 })

@@ -111,9 +111,9 @@ const queueOrder = ([a], [b]) => {
 }
 
 /** La siguiente tarea a correr (la más vieja que ya toca), o null. Una sola a la vez. */
-export function nextTask(state, now) {
+export function nextTask(state, now, { onlyRelays = false } = {}) {
   const ready = Object.entries(state.tasks)
-    .filter(([, t]) => t.status === 'pending' && (t.nextAt ?? 0) <= now)
+    .filter(([, t]) => t.status === 'pending' && (t.nextAt ?? 0) <= now && (!onlyRelays || t.relays))
     .sort(queueOrder)
   if (!ready.length) return null
   const id = ready[0][0]
@@ -230,6 +230,10 @@ export const RELAY_PREFIX = 'relevo-'
 export const MAX_RELAYS = 4
 const KRAKEN_LINE = /^[\s>*_`-]*KRAKEN\s*:\s*\**\s*relevos\b/im
 export const wantsRelays = (body) => KRAKEN_LINE.test(body ?? '')
+
+/** Con la PAUSA puesta solo corren las tareas con «KRAKEN: relevos» (nadie quita ni pone la PAUSA a mano).
+ *  Si el archivo de PAUSA dice «TOTAL», se detiene todo, también los relevos. */
+export const pauseLetsRelays = (pauseText) => !/\bTOTAL\b/i.test(pauseText ?? '')
 
 /** Lo que SIEMPRE espera a Kyo (docs/kraken-autonomo-propuesta-2026-10-30.md §4). Lo demás lo deciden los agentes. */
 export const KYO_TOPICS = ['publicar', 'dinero', 'borrar', 'permisos', 'canon-creativo', 'clientes-reales', 'proyectos-protegidos', 'produccion']

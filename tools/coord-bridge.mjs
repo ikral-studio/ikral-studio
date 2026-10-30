@@ -17,7 +17,7 @@
 //      también las vueltas que encuentran el candado ocupado (latido mientras Claude trabaja).
 // Control: candado con PID (una sola ejecución), límite de tiempo por tarea, 1 reintento a los 10 min,
 // y deduplicación (mismo comentario o misma tarea repetida en 24 h no se corre dos veces). Lógica en coord-bridge-core.mjs.
-// Apagar: crear ~/.ikral-coord-pausa (pausa todo) o `launchctl bootout gui/$(id -u)/com.ikral.coord-bridge`.
+// Apagar: crear ~/.ikral-coord-pausa (pausa todo menos las tareas «KRAKEN: relevos»; si el archivo dice TOTAL, también esas) o `launchctl bootout gui/$(id -u)/com.ikral.coord-bridge`.
 // Carpeta de trabajo: la tarea puede traer una línea «WORKSPACE: panel» → Claude arranca con cwd en ~/Documents/ikral-memoria.
 //   Sin esa línea → IKRAL Studio (como siempre). Solo claves de la lista cerrada WORKSPACES (coord-bridge-core.mjs);
 //   una clave desconocida rechaza la tarea. El puente avisa en el Issue qué carpeta tomó ANTES de arrancar a Claude.
@@ -53,6 +53,7 @@ import {
   enqueueRelay,
   parseReview,
   parseTurn,
+  pauseLetsRelays,
   relayDecision,
 } from './coord-bridge-core.mjs'
 import { logEvent, writeMonitor } from './coord-monitor.mjs'
@@ -310,7 +311,9 @@ function relayTurn(state, id, task, attempt, comments) {
 
 function main() {
   mkdirSync(STATE_DIR, { recursive: true })
-  if (existsSync(PAUSE)) return monitor()
+  // PAUSA: todo detenido, salvo las tareas que piden «KRAKEN: relevos» (salvo que la PAUSA diga «TOTAL»).
+  const paused = existsSync(PAUSE)
+  if (paused && !pauseLetsRelays(readFileSync(PAUSE, 'utf8'))) return monitor()
   // Candado ocupado = otra vuelta está trabajando: esta solo actualiza el monitor (latido).
   if (!acquireLock()) return monitor()
   try {
@@ -363,7 +366,8 @@ function main() {
     } catch (e) {
       log(`cadena: no se pudo leer el plan o git (${e instanceof Error ? e.message : String(e)})`)
     }
-    const step = chainStep(state, info, now)
+    // Con PAUSA, la cadena del plan no avanza: solo los relevos pedidos con «KRAKEN: relevos».
+    const step = paused ? { action: 'paused' } : chainStep(state, info, now)
     if (step.action === 'run') {
       saveState((state = step.state))
       log(`cadena: etapa ${step.stage} en cola`)
@@ -380,7 +384,7 @@ function main() {
     }
 
     // Una sola tarea por ejecución; la siguiente se toma en la próxima vuelta de launchd.
-    const id = nextTask(state, now)
+    const id = nextTask(state, now, { onlyRelays: paused })
     if (id === null) return
     const task = state.tasks[id]
     const attempt = (task.attempts ?? 0) + 1
