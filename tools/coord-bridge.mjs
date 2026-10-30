@@ -28,6 +28,9 @@
 //   Claude trabaja → el puente comprueba (npm test + build) → Codex revisa el cambio (solo lectura, aislado, suscripción ChatGPT)
 //   → Kraken decide (relayDecision): terminar, otro relevo de Claude, o parar y preguntar a Kyo (solo la lista cerrada KYO_TOPICS).
 //   Evidencia de cada turno en <COORD_STATE_DIR>/kraken-relevos.jsonl. COORD_CODEX_BIN cambia el ejecutable de Codex (pruebas).
+// Kraken autónomo (David, 30 oct 2026): en tareas de Kyo (no de ChatGPT), «ALCANCE: publicar» deja a los relevos publicar
+//   SOLO con `git push origin main` + tools/publicar-studio.sh (respaldo verificado y prueba en vivo); «RELEVOS: N» sube el tope (máx. 12).
+//   Lo demás de KYO_TOPICS (dinero, borrar, permisos, canon, clientes reales, Supabase…) sigue siendo decisión de David.
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { homedir, tmpdir } from 'node:os'
@@ -157,8 +160,19 @@ Solo si de verdad necesitas a David por algo de esta lista cerrada (publicar, di
 NECESITA-KYO: <tema de la lista> · <motivo en una frase>
 Haz SOLO el primer punto pendiente de la tarea en este turno y haz su commit de trabajo. Después del tuyo, el puente comprueba, Codex revisa y Kraken decide el siguiente paso: tú no lo pidas.`
 
+/** Kraken autónomo: lo que David autorizó en el ALCANCE de la tarea. Reemplaza SOLO la prohibición de push/publicar. */
+const alcancePrompt = (alcance) =>
+  alcance.includes('publicar')
+    ? `
+ALCANCE AUTORIZADO POR DAVID EN ESTA TAREA: publicar. Esto reemplaza la prohibición de «git push» y «publicar o desplegar» de arriba, y publicar ya NO es NECESITA-KYO.
+- Publica SOLO cuando el objetivo esté terminado y probado: git push origin main y después bash tools/publicar-studio.sh (única vía: pruebas, respaldo verificado en la unidad C, subir y probar la página publicada https://ikral.com/studio/).
+- Si el script falla, corrige y vuelve a correrlo; si la página publicada quedó mal, revierte con el comando que imprime.
+- Copia en tu informe final la línea «PUBLICADO OK…» del script. No publiques comentarios con [COORD-TASK].
+- Sigue prohibido: dinero, borrar datos o proyectos, permisos, canon creativo, clientes reales, proyectos protegidos, Supabase/migraciones de producción, quitar la PAUSA.`
+    : ''
+
 /** Relevo n de una tarea con relevos: Claude nuevo, sigue donde Codex dijo. */
-const relayPrompt = (root, url, n, review) => `Eres Claude Code de IKRAL (Kraken), relevo ${n} de ${MAX_RELAYS} de la tarea del comentario ${root} del Issue #1 (${url}), en IKRAL Studio.
+const relayPrompt = (root, url, n, review, max = MAX_RELAYS) => `Eres Claude Code de IKRAL (Kraken), relevo ${n} de ${max} de la tarea del comentario ${root} del Issue #1 (${url}), en IKRAL Studio.
 1. Lee la tarea: gh api repos/${REPO}/issues/comments/${root} --jq .body
 2. Mira lo ya hecho en relevos anteriores: git log -8 y las últimas entradas de ../BITACORA.md.
 3. Revisión de Codex del turno anterior (veredicto «${review.verdict}»): ${review.notes.join(' · ') || 'sin observaciones'}. Siguiente paso que propuso: ${review.next || '—'}.
@@ -169,7 +183,7 @@ ${ARBITRO}`
 
 let lastClaudeOut = ''
 /** Corre un Claude Code nuevo (proceso de vida corta). null si terminó bien; si no, el motivo. */
-function runClaude(label, prompt, cwd = WORKDIR) {
+function runClaude(label, prompt, cwd = WORKDIR, { publicar = false } = {}) {
   if (!existsSync(cwd)) return `no existe la carpeta ${cwd}`
   log(`${label}: arranca ${CLAUDE} -p en ${cwd}`)
   // Studio puede leer el Panel (como antes); una tarea del Panel no recibe otras carpetas.
@@ -183,9 +197,10 @@ function runClaude(label, prompt, cwd = WORKDIR) {
       'acceptEdits',
       ...extra.flatMap((d) => ['--add-dir', d]),
       '--allowedTools',
-      'Read Edit Write Glob Grep Bash(npm *) Bash(npx *) Bash(node *) Bash(git status*) Bash(git -C *) Bash(cd *) Bash(git diff*) Bash(git log*) Bash(git show*) Bash(git add *) Bash(git commit *) Bash(gh issue view *) Bash(gh issue comment *) Bash(gh api *) Bash(ls *) Bash(cat *) Bash(grep *) Bash(tail *) Bash(head *)',
+      `Read Edit Write Glob Grep Bash(npm *) Bash(npx *) Bash(node *) Bash(git status*) Bash(git -C *) Bash(cd *) Bash(git diff*) Bash(git log*) Bash(git show*) Bash(git add *) Bash(git commit *) Bash(gh issue view *) Bash(gh issue comment *) Bash(gh api *) Bash(ls *) Bash(cat *) Bash(grep *) Bash(tail *) Bash(head *)${publicar ? ' Bash(git push origin main) Bash(bash tools/publicar-studio.sh*)' : ''}`,
       '--disallowedTools',
-      'Bash(git push*) Bash(git -C * push*) Bash(rm *) Bash(gh repo *) Bash(npm publish*)',
+      // Con «ALCANCE: publicar» solo se abre «git push origin main»; cualquier otro push sigue cerrado.
+      `${publicar ? 'Bash(git push -*) Bash(git push --*) Bash(git -C * push*)' : 'Bash(git push*) Bash(git -C * push*)'} Bash(rm *) Bash(gh repo *) Bash(npm publish*)`,
     ],
     { cwd, encoding: 'utf8', timeout: TASK_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
   )
@@ -232,12 +247,12 @@ const REVIEW_SCHEMA = {
 }
 
 /** Codex revisa el turno: solo lectura, carpeta vacía, sin herramientas, con la suscripción ChatGPT (como el despachador). */
-function codexReview({ body, base, report, turn, checked, n }) {
+function codexReview({ body, base, report, turn, checked, n, max = MAX_RELAYS, alcance = [] }) {
   const dir = mkdtempSync(join(tmpdir(), 'kraken-codex-'))
   try {
     const diff = git('diff', `${base}..HEAD`).slice(0, 80_000)
     const commits = git('log', '--format=%h %s', `${base}..HEAD`)
-    const prompt = `Eres Codex, revisor de Kraken (IKRAL). Revisa el turno ${n} de ${MAX_RELAYS} de Claude Code sobre esta tarea de IKRAL Studio.
+    const prompt = `Eres Codex, revisor de Kraken (IKRAL). Revisa el turno ${n} de ${max} de Claude Code sobre esta tarea de IKRAL Studio.
 TAREA (de Kyo/ChatGPT):\n${body}\n
 COMPROBACIÓN DEL PUENTE: ${checked.ok ? `npm test y build OK (${checked.tests ? `${checked.tests.passed}/${checked.tests.total}` : 'sin conteo'})` : `FALLÓ: ${checked.why}`}
 COMMITS DESDE EL INICIO:\n${commits || '(ninguno)'}\n
@@ -249,7 +264,11 @@ Responde con el esquema. veredicto:
 - «siguiente»: lo hecho está bien pero falta algún punto de la tarea (di cuál en siguiente_paso).
 - «corregir»: hay errores, algo fuera de alcance o una decisión de Claude mal tomada (detalla en observaciones).
 - «kyo»: SOLO si hace falta David por publicar, dinero, borrar, permisos, canon/creativo final, clientes reales, proyectos protegidos o producción.
-Una dificultad técnica NO es «kyo». No pidas nada fuera de la tarea.`
+Una dificultad técnica NO es «kyo». No pidas nada fuera de la tarea.${
+      alcance.includes('publicar')
+        ? '\nDavid AUTORIZÓ publicar en esta tarea: publicar NO es «kyo». Si la tarea pide publicar, «terminado» exige que el informe de Claude traiga la línea «PUBLICADO OK» del script tools/publicar-studio.sh.'
+        : ''
+    }`
     writeFileSync(join(dir, 'esquema.json'), JSON.stringify(REVIEW_SCHEMA))
     const off = ['shell_tool', 'unified_exec', 'apps', 'plugins', 'browser_use', 'browser_use_external', 'computer_use', 'image_generation', 'hooks', 'multi_agent', 'view_image', 'skill_search', 'tool_suggest', 'skill_mcp_dependency_install']
     const r = spawnSync(
@@ -271,34 +290,39 @@ Una dificultad técnica NO es «kyo». No pidas nada fuera de la tarea.`
 function relayTurn(state, id, task, attempt, comments) {
   const root = task.kind === 'relay' ? task.root : String(id)
   const n = task.n ?? 1
+  const rootTask = task.kind === 'relay' ? state.tasks[root] ?? {} : task
+  const max = task.max ?? rootTask.max ?? MAX_RELAYS
+  const alcance = task.alcance ?? rootTask.alcance ?? []
+  const publicar = alcance.includes('publicar')
   const base = task.base ?? git('rev-parse', 'HEAD')
   const url = task.kind === 'relay' ? state.tasks[root]?.url ?? '' : task.url
   const body = comments.find((c) => String(c.id) === root)?.body ?? ''
   if (!task.base) state.tasks[id] = { ...state.tasks[id], base }
   saveState(state)
   const about = { key: String(id), title: task.title ?? `relevo ${n}` }
-  post(`🐙 Kraken: relevo **${n} de ${MAX_RELAYS}** de la tarea ${root} (intento ${attempt} de ${MAX_ATTEMPTS}). Claude Code empieza con contexto nuevo; nadie tiene que decir «listo».`)
+  post(`🐙 Kraken: relevo **${n} de ${max}** de la tarea ${root}${alcance.length ? ` · alcance autorizado por David: ${alcance.join(', ')}` : ''} (intento ${attempt} de ${MAX_ATTEMPTS}). Claude Code empieza con contexto nuevo; nadie tiene que decir «listo».`)
   evidence({ root, n, step: 'claude-start', head: git('rev-parse', '--short', 'HEAD') })
-  const prompt = n === 1 ? `${taskPrompt(root, url)}\n${ARBITRO}` : relayPrompt(root, url, n, task.review ?? { verdict: '', notes: [], next: '' })
-  let fail = runClaude(`relevo ${root}-${n} (intento ${attempt})`, prompt)
+  const prompt = `${n === 1 ? `${taskPrompt(root, url)}\n${ARBITRO}` : relayPrompt(root, url, n, task.review ?? { verdict: '', notes: [], next: '' }, max)}${alcancePrompt(alcance)}`
+  let fail = runClaude(`relevo ${root}-${n} (intento ${attempt})`, prompt, WORKDIR, { publicar })
   event({ type: 'task-end', ok: !fail, why: fail ?? undefined, ...about })
   evidence({ root, n, step: 'claude-end', ok: !fail, why: fail, head: git('rev-parse', '--short', 'HEAD'), out: lastClaudeOut.slice(-1500) })
   if (!fail) {
     const turn = parseTurn(lastClaudeOut)
     const checked = checks()
     evidence({ root, n, step: 'checks', ...checked })
-    const { review, raw } = turn.needsKyo ? { review: null, raw: '' } : codexReview({ body, base, report: lastClaudeOut, turn, checked, n })
+    const stopsForKyo = turn.needsKyo && !alcance.includes(turn.needsKyo.topic)
+    const { review, raw } = stopsForKyo ? { review: null, raw: '' } : codexReview({ body, base, report: lastClaudeOut, turn, checked, n, max, alcance })
     evidence({ root, n, step: 'codex', review, raw: raw.slice(0, 3000) })
-    const d = relayDecision({ turn, review, checks: checked, n })
+    const d = relayDecision({ turn, review, checks: checked, n, max, alcance })
     evidence({ root, n, step: 'kraken', decision: d, decisions: turn.decisions, offList: turn.offList })
     const t = checked.tests ? `${checked.tests.passed}/${checked.tests.total}` : checked.ok ? 'OK' : `falló (${checked.why})`
     const dec = turn.decisions.length ? `\n- Decisiones de Claude (sin preguntar a Kyo): ${turn.decisions.map((x) => `«${x}»`).join('; ')}` : ''
     const rev = review ? `\n- Codex: **${review.verdict}**${review.notes.length ? ` · ${review.notes.join(' · ')}` : ''}${review.next ? ` · siguiente: ${review.next}` : ''}` : ''
     const head = `🐙 Kraken · relevo ${n} de la tarea ${root}\n- Puente: npm test ${t} · build ${checked.ok ? 'OK' : 'falló'}${rev}${dec}`
     if (d.action === 'relay') {
-      state = enqueueRelay(state, root, n + 1, { base, review: review ?? { verdict: 'corregir', notes: [d.why], next: '' }, url }, Date.now())
+      state = enqueueRelay(state, root, n + 1, { base, review: review ?? { verdict: 'corregir', notes: [d.why], next: '' }, url, max, ...(alcance.length ? { alcance } : {}) }, Date.now())
       post(`${head}\n- Decisión de Kraken: **otro relevo (${n + 1})** porque ${d.why}. Arranca solo en la próxima vuelta.`)
-    } else if (d.action === 'done') post(`${head}\n- Decisión de Kraken: **🏁 tarea terminada** (${d.why}) en ${n} relevo(s), sin intervención de Kyo. No se publicó nada.`)
+    } else if (d.action === 'done') post(`${head}\n- Decisión de Kraken: **🏁 tarea terminada** (${d.why}) en ${n} relevo(s), sin intervención de Kyo. ${/PUBLICADO OK/.test(lastClaudeOut) ? 'Publicado en https://ikral.com/studio/ (dentro del alcance autorizado).' : 'No se publicó nada.'}`)
     else if (d.action === 'kyo') post(`${head}\n- 🙋 **Se detiene: necesita a Kyo** · ${d.why}`)
     else post(`${head}\n- ⛔ **Se detiene por tope** · ${d.why}. Componente que detuvo: tope de relevos del puente.`)
   }
