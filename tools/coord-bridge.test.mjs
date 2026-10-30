@@ -23,6 +23,12 @@ import {
   WORKSPACES,
   askedWorkspace,
   workspaceOf,
+  MAX_RELAYS,
+  enqueueRelay,
+  parseReview,
+  parseTurn,
+  relayDecision,
+  wantsRelays,
 } from './coord-bridge-core.mjs'
 
 const gpt = (id, body) => ({
@@ -195,5 +201,53 @@ describe('carpeta de trabajo (workspace)', () => {
     expect(state.tasks[3]).toMatchObject({ status: 'invalid', asked: '/tmp' })
     expect(nextTask({ ...state, tasks: { 3: state.tasks[3] } }, 10)).toBeNull()
     expect(prune(state, 5 + 31 * DEDUP_WINDOW_MS).tasks[3]).toBeUndefined()
+  })
+})
+
+describe('relevos de Kraken', () => {
+  const kyo = (id, body) => ({ ...gpt(id, body), performed_via_github_app: null })
+  const ok = { ok: true }
+
+  it('Kyo solo inicia tareas con «KRAKEN: relevos»; ChatGPT igual que antes', () => {
+    expect(wantsRelays('[COORD-TASK] x\nKRAKEN: relevos')).toBe(true)
+    expect(classify(kyo(1, '[COORD-TASK] x\nKRAKEN: relevos'))).toBe('task')
+    expect(classify(kyo(1, '[COORD-TASK] x'))).toBeNull()
+    expect(classify(kyo(1, 'COORD-PING\nKRAKEN: relevos'))).toBeNull()
+    expect(classify({ ...kyo(1, '[COORD-TASK] KRAKEN: relevos'), user: { login: 'otro' } })).toBeNull()
+    expect(classify(kyo(1, `[COORD-TASK]\nKRAKEN: relevos ${MARK}`))).toBeNull()
+    const { state } = ingest({ lastId: 0, tasks: {}, chain: {} }, [kyo(5, '[COORD-TASK] a\nKRAKEN: relevos'), gpt(6, '[COORD-TASK] b')], T0)
+    expect(state.tasks[5].relays).toBe(true)
+    expect(state.tasks[6].relays).toBeUndefined()
+  })
+
+  it('el árbitro solo para por la lista cerrada de Kyo', () => {
+    expect(parseTurn('hecho\nNECESITA-KYO: publicar · subir a ikral.com').needsKyo).toEqual({ topic: 'publicar', why: 'subir a ikral.com' })
+    const tech = parseTurn('NECESITA-KYO: nombre-variable · ¿blob o _blob?\nDECISIÓN: quité blob | no se usa | git revert')
+    expect(tech.needsKyo).toBeNull()
+    expect(tech.offList).toBe('nombre-variable')
+    expect(tech.decisions).toEqual(['quité blob | no se usa | git revert'])
+  })
+
+  it('Codex: veredictos válidos o «invalido»', () => {
+    expect(parseReview('{"veredicto":"siguiente","observaciones":["falta punto 2"],"siguiente_paso":"punto 2"}')).toEqual({ verdict: 'siguiente', notes: ['falta punto 2'], next: 'punto 2' })
+    expect(parseReview('nada').verdict).toBe('invalido')
+    expect(parseReview('{"veredicto":"publicar"}').verdict).toBe('invalido')
+  })
+
+  it('Kraken decide: terminar, otro relevo, Kyo o tope', () => {
+    const t = parseTurn('')
+    expect(relayDecision({ turn: t, review: parseReview({ veredicto: 'terminado' }), checks: ok, n: 1 }).action).toBe('done')
+    expect(relayDecision({ turn: t, review: parseReview({ veredicto: 'siguiente' }), checks: ok, n: 1 }).action).toBe('relay')
+    expect(relayDecision({ turn: t, review: parseReview({ veredicto: 'terminado' }), checks: { ok: false, why: 'build' }, n: 2 }).action).toBe('relay')
+    expect(relayDecision({ turn: t, review: parseReview({ veredicto: 'corregir' }), checks: ok, n: MAX_RELAYS }).action).toBe('limit')
+    expect(relayDecision({ turn: parseTurn('NECESITA-KYO: dinero · API'), review: null, checks: ok, n: 1 }).action).toBe('kyo')
+    expect(relayDecision({ turn: t, review: parseReview({ veredicto: 'kyo', observaciones: ['canon'] }), checks: ok, n: 1 }).action).toBe('kyo')
+  })
+
+  it('el relevo va primero en la cola (termina lo empezado) y con clave de texto', () => {
+    const s = enqueueRelay({ lastId: 9, tasks: {}, chain: {} }, 9, 2, { notes: ['x'] }, T0)
+    expect(s.tasks['relevo-9-2']).toMatchObject({ kind: 'relay', root: '9', n: 2, status: 'pending' })
+    expect(nextTask({ ...s, tasks: { ...s.tasks, 'etapa-5a': { kind: 'stage', status: 'pending', nextAt: 0 } } }, T0)).toBe('relevo-9-2')
+    expect(nextTask({ ...s, tasks: { ...s.tasks, 12: { status: 'pending', nextAt: 0 } } }, T0)).toBe('relevo-9-2') // termina lo empezado primero
   })
 })
