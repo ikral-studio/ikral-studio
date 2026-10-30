@@ -16,7 +16,7 @@ import { importFiles } from '../../features/scene-management/actions'
 import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { toast, useUI } from '../../stores/uiStore'
 import type { AudioClip, AudioTrack } from '../../types'
-import { accentFor } from '../common/StatusChip'
+import { accentFor } from '../common/accents'
 import { GptEditToggle } from '../gpt/GptEditPanel'
 import { AssistantSlot } from '../gpt/AssistantSlot'
 
