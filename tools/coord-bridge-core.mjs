@@ -18,7 +18,9 @@ export const STAGE_PREFIX = 'etapa-'
 /** Qué hacer con un comentario: 'ping', 'task', 'chain-pause', 'chain-resume' o null (se ignora). */
 export function classify(c) {
   const fromChatGPT = c.performed_via_github_app?.slug === CHATGPT_APP && c.user?.login === CHATGPT_USER
-  if (!fromChatGPT || !c.body || c.body.includes(MARK)) return null
+  // Kyo (misma cuenta, sin app) solo puede iniciar una tarea con relevos de Kraken («KRAKEN: relevos»).
+  const fromKyo = !c.performed_via_github_app && c.user?.login === CHATGPT_USER && c.body?.includes('[COORD-TASK]') && wantsRelays(c.body)
+  if ((!fromChatGPT && !fromKyo) || !c.body || c.body.includes(MARK)) return null
   if (/\bCOORD-PING\b/.test(c.body)) return 'ping'
   if (/\bCOORD-CADENA-PAUSA\b/.test(c.body)) return 'chain-pause'
   if (/\bCOORD-CADENA-SIGUE\b/.test(c.body)) return 'chain-resume'
@@ -92,7 +94,7 @@ export function ingest(state, comments, now) {
     )
     next.tasks[c.id] = twin
       ? { hash, workspace, status: 'duplicate', of: Number(twin[0]), attempts: 0, url: c.html_url, finishedAt: now }
-      : { hash, workspace, status: 'pending', attempts: 0, url: c.html_url, nextAt: now }
+      : { hash, workspace, status: 'pending', attempts: 0, url: c.html_url, nextAt: now, ...(wantsRelays(c.body) && workspace === 'studio' ? { relays: true } : {}) }
   }
   return { state: next, pings, controls }
 }
@@ -102,7 +104,10 @@ const queueOrder = ([a], [b]) => {
   const sa = a.startsWith(STAGE_PREFIX)
   const sb = b.startsWith(STAGE_PREFIX)
   if (sa !== sb) return sa ? 1 : -1
-  return sa ? a.localeCompare(b) : Number(a) - Number(b)
+  const na = Number(a)
+  const nb = Number(b)
+  if (Number.isNaN(na) || Number.isNaN(nb)) return Number.isNaN(na) === Number.isNaN(nb) ? a.localeCompare(b) : Number.isNaN(na) ? -1 : 1
+  return sa ? a.localeCompare(b) : na - nb
 }
 
 /** La siguiente tarea a correr (la más vieja que ya toca), o null. Una sola a la vez. */
@@ -112,7 +117,7 @@ export function nextTask(state, now) {
     .sort(queueOrder)
   if (!ready.length) return null
   const id = ready[0][0]
-  return id.startsWith(STAGE_PREFIX) ? id : Number(id)
+  return id.startsWith(STAGE_PREFIX) || id.startsWith(RELAY_PREFIX) ? id : Number(id)
 }
 
 // ---- Encadenamiento del plan maestro ----
@@ -212,4 +217,61 @@ export function pidAlive(pid, kill = process.kill) {
   } catch (e) {
     return e?.code === 'EPERM'
   }
+}
+
+// ---- Relevos de Kraken (prueba 30 oct 2026) ----
+// Una tarea con la línea «KRAKEN: relevos» no termina en un solo turno: tras cada turno de Claude el puente comprueba
+// (npm test + build), Codex revisa el cambio (solo lectura, suscripción ChatGPT) y Kraken decide el siguiente paso:
+// terminar, otro relevo de Claude (siguiente punto u observaciones) o parar y preguntar a Kyo (solo lista cerrada).
+
+/** Clave de cada relevo en la cola: «relevo-<comentario>-<n>». */
+export const RELAY_PREFIX = 'relevo-'
+/** Turnos de Claude como máximo por tarea con relevos (el primero cuenta). */
+export const MAX_RELAYS = 4
+const KRAKEN_LINE = /^[\s>*_`-]*KRAKEN\s*:\s*\**\s*relevos\b/im
+export const wantsRelays = (body) => KRAKEN_LINE.test(body ?? '')
+
+/** Lo que SIEMPRE espera a Kyo (docs/kraken-autonomo-propuesta-2026-10-30.md §4). Lo demás lo deciden los agentes. */
+export const KYO_TOPICS = ['publicar', 'dinero', 'borrar', 'permisos', 'canon-creativo', 'clientes-reales', 'proyectos-protegidos', 'produccion']
+
+/** Lee el final del turno de Claude: «NECESITA-KYO: <tema> · <motivo>» y líneas «DECISIÓN: …». */
+export function parseTurn(out) {
+  const text = out ?? ''
+  const kyo = /^\s*NECESITA-KYO\s*:\s*([a-z-]+)\s*[·:-]?\s*(.*)$/im.exec(text)
+  const decisions = [...text.matchAll(/^\s*DECISI[OÓ]N\s*:\s*(.+)$/gim)].map((m) => m[1].trim())
+  // Un tema fuera de la lista cerrada NO para la cadena: es una decisión técnica que los agentes resuelven.
+  const needsKyo = kyo && KYO_TOPICS.includes(kyo[1].toLowerCase()) ? { topic: kyo[1].toLowerCase(), why: kyo[2].trim() } : null
+  return { needsKyo, decisions, offList: kyo && !needsKyo ? kyo[1] : null }
+}
+
+/** Respuesta de Codex (JSON del esquema) → { verdict, notes }. Cualquier cosa rara = 'invalido'. */
+export function parseReview(raw) {
+  try {
+    const r = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const verdict = ['terminado', 'siguiente', 'corregir', 'kyo'].includes(r?.veredicto) ? r.veredicto : 'invalido'
+    const notes = Array.isArray(r?.observaciones) ? r.observaciones.map(String).filter(Boolean) : []
+    return { verdict, notes, next: typeof r?.siguiente_paso === 'string' ? r.siguiente_paso : '' }
+  } catch {
+    return { verdict: 'invalido', notes: [], next: '' }
+  }
+}
+
+/**
+ * Kraken decide el siguiente paso tras un turno. turn = parseTurn, review = parseReview, checks = { ok, why }, n = turno actual (1…).
+ * → { action: 'done' | 'relay' | 'kyo' | 'limit', why }
+ */
+export function relayDecision({ turn, review, checks, n }) {
+  if (turn?.needsKyo) return { action: 'kyo', why: `Claude: ${turn.needsKyo.topic} · ${turn.needsKyo.why}` }
+  if (review?.verdict === 'kyo') return { action: 'kyo', why: `Codex: ${review.notes.join(' · ') || 'decisión de David'}` }
+  const more = !checks?.ok || review?.verdict === 'siguiente' || review?.verdict === 'corregir' || review?.verdict === 'invalido'
+  if (!more) return { action: 'done', why: 'pruebas OK y Codex aprobó' }
+  const why = !checks?.ok ? `comprobación: ${checks?.why}` : review.verdict === 'invalido' ? 'Codex no dio veredicto válido' : `Codex: ${review.verdict}`
+  if (n >= MAX_RELAYS) return { action: 'limit', why: `${why} y ya van ${n} turnos (tope ${MAX_RELAYS})` }
+  return { action: 'relay', why }
+}
+
+/** Pone en cola el siguiente relevo de la tarea raíz. */
+export function enqueueRelay(state, root, n, data, now) {
+  const key = `${RELAY_PREFIX}${root}-${n}`
+  return { ...state, tasks: { ...state.tasks, [key]: { kind: 'relay', root: String(root), n, relays: true, workspace: 'studio', status: 'pending', attempts: 0, nextAt: now, ...data } } }
 }
