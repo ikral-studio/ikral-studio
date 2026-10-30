@@ -24,9 +24,13 @@
 // Pruebas sin tocar el Issue: COORD_DRY_RUN=1 (no publica) · COORD_STATE_DIR · COORD_LOG · COORD_CLAUDE_BIN · COORD_TASK_TIMEOUT_MS
 //   · COORD_FAKE_COMMENTS=<archivo.json> y COORD_PAUSE_FILE=<archivo> (solo con COORD_DRY_RUN=1: comentarios de prueba en vez
 //   de los del Issue y otra ruta de pausa, para probar sin quitar la PAUSA real).
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+// Relevos de Kraken (prueba 30 oct 2026): una tarea con la línea «KRAKEN: relevos» (de ChatGPT o de Kyo) sigue sola turno tras turno:
+//   Claude trabaja → el puente comprueba (npm test + build) → Codex revisa el cambio (solo lectura, aislado, suscripción ChatGPT)
+//   → Kraken decide (relayDecision): terminar, otro relevo de Claude, o parar y preguntar a Kyo (solo la lista cerrada KYO_TOPICS).
+//   Evidencia de cada turno en <COORD_STATE_DIR>/kraken-relevos.jsonl. COORD_CODEX_BIN cambia el ejecutable de Codex (pruebas).
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   MARK,
@@ -45,6 +49,11 @@ import {
   recoverRunning,
   vitestSummary,
   WORKSPACES,
+  MAX_RELAYS,
+  enqueueRelay,
+  parseReview,
+  parseTurn,
+  relayDecision,
 } from './coord-bridge-core.mjs'
 import { logEvent, writeMonitor } from './coord-monitor.mjs'
 import { taskTitle } from './coord-monitor-core.mjs'
@@ -69,6 +78,10 @@ const PAUSE = DRY && env.COORD_PAUSE_FILE ? env.COORD_PAUSE_FILE : join(homedir(
 const CLAUDE = env.COORD_CLAUDE_BIN || 'claude'
 const TASK_TIMEOUT_MS = Number(env.COORD_TASK_TIMEOUT_MS) || 2 * 60 * 60 * 1000
 const STALE_MS = TASK_TIMEOUT_MS + 10 * 60 * 1000
+const CODEX = env.COORD_CODEX_BIN || 'codex'
+const EVIDENCE = join(STATE_DIR, 'kraken-relevos.jsonl')
+const evidence = (o) => appendFileSync(EVIDENCE, `${JSON.stringify({ at: new Date().toISOString(), ...o })}\n`)
+const git = (...args) => execFileSync('git', args, { cwd: WORKDIR, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim()
 
 /** Monitor en vivo (solo lectura): se reescribe en cada vuelta, también con el candado ocupado. Nunca falla. */
 const monitor = () => writeMonitor({ stateDir: STATE_DIR, workdir: WORKDIR, pauseFile: PAUSE, repo: REPO, issue: ISSUE })
@@ -135,6 +148,25 @@ Tu tarea: la sub-etapa «${stage}» de docs/plan-maestro-ikral-studio.md, autori
 4. Commits intermedios con «(parcial)» en el asunto. El ÚLTIMO commit, solo cuando todo esté terminado y probado, con asunto que empiece exactamente «Fase ${stage} » (así el puente sabe que se cerró). Si no puedes terminar, no hagas ese commit: explica el bloqueo.
 5. Al final: entrada en ../BITACORA.md y un comentario en el Issue #1 con estado, pruebas y bloqueos. Pon ${MARK} al final de tu comentario.`
 
+/** Árbitro de decisiones: se suma a las tareas con relevos. */
+const ARBITRO = `
+REGLAS DE RELEVO (Kraken): no le preguntes nada a Kyo ni le pidas «listo». Una duda técnica o reversible la decides tú y la anotas al final en una línea:
+DECISIÓN: <qué decidiste> | <por qué> | <cómo se deshace>
+Solo si de verdad necesitas a David por algo de esta lista cerrada (publicar, dinero, borrar, permisos, canon-creativo, clientes-reales, proyectos-protegidos, produccion), escribe al final UNA línea:
+NECESITA-KYO: <tema de la lista> · <motivo en una frase>
+Haz SOLO el primer punto pendiente de la tarea en este turno y haz su commit de trabajo. Después del tuyo, el puente comprueba, Codex revisa y Kraken decide el siguiente paso: tú no lo pidas.`
+
+/** Relevo n de una tarea con relevos: Claude nuevo, sigue donde Codex dijo. */
+const relayPrompt = (root, url, n, review) => `Eres Claude Code de IKRAL (Kraken), relevo ${n} de ${MAX_RELAYS} de la tarea del comentario ${root} del Issue #1 (${url}), en IKRAL Studio.
+1. Lee la tarea: gh api repos/${REPO}/issues/comments/${root} --jq .body
+2. Mira lo ya hecho en relevos anteriores: git log -8 y las últimas entradas de ../BITACORA.md.
+3. Revisión de Codex del turno anterior (veredicto «${review.verdict}»): ${review.notes.join(' · ') || 'sin observaciones'}. Siguiente paso que propuso: ${review.next || '—'}.
+   Haz eso (corregir observaciones o el siguiente punto pendiente). Nada fuera de la tarea.
+4. Prohibido: git push, publicar o desplegar, borrar datos o proyectos, gastar dinero o créditos, credenciales nuevas, tocar ikral-studio-codex o «SIN CEBOLLA», quitar la PAUSA, trabajar fuera de esta carpeta.
+5. Al final: npm test y npm run build, commit de trabajo SOLO de tus archivos, entrada en ../BITACORA.md y un comentario corto en el Issue #1. Pon ${MARK} al final de tu comentario.
+${ARBITRO}`
+
+let lastClaudeOut = ''
 /** Corre un Claude Code nuevo (proceso de vida corta). null si terminó bien; si no, el motivo. */
 function runClaude(label, prompt, cwd = WORKDIR) {
   if (!existsSync(cwd)) return `no existe la carpeta ${cwd}`
@@ -158,6 +190,7 @@ function runClaude(label, prompt, cwd = WORKDIR) {
   )
   const why = r.error?.code === 'ETIMEDOUT' ? 'tiempo agotado' : r.error ? r.error.message : `código ${r.status}`
   log(`${label}: terminó (${why})\n${(r.stdout ?? '').slice(-2000)}`)
+  lastClaudeOut = r.stdout ?? ''
   return r.status === 0 ? null : why
 }
 
@@ -171,6 +204,11 @@ const chainInfo = () => {
 /** Comprobación propia del puente tras una etapa: commit de cierre, pruebas unitarias y compilación. */
 function verifyStage(stage) {
   if (!closedStages(gitSubjects()).has(stage)) return { ok: false, why: `no hay commit «Fase ${stage} …» de cierre` }
+  return checks()
+}
+
+/** npm test + npm run build en IKRAL Studio. */
+function checks() {
   const run = (args) => spawnSync('npm', args, { cwd: WORKDIR, encoding: 'utf8', timeout: 20 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 })
   const t = run(['test'])
   const tests = vitestSummary(`${t.stdout}\n${t.stderr}`)
@@ -179,6 +217,95 @@ function verifyStage(stage) {
   if (b.status !== 0) return { ok: false, why: 'npm run build falló' }
   const commit = execFileSync('git', ['log', '-1', '--format=%h %s'], { cwd: WORKDIR, encoding: 'utf8' }).trim()
   return { ok: true, commit, tests }
+}
+
+const REVIEW_SCHEMA = {
+  type: 'object',
+  properties: {
+    veredicto: { type: 'string', enum: ['terminado', 'siguiente', 'corregir', 'kyo'] },
+    observaciones: { type: 'array', items: { type: 'string' } },
+    siguiente_paso: { type: 'string' },
+  },
+  required: ['veredicto', 'observaciones', 'siguiente_paso'],
+  additionalProperties: false,
+}
+
+/** Codex revisa el turno: solo lectura, carpeta vacía, sin herramientas, con la suscripción ChatGPT (como el despachador). */
+function codexReview({ body, base, report, turn, checked, n }) {
+  const dir = mkdtempSync(join(tmpdir(), 'kraken-codex-'))
+  try {
+    const diff = git('diff', `${base}..HEAD`).slice(0, 80_000)
+    const commits = git('log', '--format=%h %s', `${base}..HEAD`)
+    const prompt = `Eres Codex, revisor de Kraken (IKRAL). Revisa el turno ${n} de ${MAX_RELAYS} de Claude Code sobre esta tarea de IKRAL Studio.
+TAREA (de Kyo/ChatGPT):\n${body}\n
+COMPROBACIÓN DEL PUENTE: ${checked.ok ? `npm test y build OK (${checked.tests ? `${checked.tests.passed}/${checked.tests.total}` : 'sin conteo'})` : `FALLÓ: ${checked.why}`}
+COMMITS DESDE EL INICIO:\n${commits || '(ninguno)'}\n
+DECISIONES QUE TOMÓ CLAUDE:\n${turn.decisions.join('\n') || '(ninguna)'}\n
+INFORME FINAL DE CLAUDE:\n${report.slice(-3000)}\n
+DIFF DESDE EL INICIO DE LA TAREA:\n${diff || '(vacío)'}\n
+Responde con el esquema. veredicto:
+- «terminado»: TODOS los puntos de la tarea están hechos, bien y dentro del alcance.
+- «siguiente»: lo hecho está bien pero falta algún punto de la tarea (di cuál en siguiente_paso).
+- «corregir»: hay errores, algo fuera de alcance o una decisión de Claude mal tomada (detalla en observaciones).
+- «kyo»: SOLO si hace falta David por publicar, dinero, borrar, permisos, canon/creativo final, clientes reales, proyectos protegidos o producción.
+Una dificultad técnica NO es «kyo». No pidas nada fuera de la tarea.`
+    writeFileSync(join(dir, 'esquema.json'), JSON.stringify(REVIEW_SCHEMA))
+    const off = ['shell_tool', 'unified_exec', 'apps', 'plugins', 'browser_use', 'browser_use_external', 'computer_use', 'image_generation', 'hooks', 'multi_agent', 'view_image', 'skill_search', 'tool_suggest', 'skill_mcp_dependency_install']
+    const r = spawnSync(
+      CODEX,
+      ['exec', '--skip-git-repo-check', '--ephemeral', '--ignore-user-config', '--ignore-rules', '-s', 'read-only', ...off.flatMap((f) => ['--disable', f]),
+        '-c', 'forced_login_method="chatgpt"', '-c', 'web_search="disabled"', '-c', 'model_reasoning_effort="medium"',
+        '--output-schema', join(dir, 'esquema.json'), '--color', 'never', '-o', join(dir, 'r.txt'), '-'],
+      { cwd: dir, input: prompt, encoding: 'utf8', timeout: 15 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 },
+    )
+    const raw = existsSync(join(dir, 'r.txt')) ? readFileSync(join(dir, 'r.txt'), 'utf8') : ''
+    if (r.status !== 0 || !raw) log(`codex: sin respuesta (${r.error?.message ?? `código ${r.status}`}) ${(r.stderr ?? '').slice(-500)}`)
+    return { review: parseReview(raw), raw }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+/** Un turno de una tarea con relevos: Claude → comprobación → Codex → Kraken decide. */
+function relayTurn(state, id, task, attempt, comments) {
+  const root = task.kind === 'relay' ? task.root : String(id)
+  const n = task.n ?? 1
+  const base = task.base ?? git('rev-parse', 'HEAD')
+  const url = task.kind === 'relay' ? state.tasks[root]?.url ?? '' : task.url
+  const body = comments.find((c) => String(c.id) === root)?.body ?? ''
+  if (!task.base) state.tasks[id] = { ...state.tasks[id], base }
+  saveState(state)
+  const about = { key: String(id), title: task.title ?? `relevo ${n}` }
+  post(`🐙 Kraken: relevo **${n} de ${MAX_RELAYS}** de la tarea ${root} (intento ${attempt} de ${MAX_ATTEMPTS}). Claude Code empieza con contexto nuevo; nadie tiene que decir «listo».`)
+  evidence({ root, n, step: 'claude-start', head: git('rev-parse', '--short', 'HEAD') })
+  const prompt = n === 1 ? `${taskPrompt(root, url)}\n${ARBITRO}` : relayPrompt(root, url, n, task.review ?? { verdict: '', notes: [], next: '' })
+  let fail = runClaude(`relevo ${root}-${n} (intento ${attempt})`, prompt)
+  event({ type: 'task-end', ok: !fail, why: fail ?? undefined, ...about })
+  evidence({ root, n, step: 'claude-end', ok: !fail, why: fail, head: git('rev-parse', '--short', 'HEAD'), out: lastClaudeOut.slice(-1500) })
+  if (!fail) {
+    const turn = parseTurn(lastClaudeOut)
+    const checked = checks()
+    evidence({ root, n, step: 'checks', ...checked })
+    const { review, raw } = turn.needsKyo ? { review: null, raw: '' } : codexReview({ body, base, report: lastClaudeOut, turn, checked, n })
+    evidence({ root, n, step: 'codex', review, raw: raw.slice(0, 3000) })
+    const d = relayDecision({ turn, review, checks: checked, n })
+    evidence({ root, n, step: 'kraken', decision: d, decisions: turn.decisions, offList: turn.offList })
+    const t = checked.tests ? `${checked.tests.passed}/${checked.tests.total}` : checked.ok ? 'OK' : `falló (${checked.why})`
+    const dec = turn.decisions.length ? `\n- Decisiones de Claude (sin preguntar a Kyo): ${turn.decisions.map((x) => `«${x}»`).join('; ')}` : ''
+    const rev = review ? `\n- Codex: **${review.verdict}**${review.notes.length ? ` · ${review.notes.join(' · ')}` : ''}${review.next ? ` · siguiente: ${review.next}` : ''}` : ''
+    const head = `🐙 Kraken · relevo ${n} de la tarea ${root}\n- Puente: npm test ${t} · build ${checked.ok ? 'OK' : 'falló'}${rev}${dec}`
+    if (d.action === 'relay') {
+      state = enqueueRelay(state, root, n + 1, { base, review: review ?? { verdict: 'corregir', notes: [d.why], next: '' }, url }, Date.now())
+      post(`${head}\n- Decisión de Kraken: **otro relevo (${n + 1})** porque ${d.why}. Arranca solo en la próxima vuelta.`)
+    } else if (d.action === 'done') post(`${head}\n- Decisión de Kraken: **🏁 tarea terminada** (${d.why}) en ${n} relevo(s), sin intervención de Kyo. No se publicó nada.`)
+    else if (d.action === 'kyo') post(`${head}\n- 🙋 **Se detiene: necesita a Kyo** · ${d.why}`)
+    else post(`${head}\n- ⛔ **Se detiene por tope** · ${d.why}. Componente que detuvo: tope de relevos del puente.`)
+  }
+  const done = afterAttempt(state.tasks[id], !fail, Date.now())
+  state.tasks[id] = done
+  saveState(state)
+  if (done.status === 'pending') post(`⚠️ Kraken: el relevo ${n} de la tarea ${root} no terminó (${fail}). Se reintenta solo en ${RETRY_DELAY_MS / 60000} min.`)
+  if (done.status === 'failed') post(`❌ Kraken: el relevo ${n} de la tarea ${root} falló ${done.attempts} veces (${fail}). Se detiene. Componente: Claude Code (claude -p).`)
 }
 
 function main() {
@@ -264,6 +391,10 @@ function main() {
     monitor()
     let fail
     let report = ''
+    if (task.relays) {
+      relayTurn(state, id, task, attempt, comments)
+      return
+    }
     if (task.kind === 'stage') {
       const closed = [...info.closed].sort().join(', ') || 'ninguna'
       post(`🔗 Puente: se activa la etapa **${task.stage}** del plan maestro (intento ${attempt} de ${MAX_ATTEMPTS}). Ya cerradas: ${closed}. Claude Code empieza con contexto nuevo.`)
