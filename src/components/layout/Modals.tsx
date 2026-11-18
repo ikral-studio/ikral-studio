@@ -20,6 +20,7 @@ import { RegenerateModal } from './RegenerateModal'
 import type { Project } from '../../types'
 import { ACTIONS, DEFAULT_KEYS, RESERVED, assignKey, keyLabel, mergeKeys, normalizeKey, type ActionId, type KeyBindings } from '../../features/shortcuts/keys'
 import { shortcutCapture } from '../../hooks/useShortcuts'
+import { CREDITS } from '../../features/credits/credits'
 
 function useBindings(): [KeyBindings, (b: KeyBindings) => void] {
   const saved = useProject((s) => s.settings.keys)
@@ -290,6 +291,34 @@ function clampNum(v: number, min: number, max: number, fallback: number) {
   return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback
 }
 
+/** Acerca de: qué es IKRAL Studio y gracias a los proyectos libres que usa. */
+function AboutModal() {
+  return (
+    <Modal title="Acerca de IKRAL Studio" onClose={close} width={640}>
+      <p className="text-[13px] leading-relaxed text-ink-2">
+        IKRAL Studio, de David González (Kyo). Para hacer guiones, storyboard, videos y música. Lo que hace en tu Mac es gratis gracias a estos proyectos libres.
+        ¡Gracias a sus autores! 💙
+      </p>
+      {CREDITS.map(({ group, items }) => (
+        <section key={group} className="mt-5">
+          <h3 className="mb-2 font-semibold">{group}</h3>
+          <ul className="flex flex-col gap-2.5">
+            {items.map((c) => (
+              <li key={c.name} className="text-[12.5px] leading-snug">
+                <span className="font-semibold text-ink">{c.name}</span> <span className="text-ink-3">· {c.author} · {c.license}</span>
+                <br />
+                <span className="text-ink-2">{c.use}</span>
+                <br />
+                <span className="select-all text-ink-3">{c.url}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </Modal>
+  )
+}
+
 function HelpModal() {
   const [keys] = useBindings()
   const rows: [string, string][] = [
@@ -326,6 +355,9 @@ function HelpModal() {
         «Exportar video» (un MP4 final) todavía no existe. Para terminar la edición en Premiere, Final Cut o DaVinci usa el botón 🎬
         «Exportar edición»: baja un .zip con los archivos y la línea de tiempo.
       </p>
+      <button className="btn btn-sm mt-5" onClick={() => useUI.setState({ modal: 'about' })}>
+        Acerca de y créditos
+      </button>
     </Modal>
   )
 }
@@ -335,6 +367,7 @@ export function Modals() {
   if (modal === 'projects') return <ProjectsModal />
   if (modal === 'settings') return <SettingsModal />
   if (modal === 'help') return <HelpModal />
+  if (modal === 'about') return <AboutModal />
   if (modal === 'importScript') return <ImportScriptModal />
   if (modal === 'pasteScene') return <PasteSceneModal />
   if (modal === 'camera') return <CameraLibraryModal />

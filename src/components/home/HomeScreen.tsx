@@ -1,4 +1,4 @@
-import { Clapperboard, FolderOpen, Music, Palette } from 'lucide-react'
+import { Clapperboard, FolderOpen, Info, Music, Palette } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
 import { bibleAnswered } from '../../features/bible/bible'
@@ -51,9 +51,14 @@ export function HomeScreen() {
         </button>
       </div>
 
-      <button className="btn !h-10" onClick={() => useUI.setState({ modal: 'projects' })}>
-        <FolderOpen size={16} /> Cambiar de proyecto
-      </button>
+      <div className="flex gap-2">
+        <button className="btn !h-10" onClick={() => useUI.setState({ modal: 'projects' })}>
+          <FolderOpen size={16} /> Cambiar de proyecto
+        </button>
+        <button className="btn btn-ghost !h-10" onClick={() => useUI.setState({ modal: 'about' })}>
+          <Info size={16} /> Acerca de
+        </button>
+      </div>
     </div>
   )
 }

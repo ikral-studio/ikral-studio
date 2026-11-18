@@ -19,7 +19,7 @@ interface ConfirmRequest {
 
 /** target: a dónde va la imagen recortada (imagen inicial/final o un fotograma). */
 export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: string; target?: { sceneId: string; slot?: 'start' | 'end'; frameId?: string } }
-export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | 'regenerate' | 'trash' | 'pdf' | null
+export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | 'regenerate' | 'trash' | 'pdf' | 'about' | null
 
 interface UIState {
   /** Pantalla principal: inicio, Preproducción (Biblia), Edición o Música. */

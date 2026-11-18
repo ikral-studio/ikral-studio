@@ -49,6 +49,7 @@
     "category": "Video",
     "shortDescription": "Storyboard, guion y videos generados con IA",
     "copyright": "© 2026 David González · AGPL-3.0-or-later",
+    "resources": { "../THIRD_PARTY_LICENSES.txt": "THIRD_PARTY_LICENSES.txt", "../CREDITOS.md": "CREDITOS.md" },
     "macOS": {
       "files": {
         "Resources/library.icns": "icons/library.icns"
