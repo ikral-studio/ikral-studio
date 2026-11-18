@@ -187,3 +187,12 @@
 - Publicado: no.
 - Commit: solo esta entrada; el Panel no se tocó (el puente sigue encerrado en ikral-studio).
 - Pendiente: maqueta oscura; puente o sesión del Panel con permiso para ikral-memoria (OK de David).
+
+2026-11-18 02:40 · IKRAL Studio · Música gratis en la Mac (ACE-Step 1.5) + Acerca de y licencias
+- Agregado: [código] cuadro «🎵 Música» en el inicio → pantalla propia: estilo, letra, duración, 🎲 Dado (inventa estilo y letra), usar mi audio (copiar estilo, otra versión, rehacer un pedazo, separar voz/instrumento, agregar instrumento). Las canciones quedan en la biblioteca del proyecto y van a Música 1/2 con un botón.
+- Agregado: [código] «Acerca de» con créditos y «Uso responsable»; CREDITOS.md y THIRD_PARTY_LICENSES.txt dentro de la app; docs/revision-licencias-v1-2026-11-18.md (en regla; decir «hecho con IA» al publicar videos LTX).
+- Agregado: [motor] /Volumes/c/AI/ACE-Step/arrancar-ikral-musica.sh + ikral_musica.py (CORS para la app); modelo base 4.8 GB bajado con permiso.
+- Instalado: /Applications/IKRAL Studio.app (respaldos en /Volumes/c/respaldos/ikral-studio/app-antes-musica-2026-11-18 y app-antes-creditos-2026-11-18).
+- Publicado: sí, GitHub main a37b5cc (respaldo verificado repo-antes-publicar-musica-2026-11-18.bundle). Subido con la cuenta nahya-bi (djbanner no tiene permiso).
+- Commit: f9fff7e…a37b5cc.
+- Pendiente: probar en vivo separar voz (modelo base) y rehacer pedazo; el Dado con el LM 0.6B inventa estilos raros (probar LM 1.7B); «Aprender tu estilo» (LoRA); V4 imágenes.
