@@ -5,7 +5,7 @@ import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { getMediaBlob, kindOf, useMediaUrl } from '../../features/media-library/media'
 import { DURATIONS, TRACKS, type AudioMode, type TrackName } from '../../features/music-local/acestep'
-import { generateLocalSong } from '../../features/music-local/generate'
+import { generateLocalSong, inventLocalSong } from '../../features/music-local/generate'
 import { isDesktop } from '../../database/db'
 import { formatTime as fmtTime } from '../../utils'
 import type { Song } from '../../types'
@@ -98,10 +98,24 @@ export function MusicScreen() {
     setLyrics(song.lyrics)
     toast(mode === 'repaint' ? `Escoge desde qué segundo hasta cuál rehacer «${song.title}».` : `Escoge el nuevo estilo para «${song.title}» y pulsa «Hacer música».`, 'info')
   }
-  const make = async (surprise = false) => {
+  const invent = async () => {
     useMusicJob.setState({ busy: true, step: 'Empezando…' })
     try {
-      const secs = await generateLocalSong({ style, lyrics, seconds, audio: surprise ? undefined : (audio ?? undefined), surprise }, (t) => useMusicJob.setState({ step: t }))
+      const idea = await inventLocalSong(style, seconds, (t) => useMusicJob.setState({ step: t }))
+      setStyle(idea.style)
+      setLyrics(idea.lyrics)
+      toast('🎲 Listo: revisa el estilo y la letra, y pulsa «Hacer música».', 'ok')
+    } catch (e) {
+      console.error('dado música', e)
+      toast(`No se pudo inventar: ${e instanceof Error ? e.message : String(e)}`, 'error')
+    } finally {
+      useMusicJob.setState({ busy: false, step: '' })
+    }
+  }
+  const make = async () => {
+    useMusicJob.setState({ busy: true, step: 'Empezando…' })
+    try {
+      const secs = await generateLocalSong({ style, lyrics, seconds, audio: audio ?? undefined }, (t) => useMusicJob.setState({ step: t }))
       if (secs !== undefined) toast(`Música lista en ${fmtTime(secs)}. Quedó en la biblioteca del proyecto.`, 'ok')
     } catch (e) {
       console.error('música local', e)
@@ -241,7 +255,7 @@ export function MusicScreen() {
             <button className="btn btn-primary !h-12 !px-6 !text-[16px]" onClick={() => make()} disabled={busy || !desktop || (!style.trim() && audio?.mode !== 'extract')}>
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />} Hacer música
             </button>
-            <button className="btn !h-12 !px-5 !text-[16px]" onClick={() => make(true)} disabled={busy || !desktop} title="El generador inventa estilo y letra. Si escribiste algo arriba, lo usa como idea.">
+            <button className="btn !h-12 !px-5 !text-[16px]" onClick={invent} disabled={busy || !desktop} title="Inventa estilo y letra (si escribiste una idea arriba, la usa). Tú los revisas antes de hacer la música.">
               🎲 Sorpréndeme
             </button>
           </div>

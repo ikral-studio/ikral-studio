@@ -3,7 +3,7 @@ import { useProject } from '../../stores/projectStore'
 import { importFiles } from '../scene-management/actions'
 import { isDesktop } from '../../database/db'
 import { COMFY_URL, comfyRunning } from '../video-local/comfy'
-import { MUSIC_MODEL, TRACKS, aceRunning, makeLocalSong, type SongJob } from './acestep'
+import { MUSIC_MODEL, TRACKS, aceRunning, inventSong, makeLocalSong, type SongJob } from './acestep'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -42,7 +42,6 @@ export function songName(job: SongJob) {
   const a = job.audio
   const base = a?.name.replace(/\.[^.]+$/, '') ?? ''
   const track = TRACKS[a?.track ?? 'vocals'].replace(/^\S+\s/, '').toLowerCase()
-  if (job.surprise) return `🎲 ${songTitle(job.style || 'Sorpresa')}`
   if (a?.mode === 'repaint') return `${base} (arreglada)`
   if (a?.mode === 'extract') return `${base} · solo ${track}`
   if (a?.mode === 'lego') return `${base} + ${track}`
@@ -57,14 +56,21 @@ export async function generateLocalSong(job: SongJob, onStep: (text: string) => 
   await ensureAce()
   onStep('Haciendo la música en tu Mac… (la primera vez tarda más)')
   const title = songName(job)
-  const { file, seconds, style, lyrics } = await makeLocalSong({ ...job, name: title }, (pct, stage) =>
+  const { file, seconds } = await makeLocalSong({ ...job, name: title }, (pct, stage) =>
     onStep(`Haciendo la música… ${pct} %${/decod/i.test(stage) ? ' · terminando' : ''}`),
   )
   onStep('Guardando en la biblioteca…')
   const [asset] = await importFiles([file], 'audio')
   if (!asset) return
-  // Con el dado, el estilo y la letra los inventó el modelo: se guardan los suyos.
-  const made = job.surprise ? { style: style ?? job.style, lyrics: lyrics === '[Instrumental]' ? '' : (lyrics ?? '') } : { style: job.style, lyrics: job.lyrics }
-  addSong({ mediaId: asset.id, title, style: made.style.trim(), lyrics: made.lyrics.trim(), duration: asset.duration ?? job.seconds, model: MUSIC_MODEL, generationTimeSeconds: seconds })
+  addSong({ mediaId: asset.id, title, style: job.style.trim(), lyrics: job.lyrics.trim(), duration: asset.duration ?? job.seconds, model: MUSIC_MODEL, generationTimeSeconds: seconds })
   return seconds
+}
+
+/** 🎲 Dado: arranca el generador si hace falta e inventa estilo y letra (Kyo los revisa antes de hacer la música). */
+export async function inventLocalSong(idea: string, seconds: number, onStep: (text: string) => void) {
+  onStep('Arrancando el generador de música…')
+  await freeVideoMemory()
+  await ensureAce()
+  onStep('Inventando estilo y letra…')
+  return inventSong(idea, seconds)
 }

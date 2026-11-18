@@ -18,8 +18,6 @@ export interface SongJob {
   seed?: number
   /** Audio de Kyo: «style» copia su estilo; «cover» hace otra versión de esa misma canción. */
   audio?: { blob: Blob; name: string; mode: AudioMode; from?: number; to?: number; track?: TrackName }
-  /** 🎲 Dado: el modelo inventa estilo y letra a partir de una idea (o de nada). */
-  surprise?: boolean
 }
 
 /** style = copiar su estilo · cover = otra versión · repaint = rehacer solo un pedazo (from–to, en segundos)
@@ -52,16 +50,6 @@ const COVER_STRENGTH = 0.5
 /** Pedido para /release_task. Sin letra va «[Instrumental]», que ACE-Step entiende como sin voz. */
 export function buildSongRequest(job: SongJob): Record<string, string | number | boolean> {
   const lyrics = job.lyrics.trim()
-  if (job.surprise)
-    return {
-      sample_mode: true,
-      sample_query: job.style.trim() || 'una canción alegre en español',
-      thinking: true,
-      vocal_language: job.language ?? 'es',
-      audio_duration: Math.min(240, Math.max(10, Math.round(job.seconds || 30))),
-      audio_format: 'mp3',
-      batch_size: 1,
-    }
   const a = job.audio
   return {
     prompt: job.style.trim() || 'cinematic background music, instrumental',
@@ -112,8 +100,18 @@ async function post<T>(base: string, path: string, body: unknown): Promise<T> {
   return j.data
 }
 
+/** 🎲 Dado: el modelo inventa estilo (en inglés, como lo entiende mejor) y letra desde una idea. No hace la canción. */
+export async function inventSong(idea: string, seconds: number, language = 'es', base = ACE_URL): Promise<{ style: string; lyrics: string }> {
+  const d = await post<{ caption: string; lyrics: string }>(base, '/format_input', {
+    prompt: idea.trim() || 'una canción alegre en español',
+    lyrics: '',
+    param_obj: JSON.stringify({ duration: seconds, language }),
+  })
+  return { style: d.caption ?? '', lyrics: d.lyrics === '[Instrumental]' ? '' : (d.lyrics ?? '') }
+}
+
 /** Lo que trae /query_result en `result` (texto JSON con una lista). */
-export function parseResult(result: string): { file: string; status: number; progress?: number; stage?: string; prompt?: string; lyrics?: string }[] {
+export function parseResult(result: string): { file: string; status: number; progress?: number; stage?: string }[] {
   try {
     const list = JSON.parse(result)
     return Array.isArray(list) ? list : []
@@ -125,7 +123,7 @@ export function parseResult(result: string): { file: string; status: number; pro
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** Manda el pedido, espera la canción y la devuelve como archivo MP3. */
-export async function makeLocalSong(job: SongJob & { name: string }, onProgress?: (pct: number, stage: string) => void, base = ACE_URL): Promise<{ file: File; seconds: number; style?: string; lyrics?: string }> {
+export async function makeLocalSong(job: SongJob & { name: string }, onProgress?: (pct: number, stage: string) => void, base = ACE_URL): Promise<{ file: File; seconds: number }> {
   const t0 = Date.now()
   const { task_id } = await post<{ task_id: string }>(base, '/release_task', songBody(job))
   for (;;) {
@@ -141,6 +139,6 @@ export async function makeLocalSong(job: SongJob & { name: string }, onProgress?
     if (!out?.file) throw new Error('El generador terminó sin archivo')
     const url = out.file.startsWith('/v1/') ? `${base}${out.file}` : `${base}/v1/audio?path=${encodeURIComponent(out.file)}`
     const blob = await (await fetch(url)).blob()
-    return { file: new File([blob], `${job.name}.mp3`, { type: 'audio/mpeg' }), seconds: Math.round((Date.now() - t0) / 1000), style: out.prompt, lyrics: out.lyrics }
+    return { file: new File([blob], `${job.name}.mp3`, { type: 'audio/mpeg' }), seconds: Math.round((Date.now() - t0) / 1000) }
   }
 }

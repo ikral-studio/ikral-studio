@@ -35,10 +35,6 @@ describe('música gratis en la Mac (ACE-Step)', () => {
     expect(songBody({ style: 'rock', lyrics: '', seconds: 30 })).not.toBeInstanceOf(FormData)
   })
 
-  it('dado: el modelo inventa estilo y letra desde la idea', () => {
-    expect(buildSongRequest({ style: '', lyrics: 'ignorada', seconds: 30, surprise: true })).toMatchObject({ sample_mode: true, thinking: true, sample_query: 'una canción alegre en español' })
-  })
-
   it('separar y agregar usan el modelo base con la pista escogida', () => {
     const blob = new Blob(['x'])
     const ex = buildSongRequest({ style: '', lyrics: '', seconds: 30, audio: { blob, name: 'Cumbia.mp3', mode: 'extract', track: 'vocals' } })
