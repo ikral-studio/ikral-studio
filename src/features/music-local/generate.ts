@@ -3,7 +3,7 @@ import { useProject } from '../../stores/projectStore'
 import { importFiles } from '../scene-management/actions'
 import { isDesktop } from '../../database/db'
 import { COMFY_URL, comfyRunning } from '../video-local/comfy'
-import { MUSIC_MODEL, aceRunning, makeLocalSong, type SongJob } from './acestep'
+import { MUSIC_MODEL, TRACKS, aceRunning, makeLocalSong, type SongJob } from './acestep'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -37,6 +37,18 @@ export function songTitle(style: string) {
   return t.slice(0, 40) || 'Canción'
 }
 
+/** Nombre de la canción nueva según lo que se pidió. */
+export function songName(job: SongJob) {
+  const a = job.audio
+  const base = a?.name.replace(/\.[^.]+$/, '') ?? ''
+  const track = TRACKS[a?.track ?? 'vocals'].replace(/^\S+\s/, '').toLowerCase()
+  if (job.surprise) return `🎲 ${songTitle(job.style || 'Sorpresa')}`
+  if (a?.mode === 'repaint') return `${base} (arreglada)`
+  if (a?.mode === 'extract') return `${base} · solo ${track}`
+  if (a?.mode === 'lego') return `${base} + ${track}`
+  return songTitle(job.style)
+}
+
 export async function generateLocalSong(job: SongJob, onStep: (text: string) => void) {
   const { project, addSong } = useProject.getState()
   if (!project || !isDesktop()) return
@@ -44,7 +56,7 @@ export async function generateLocalSong(job: SongJob, onStep: (text: string) => 
   await freeVideoMemory()
   await ensureAce()
   onStep('Haciendo la música en tu Mac… (la primera vez tarda más)')
-  const title = job.surprise ? `🎲 ${songTitle(job.style || 'Sorpresa')}` : job.audio?.mode === 'repaint' ? `${job.audio.name.replace(/\.[^.]+$/, '')} (arreglada)` : songTitle(job.style)
+  const title = songName(job)
   const { file, seconds, style, lyrics } = await makeLocalSong({ ...job, name: title }, (pct, stage) =>
     onStep(`Haciendo la música… ${pct} %${/decod/i.test(stage) ? ' · terminando' : ''}`),
   )

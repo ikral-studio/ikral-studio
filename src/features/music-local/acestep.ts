@@ -17,13 +17,34 @@ export interface SongJob {
   language?: string
   seed?: number
   /** Audio de Kyo: «style» copia su estilo; «cover» hace otra versión de esa misma canción. */
-  audio?: { blob: Blob; name: string; mode: AudioMode; from?: number; to?: number }
+  audio?: { blob: Blob; name: string; mode: AudioMode; from?: number; to?: number; track?: TrackName }
   /** 🎲 Dado: el modelo inventa estilo y letra a partir de una idea (o de nada). */
   surprise?: boolean
 }
 
-/** style = copiar su estilo · cover = otra versión · repaint = rehacer solo un pedazo (from–to, en segundos). */
-export type AudioMode = 'style' | 'cover' | 'repaint'
+/** style = copiar su estilo · cover = otra versión · repaint = rehacer solo un pedazo (from–to, en segundos)
+ *  extract = sacar un instrumento (o la voz) · lego = agregar un instrumento. Estos dos usan el modelo base. */
+export type AudioMode = 'style' | 'cover' | 'repaint' | 'extract' | 'lego'
+
+/** Pistas que entiende ACE-Step, con su nombre en español. */
+export const TRACKS = {
+  vocals: '🎤 Voz',
+  backing_vocals: '👥 Coros',
+  drums: '🥁 Batería',
+  bass: '🎸 Bajo',
+  guitar: '🎸 Guitarra',
+  keyboard: '🎹 Teclado',
+  percussion: '🪇 Percusión',
+  strings: '🎻 Cuerdas',
+  synth: '🎛️ Sintetizador',
+  brass: '🎺 Metales',
+  woodwinds: '🪈 Vientos',
+} as const
+export type TrackName = keyof typeof TRACKS
+
+/** Modelo base: más lento, pero el único que sabe separar y agregar pistas. */
+export const BASE_MODEL = 'acestep-v15-base'
+const BASE_STEPS = 32
 
 /** Qué tanto se parece la otra versión a la original (0 = libre, 1 = igual). */
 const COVER_STRENGTH = 0.5
@@ -52,6 +73,9 @@ export function buildSongRequest(job: SongJob): Record<string, string | number |
     batch_size: 1,
     ...(a?.mode === 'cover' ? { task_type: 'cover', audio_cover_strength: COVER_STRENGTH } : {}),
     ...(a?.mode === 'repaint' ? { task_type: 'repaint', repainting_start: a.from ?? 0, repainting_end: a.to ?? -1, chunk_mask_mode: 'explicit' } : {}),
+    ...(a?.mode === 'extract' || a?.mode === 'lego'
+      ? { task_type: a.mode, track_name: a.track ?? 'vocals', model: BASE_MODEL, inference_steps: BASE_STEPS, ...(a.mode === 'lego' ? { repainting_start: 0, repainting_end: -1 } : {}) }
+      : {}),
     ...(job.seed !== undefined ? { seed: job.seed, use_random_seed: false } : {}),
   }
 }

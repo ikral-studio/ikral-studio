@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSongRequest, parseResult, songBody } from '../features/music-local/acestep'
-import { songTitle } from '../features/music-local/generate'
+import { songName, songTitle } from '../features/music-local/generate'
 import { mediaIdsOf } from '../database/idb'
 import type { Project } from '../types'
 
@@ -37,6 +37,16 @@ describe('música gratis en la Mac (ACE-Step)', () => {
 
   it('dado: el modelo inventa estilo y letra desde la idea', () => {
     expect(buildSongRequest({ style: '', lyrics: 'ignorada', seconds: 30, surprise: true })).toMatchObject({ sample_mode: true, thinking: true, sample_query: 'una canción alegre en español' })
+  })
+
+  it('separar y agregar usan el modelo base con la pista escogida', () => {
+    const blob = new Blob(['x'])
+    const ex = buildSongRequest({ style: '', lyrics: '', seconds: 30, audio: { blob, name: 'Cumbia.mp3', mode: 'extract', track: 'vocals' } })
+    expect(ex).toMatchObject({ task_type: 'extract', track_name: 'vocals', model: 'acestep-v15-base' })
+    const lego = buildSongRequest({ style: 'trumpet', lyrics: '', seconds: 30, audio: { blob, name: 'Cumbia.mp3', mode: 'lego', track: 'brass' } })
+    expect(lego).toMatchObject({ task_type: 'lego', track_name: 'brass', repainting_end: -1 })
+    expect(songName({ style: '', lyrics: '', seconds: 30, audio: { blob, name: 'Cumbia.mp3', mode: 'extract', track: 'vocals' } })).toBe('Cumbia · solo voz')
+    expect(songName({ style: '', lyrics: '', seconds: 30, audio: { blob, name: 'Cumbia.mp3', mode: 'lego', track: 'brass' } })).toBe('Cumbia + metales')
   })
 
   it('título corto desde el estilo', () => {

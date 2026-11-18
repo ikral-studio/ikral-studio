@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronRight, FileAudio, Loader2, Music, Plus, Wand2, X } fr
 import { useProject } from '../../stores/projectStore'
 import { toast, useUI } from '../../stores/uiStore'
 import { getMediaBlob, kindOf, useMediaUrl } from '../../features/media-library/media'
-import { DURATIONS, type AudioMode } from '../../features/music-local/acestep'
+import { DURATIONS, TRACKS, type AudioMode, type TrackName } from '../../features/music-local/acestep'
 import { generateLocalSong } from '../../features/music-local/generate'
 import { isDesktop } from '../../database/db'
 import { formatTime as fmtTime } from '../../utils'
@@ -27,7 +27,7 @@ const STYLES: [string, string][] = [
 /** Se queda vivo aunque cambies de pantalla mientras se hace la canción. */
 const useMusicJob = create<{ busy: boolean; step: string }>(() => ({ busy: false, step: '' }))
 
-type MyAudio = { blob: Blob; name: string; mode: AudioMode; from?: number; to?: number; length?: number }
+type MyAudio = { blob: Blob; name: string; mode: AudioMode; from?: number; to?: number; length?: number; track?: TrackName }
 
 function SongRow({ song, onReuse, onUseAudio }: { song: Song; onReuse: (s: Song) => void; onUseAudio: (s: Song, mode: AudioMode) => void }) {
   const url = useMediaUrl(song.mediaId)
@@ -187,6 +187,8 @@ export function MusicScreen() {
                       ['style', '🎨 Copiar su estilo', 'Canción nueva que suena parecida.'],
                       ['cover', '🔁 Otra versión', 'La misma canción con el estilo que escribiste.'],
                       ['repaint', '✂️ Rehacer un pedazo', 'Solo cambia los segundos que escojas.'],
+                      ['extract', '🎚️ Separar', 'Saca solo la voz o un instrumento.'],
+                      ['lego', '➕ Agregar instrumento', 'Le pone un instrumento nuevo encima.'],
                     ] as const
                   ).map(([mode, label, hint]) => (
                     <button key={mode} className={`btn btn-sm ${audio.mode === mode ? 'btn-primary' : ''}`} aria-pressed={audio.mode === mode} title={hint} onClick={() => setAudio({ ...audio, mode })} disabled={busy}>
@@ -203,8 +205,28 @@ export function MusicScreen() {
                     {audio.length ? <span className="text-ink-3">(dura {fmtTime(audio.length)})</span> : null}
                   </div>
                 )}
+                {(audio.mode === 'extract' || audio.mode === 'lego') && (
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label={audio.mode === 'extract' ? 'Qué separar' : 'Qué instrumento agregar'}>
+                    {(Object.entries(TRACKS) as [TrackName, string][]).map(([id, label]) => {
+                      const on = (audio.track ?? 'vocals') === id
+                      return (
+                        <button key={id} className={`btn btn-sm ${on ? 'btn-primary' : ''}`} aria-pressed={on} onClick={() => setAudio({ ...audio, track: id })} disabled={busy}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
                 <p className="text-[13px] text-ink-3">
-                  {audio.mode === 'style' ? 'Canción nueva que suena parecida a tu audio.' : audio.mode === 'cover' ? 'Tu misma canción, con el estilo que escribiste arriba.' : 'Solo cambia ese pedazo; lo demás se queda igual.'}
+                  {
+                    {
+                      style: 'Canción nueva que suena parecida a tu audio.',
+                      cover: 'Tu misma canción, con el estilo que escribiste arriba.',
+                      repaint: 'Solo cambia ese pedazo; lo demás se queda igual.',
+                      extract: 'Sale un audio con solo esa pista. Tarda más (~10 min).',
+                      lego: 'Describe arriba cómo suena el instrumento nuevo. Tarda más (~10 min).',
+                    }[audio.mode]
+                  }
                 </p>
               </div>
             ) : (
@@ -216,7 +238,7 @@ export function MusicScreen() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button className="btn btn-primary !h-12 !px-6 !text-[16px]" onClick={() => make()} disabled={busy || !desktop || !style.trim()}>
+            <button className="btn btn-primary !h-12 !px-6 !text-[16px]" onClick={() => make()} disabled={busy || !desktop || (!style.trim() && audio?.mode !== 'extract')}>
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />} Hacer música
             </button>
             <button className="btn !h-12 !px-5 !text-[16px]" onClick={() => make(true)} disabled={busy || !desktop} title="El generador inventa estilo y letra. Si escribiste algo arriba, lo usa como idea.">
@@ -224,7 +246,7 @@ export function MusicScreen() {
             </button>
           </div>
           <p className="text-[13.5px] text-ink-2" aria-live="polite">
-            {busy ? step : !desktop ? 'Solo funciona en la app de la Mac.' : !style.trim() ? 'Escoge un estilo o escríbelo.' : 'Gratis, en tu Mac. Tarda unos minutos.'}
+            {busy ? step : !desktop ? 'Solo funciona en la app de la Mac.' : !style.trim() && audio?.mode !== 'extract' ? 'Escoge un estilo o escríbelo.' : 'Gratis, en tu Mac. Tarda unos minutos.'}
           </p>
         </section>
 
