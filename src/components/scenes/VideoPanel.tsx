@@ -10,6 +10,7 @@ import { downloadMedia, orientationMismatch } from './MediaSlot'
 import { placedClips, versionLength, type PlacedClip } from '../../features/script-sync/derive'
 import { isDesktop } from '../../database/db'
 import { generateLocalVideo } from '../../features/video-local/generate'
+import { QUALITIES, type Quality } from '../../features/video-local/comfy'
 import type { MediaAsset, VideoVersion } from '../../types'
 
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov'
@@ -86,11 +87,12 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
   const [showMeta, setShowMeta] = useState(false)
   const hasFrames = useProject((s) => !!(s.scenes[sceneId]?.startImageId && s.scenes[sceneId]?.endImageId))
   const [making, setMaking] = useState<string | null>(null)
+  const [quality, setQuality] = useState<Quality>('rapida')
 
   const makeLocal = async () => {
     setMaking('Preparando…')
     try {
-      const secs = await generateLocalVideo(sceneId, setMaking)
+      const secs = await generateLocalVideo(sceneId, setMaking, undefined, quality)
       if (secs != null) toast(`Video hecho en tu Mac en ${formatDuration(secs)} 🎬`)
     } catch (e) {
       toast(e instanceof Error ? e.message : 'No se pudo hacer el video', 'error')
@@ -131,14 +133,23 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[13px] font-semibold">Video generado</span>
         {isDesktop() && (
-          <button
-            className="btn btn-sm !border-[#a78bfa]/50 !text-[#e9e3ff]"
-            disabled={!hasFrames || !!making}
-            onClick={makeLocal}
-            title={hasFrames ? 'Hace el video gratis en tu Mac, de la imagen inicial a la final (LTX-Video)' : 'Primero pon la imagen inicial y la final'}
-          >
-            {making ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Video gratis (Mac)
-          </button>
+          <span className="ml-auto flex items-center gap-1.5">
+            <select className="field !h-7 !py-0 text-[11.5px]" value={quality} disabled={!!making} onChange={(e) => setQuality(e.target.value as Quality)} aria-label="Calidad del video">
+              {(Object.keys(QUALITIES) as Quality[]).map((q) => (
+                <option key={q} value={q}>
+                  {QUALITIES[q].label} · {QUALITIES[q].long}×{QUALITIES[q].short}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-sm !border-[#a78bfa]/50 !text-[#e9e3ff]"
+              disabled={!hasFrames || !!making}
+              onClick={makeLocal}
+              title={hasFrames ? 'Hace el video gratis en tu Mac, de la imagen inicial a la final (LTX-Video)' : 'Primero pon la imagen inicial y la final'}
+            >
+              {making ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Video gratis (Mac)
+            </button>
+          </span>
         )}
         {active && (
           <span className="text-[11px] tabular-nums text-ink-3">
