@@ -1,4 +1,4 @@
-import { Clapperboard, FolderOpen, Palette } from 'lucide-react'
+import { Clapperboard, FolderOpen, Music, Palette } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { useUI } from '../../stores/uiStore'
 import { bibleAnswered } from '../../features/bible/bible'
@@ -8,6 +8,7 @@ export function HomeScreen() {
   const project = useProject((s) => s.project)
   if (!project) return null
   const count = project.sceneIds.length
+  const songs = project.songs?.length ?? 0
   const chars = (project.characters ?? []).filter((c) => c.name.trim()).length
   const card = 'flex flex-col items-start gap-3 rounded-[18px] border border-line bg-panel p-7 text-left transition hover:border-sel hover:bg-card'
 
@@ -23,7 +24,7 @@ export function HomeScreen() {
         </p>
       </div>
 
-      <div className="grid w-full max-w-[860px] grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid w-full max-w-[1200px] grid-cols-1 gap-4 sm:grid-cols-3">
         <button className={card} onClick={() => useUI.setState({ view: 'bible' })} aria-label="Preproducción">
           <Palette size={34} className="text-[#c4b5fd]" />
           <span className="text-[22px] font-semibold">🎨 Preproducción</span>
@@ -38,6 +39,14 @@ export function HomeScreen() {
           <span className="text-[15px] text-ink-2">El editor: escenas, imágenes, videos, timeline y música.</span>
           <span className="text-[13px] text-ink-3">
             {count} escena{count === 1 ? '' : 's'}
+          </span>
+        </button>
+        <button className={card} onClick={() => useUI.setState({ view: 'music' })} aria-label="Música">
+          <Music size={34} className="text-[#5eead4]" />
+          <span className="text-[22px] font-semibold">🎵 Música</span>
+          <span className="text-[15px] text-ink-2">Hacer canciones gratis en tu Mac: estilo, letra y duración.</span>
+          <span className="text-[13px] text-ink-3">
+            {songs} canci{songs === 1 ? 'ón' : 'ones'}
           </span>
         </button>
       </div>

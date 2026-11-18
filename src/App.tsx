@@ -17,6 +17,7 @@ import { PausedOverlay } from './components/layout/PausedOverlay'
 import { ClaudeChat } from './components/chat/ClaudeChat'
 import { BibleScreen } from './components/bible/BibleScreen'
 import { HomeScreen } from './components/home/HomeScreen'
+import { MusicScreen } from './components/music/MusicScreen'
 import { isDesktop } from './database/db'
 import { GptBridge } from './components/gpt/GptBridge'
 import { startTabGuard } from './features/session/tabGuard'
@@ -150,6 +151,8 @@ export default function App() {
         <HomeScreen />
       ) : hasProject && view === 'bible' ? (
         <BibleScreen />
+      ) : hasProject && view === 'music' ? (
+        <MusicScreen />
       ) : hasProject ? (
         <div className="flex h-screen">
         <div className={`min-w-0 flex-1 overflow-hidden studio ${leftCollapsed ? 'left-collapsed' : ''} ${rightCollapsed ? 'right-collapsed' : ''}`} style={style}>

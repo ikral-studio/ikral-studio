@@ -134,6 +134,7 @@ export function mediaIdsOf(project: Project, scenes: Scene[]): string[] {
   const used: string[] = []
   for (const s of scenes) used.push(...sceneMediaIds(s))
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.push(c.mediaId)))
+  project.songs?.forEach((x) => used.push(x.mediaId))
   used.push(...bibleMediaIds(project), ...trashMediaIds(project))
   return used
 }

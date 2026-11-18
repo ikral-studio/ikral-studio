@@ -22,8 +22,8 @@ export type LightboxItem = { mediaId: string; kind: 'image' | 'video'; title?: s
 export type ModalName = 'projects' | 'settings' | 'help' | 'importScript' | 'pasteScene' | 'camera' | 'shotlist' | 'regenerate' | 'trash' | 'pdf' | null
 
 interface UIState {
-  /** Pantalla principal: inicio, Preproducción (Biblia) o Edición. */
-  view: 'home' | 'studio' | 'bible'
+  /** Pantalla principal: inicio, Preproducción (Biblia), Edición o Música. */
+  view: 'home' | 'studio' | 'bible' | 'music'
   toasts: Toast[]
   confirm: ConfirmRequest | null
   lightbox: LightboxItem | null
@@ -53,7 +53,7 @@ const VIEW_KEY = 'ikral-studio:view'
 function savedView(): UIState['view'] {
   try {
     const v = sessionStorage.getItem(VIEW_KEY)
-    return v === 'studio' || v === 'bible' ? v : 'home'
+    return v === 'studio' || v === 'bible' || v === 'music' ? v : 'home'
   } catch {
     return 'home'
   }

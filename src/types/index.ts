@@ -30,6 +30,8 @@ export interface Project {
   customFields?: CustomField[]
   /** Pistas de música (2). Opcional para proyectos viejos. */
   audioTracks?: AudioTrack[]
+  /** Canciones hechas en la pantalla Música (quedan en la biblioteca aunque no estén en el timeline). */
+  songs?: Song[]
   /** Papelera: lo que se borró y se puede recuperar. */
   trash?: TrashEntry[]
   /** Etapas de la historia, en orden (ej.: ANTES → TRANSICIÓN → DESPUÉS). Sin etapas = como siempre. */
@@ -398,6 +400,19 @@ export interface AudioClip {
   offset?: number
   /** Largo total del archivo original. */
   sourceDuration?: number
+}
+
+/** Una canción hecha con la música gratis de la Mac. */
+export interface Song {
+  id: string
+  mediaId: string
+  title: string
+  style: string
+  lyrics: string
+  duration: number
+  model: string
+  generationTimeSeconds?: number
+  createdAt: string
 }
 
 export interface AudioTrack {

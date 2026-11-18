@@ -63,6 +63,21 @@ fn arrancar_video_local() -> Result<(), String> {
   }
 }
 
+/// Arranca ACE-Step (música gratis en la Mac) si no está corriendo. El script vive junto a ACE-Step.
+#[tauri::command]
+fn arrancar_musica_local() -> Result<(), String> {
+  let script = "/Volumes/c/AI/ACE-Step/arrancar-ikral-musica.sh";
+  if !std::path::Path::new(script).is_file() {
+    return Err(format!("No encontré {script} (¿está conectado el disco C?)"));
+  }
+  let status = std::process::Command::new("/bin/zsh").arg(script).status().map_err(|e| e.to_string())?;
+  if status.success() {
+    Ok(())
+  } else {
+    Err("No se pudo arrancar el generador de música".into())
+  }
+}
+
 /// Bibliotecas .ikral abiertas desde Finder antes de que la ventana estuviera lista.
 #[derive(Default)]
 struct Pendientes(std::sync::Mutex<Vec<String>>);
@@ -102,7 +117,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_drag::init())
     .manage(Pendientes::default())
-    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder, gpt::consultar_gpt, abrir_ventana_gpt, arrancar_video_local])
+    .invoke_handler(tauri::generate_handler![empezar_a_escuchar, bibliotecas_pendientes, mostrar_en_finder, gpt::consultar_gpt, abrir_ventana_gpt, arrancar_video_local, arrancar_musica_local])
     .on_window_event(|window, event| {
       // Al cerrar la ventana principal, se cierra también la de GPT (si no, la app no termina).
       use tauri::Manager;

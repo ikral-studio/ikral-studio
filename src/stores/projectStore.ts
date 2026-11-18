@@ -1,6 +1,6 @@
 // Única fuente de verdad del proyecto abierto. Todas las vistas derivan de aquí.
 import { create } from 'zustand'
-import type { AspectRatio, AudioTrack, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, SettingChange, SettingChoice, Shot, VideoVersion } from '../types'
+import type { AspectRatio, AudioTrack, Song, BibleAnswers, CameraSpec, Character, CustomField, Decision, DecisionAuthor, FramePlan, BibleItem, BibleKind, ItemKind, ItemSuggestion, Project, Relation, Scene, ScriptField, Settings, SettingChange, SettingChoice, Shot, VideoVersion } from '../types'
 import { applyItemSuggestion, applySuggestion } from '../features/bible/bible'
 import { bibleMediaIds } from '../features/bible/items'
 import { addToTrash, restoreFromTrash, trashMediaIds } from '../features/trash/trash'
@@ -113,6 +113,9 @@ interface State {
   /** Llena los textos de UNA escena con lo que dio la IA. Imágenes, videos y música no se tocan. */
   applySceneFromAI: (sceneId: string, data: ImportedScene, opts: { customFields: string[]; keepDuration: boolean }) => void
 
+  /** Guarda una canción hecha en la pantalla Música. */
+  addSong: (song: Omit<Song, 'id' | 'createdAt'>) => void
+  renameSong: (songId: string, title: string) => void
   addAudioClip: (trackId: string, clip: { mediaId: string; name: string; start: number; duration: number; sourceDuration?: number }) => void
   moveAudioClip: (trackId: string, clipId: string, start: number) => void
   removeAudioClip: (trackId: string, clipId: string) => void
@@ -298,7 +301,7 @@ export const useProject = create<State>()((set, get) => {
     // Limpiar archivos sin usar solo al abrir el proyecto (no al recargar: alguien puede estar agregando uno).
     if (opts.cleanup)
       store
-        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...bibleMediaIds(project), ...trashMediaIds(project)])
+        .collectGarbage(project.id, Object.values(map), [...project.audioTracks!.flatMap((t) => t.clips.map((c) => c.mediaId)), ...(project.songs ?? []).map((x) => x.mediaId), ...bibleMediaIds(project), ...trashMediaIds(project)])
         .catch(() => {})
   }
 
@@ -953,6 +956,20 @@ export const useProject = create<State>()((set, get) => {
 
     setNumbersToWords(id, on) {
       patchScene(id, (s) => ({ ...s, script: { ...s.script, numbersToWords: on } }))
+    },
+
+    addSong(song) {
+      const cur = get()
+      if (!cur.project) return
+      const songs = [{ ...song, id: uid('sg_'), createdAt: nowIso() }, ...(cur.project.songs ?? [])]
+      commit({ ...cur, project: { ...cur.project, songs } })
+    },
+
+    renameSong(songId, title) {
+      const cur = get()
+      if (!cur.project) return
+      const songs = (cur.project.songs ?? []).map((x) => (x.id === songId ? { ...x, title } : x))
+      commit({ ...cur, project: { ...cur.project, songs } }, `song:${songId}`, 400)
     },
 
     addAudioClip(trackId, clip) {

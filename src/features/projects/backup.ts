@@ -23,6 +23,7 @@ export async function exportProjectZip(project: Project, scenes: Scene[]): Promi
   const used = new Set<string>()
   scenes.forEach((s) => sceneMediaIds(s).forEach((id) => used.add(id)))
   project.audioTracks?.forEach((t) => t.clips.forEach((c) => used.add(c.mediaId)))
+  project.songs?.forEach((x) => used.add(x.mediaId))
   bibleMediaIds(project).forEach((id) => used.add(id))
   const records = await bulkGetMedia([...used])
   const media: Manifest['media'] = []
@@ -120,6 +121,7 @@ export async function importProjectZip(file: Blob): Promise<string> {
       id: uid('at_'),
       clips: t.clips.filter((c) => mediaMap.has(c.mediaId)).map((c) => ({ ...c, id: uid('ac_'), mediaId: mediaMap.get(c.mediaId)! })),
     })),
+    songs: m.project.songs?.filter((x) => mediaMap.has(x.mediaId)).map((x) => ({ ...x, id: uid('sg_'), mediaId: mediaMap.get(x.mediaId)! })),
     updatedAt: nowIso(),
   }
   await importProjectData(project, scenes, records)
