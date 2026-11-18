@@ -182,12 +182,16 @@ Todo local y gratis en la Mac de Kyo (M4, 16 GB). ComfyUI en /Volumes/c/laborato
   - Criterio: prompt → imagen en ~1 min; entra a pruebas de imagen inicial/final y Biblia.
 - [ ] **V5 · Agrandar a HD/4K (Real-ESRGAN x4)**
   - Criterio: imagen (y luego video) ×2 o ×4 sin perder nitidez.
+  - Kyo 2026-11-18: botón «Agrandar a 4K» en el video ya hecho (cuadro por cuadro, ~3–6 min por escena).
 - [ ] **V6 · Quitar fondos (BiRefNet/RMBG)**
   - Criterio: PNG con fondo transparente para personajes y objetos.
 - [ ] **V7 · Cuadros 24 → 48/60 (RIFE)**
   - Criterio: video más suave, misma duración.
-- [ ] **V8 · Música y sonidos (ACE-Step)**
+- [~] **V8 · Música y sonidos (ACE-Step)** — Claude · 2026-11-18
   - Criterio: texto/estilo → MP3 que entra a Música 1/2; reusar /Volumes/c/AI/ACE-Step si se puede.
+  - Hecho: tercer cuadro «🎵 Música» en el inicio → pantalla propia (estilo, letra, duración); la canción queda en la biblioteca del proyecto (`project.songs`, no la limpia la papelera) y se pone en Música 1/2 con un botón. Motor: ACE-Step 1.5 turbo, `/Volumes/c/AI/ACE-Step/arrancar-ikral-musica.sh` (127.0.0.1:8001, CORS tauri://localhost).
+  - Evidencia: commit `f9fff7e` · prueba: 384/384 · prueba real por API: 30 s con letra en español = 3:17 min (16 GB con swap).
+  - Siguiente: prueba de Kyo desde la app instalada.
 - [ ] **V9 · Ventana «Crear video»** (como exportar en Final Cut)
   - Criterio: calidad · cuadros 24/48/60 · duración · cuántas versiones (1–3) · agrandar a HD al final.
   - Depende de: V5, V7
