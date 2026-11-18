@@ -163,6 +163,38 @@ Casillas: `[x]` hecho · `[~]` en curso · `[!]` bloqueado · `[ ]` pendiente.
   - Depende de: M3
   - Siguiente: Tras M3, en la sesión interactiva.
 
+## Fase V · Motor gratis en la Mac (ComfyUI) — PROPUESTO 2026-11-18
+
+Todo local y gratis en la Mac de Kyo (M4, 16 GB). ComfyUI en /Volumes/c/laboratorio/comfyui-video; modelos con licencia que permite uso comercial. Rama local `claude/video-local`.
+
+- [x] **V1 · Video gratis por escena (imagen inicial → final, LTX-Video 2B)** — Claude · 2026-11-18
+  - Criterio: botón «Video gratis (Mac)» hace la versión nueva sin créditos; inicial = cuadro 0, final = último.
+  - Evidencia: commit `1968c75`, `cdd91b9` · prueba: 379/379 · prueba real en la app (Escena 01, 6 s): 13:40 cargar + 1:39 generar.
+- [~] **V2 · Todos los videos de noche (calidad + carpeta, la Mac no se duerme)** — Claude · 2026-11-18
+  - Criterio: escoger calidad y carpeta; uno tras otro; si uno falla sigue; «Detener después de este».
+  - Evidencia: commit `32be74d`, `c331a84`
+  - Siguiente: prueba real con 30 escenas en Alta.
+- [~] **V3 · Papelera de archivos dentro de la biblioteca** — Claude · 2026-11-18
+  - Criterio: lo que nadie usa se mueve a `Papelera/` (nombre original + papelera.json); nunca se borra; si no se puede mover, se queda.
+  - Evidencia: commit `d51a151` · prueba: 379/379
+  - Siguiente: instalar y comprobar en la biblioteca real.
+- [ ] **V4 · Imágenes desde texto (SDXL + Lightning 8 pasos)**
+  - Criterio: prompt → imagen en ~1 min; entra a pruebas de imagen inicial/final y Biblia.
+- [ ] **V5 · Agrandar a HD/4K (Real-ESRGAN x4)**
+  - Criterio: imagen (y luego video) ×2 o ×4 sin perder nitidez.
+- [ ] **V6 · Quitar fondos (BiRefNet/RMBG)**
+  - Criterio: PNG con fondo transparente para personajes y objetos.
+- [ ] **V7 · Cuadros 24 → 48/60 (RIFE)**
+  - Criterio: video más suave, misma duración.
+- [ ] **V8 · Música y sonidos (ACE-Step)**
+  - Criterio: texto/estilo → MP3 que entra a Música 1/2; reusar /Volumes/c/AI/ACE-Step si se puede.
+- [ ] **V9 · Ventana «Crear video»** (como exportar en Final Cut)
+  - Criterio: calidad · cuadros 24/48/60 · duración · cuántas versiones (1–3) · agrandar a HD al final.
+  - Depende de: V5, V7
+- [ ] **V10 · Arranque rápido**
+  - Criterio: de ~14 min a ~2 min (modelos en disco rápido o mantener cargados).
+- [ ] **V11 · Biblioteca: preguntar dónde guardar al crear proyecto** (como Final Cut)
+
 ## Enlaces
 
 - repositorio: https://github.com/ikral-studio/ikral-studio
