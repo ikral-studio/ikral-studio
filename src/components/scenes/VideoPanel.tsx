@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Film, Loader2, Maximize2, Plus, RefreshCw, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Download, Film, Loader2, Maximize2, Plus, RefreshCw, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
 import { askConfirm, toast, useUI } from '../../stores/uiStore'
 import { useMediaUrl } from '../../features/media-library/media'
@@ -8,6 +8,8 @@ import { pickFiles, useFileDrop } from '../../hooks/useFileDrop'
 import { formatDuration } from '../../utils'
 import { downloadMedia, orientationMismatch } from './MediaSlot'
 import { placedClips, versionLength, type PlacedClip } from '../../features/script-sync/derive'
+import { isDesktop } from '../../database/db'
+import { generateLocalVideo } from '../../features/video-local/generate'
 import type { MediaAsset, VideoVersion } from '../../types'
 
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov'
@@ -82,6 +84,20 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
   const url = useMediaUrl(shown?.clip.mediaId)
   const [busy, setBusy] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
+  const hasFrames = useProject((s) => !!(s.scenes[sceneId]?.startImageId && s.scenes[sceneId]?.endImageId))
+  const [making, setMaking] = useState<string | null>(null)
+
+  const makeLocal = async () => {
+    setMaking('Preparando…')
+    try {
+      const secs = await generateLocalVideo(sceneId, setMaking)
+      if (secs != null) toast(`Video hecho en tu Mac en ${formatDuration(secs)} 🎬`)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'No se pudo hacer el video', 'error')
+    } finally {
+      setMaking(null)
+    }
+  }
 
   const importAs = async (files: File[], mode: 'new' | 'replace' | 'clip') => {
     if (!files[0]) return
@@ -114,6 +130,16 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
     <div>
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[13px] font-semibold">Video generado</span>
+        {isDesktop() && (
+          <button
+            className="btn btn-sm !border-[#a78bfa]/50 !text-[#e9e3ff]"
+            disabled={!hasFrames || !!making}
+            onClick={makeLocal}
+            title={hasFrames ? 'Hace el video gratis en tu Mac, de la imagen inicial a la final (LTX-Video)' : 'Primero pon la imagen inicial y la final'}
+          >
+            {making ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Video gratis (Mac)
+          </button>
+        )}
         {active && (
           <span className="text-[11px] tabular-nums text-ink-3">
             {formatDuration(versionLength(active))}
@@ -168,9 +194,9 @@ export function VideoPanel({ sceneId, fileBase }: { sceneId: string; fileBase: s
         className={`media-frame ${!active ? 'dropzone' : ''} ${drop.over ? 'dropzone over' : ''}`}
         style={{ aspectRatio: aspect === '16:9' ? '16 / 9' : '9 / 16', maxHeight: aspect === '9:16' ? 420 : 360, marginInline: 'auto' }}
       >
-        {busy && (
+        {(busy || making) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/60 text-[12px] text-ink-2">
-            <Loader2 className="animate-spin" /> Guardando video…
+            <Loader2 className="animate-spin" /> {making ?? 'Guardando video…'}
           </div>
         )}
         {active && url ? (
