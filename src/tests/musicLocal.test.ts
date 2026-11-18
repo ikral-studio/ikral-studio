@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSongRequest, parseResult } from '../features/music-local/acestep'
+import { buildSongRequest, parseResult, songBody } from '../features/music-local/acestep'
 import { songTitle } from '../features/music-local/generate'
 import { mediaIdsOf } from '../database/idb'
 import type { Project } from '../types'
@@ -20,6 +20,23 @@ describe('música gratis en la Mac (ACE-Step)', () => {
     const res = JSON.stringify([{ file: '/v1/audio?path=%2Fa.mp3', status: 1, progress: 1, stage: 'succeeded' }])
     expect(parseResult(res)[0].file).toBe('/v1/audio?path=%2Fa.mp3')
     expect(parseResult('roto')).toEqual([])
+  })
+
+  it('mi audio: copiar estilo = reference_audio; otra versión y pedazo = src_audio', () => {
+    const blob = new Blob(['x'], { type: 'audio/mpeg' })
+    const style = songBody({ style: 'rock', lyrics: '', seconds: 30, audio: { blob, name: 'a.mp3', mode: 'style' } }) as FormData
+    expect(style.get('reference_audio')).toBeTruthy()
+    expect(style.get('task_type')).toBeNull()
+    const cover = songBody({ style: 'rock', lyrics: '', seconds: 30, audio: { blob, name: 'a.mp3', mode: 'cover' } }) as FormData
+    expect(cover.get('src_audio')).toBeTruthy()
+    expect(cover.get('task_type')).toBe('cover')
+    const piece = buildSongRequest({ style: 'rock', lyrics: '', seconds: 30, audio: { blob, name: 'a.mp3', mode: 'repaint', from: 5, to: 12 } })
+    expect(piece).toMatchObject({ task_type: 'repaint', repainting_start: 5, repainting_end: 12 })
+    expect(songBody({ style: 'rock', lyrics: '', seconds: 30 })).not.toBeInstanceOf(FormData)
+  })
+
+  it('dado: el modelo inventa estilo y letra desde la idea', () => {
+    expect(buildSongRequest({ style: '', lyrics: 'ignorada', seconds: 30, surprise: true })).toMatchObject({ sample_mode: true, thinking: true, sample_query: 'una canción alegre en español' })
   })
 
   it('título corto desde el estilo', () => {

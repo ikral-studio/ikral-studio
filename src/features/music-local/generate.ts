@@ -44,13 +44,15 @@ export async function generateLocalSong(job: SongJob, onStep: (text: string) => 
   await freeVideoMemory()
   await ensureAce()
   onStep('Haciendo la música en tu Mac… (la primera vez tarda más)')
-  const title = songTitle(job.style)
-  const { file, seconds } = await makeLocalSong({ ...job, name: title }, (pct, stage) =>
+  const title = job.surprise ? `🎲 ${songTitle(job.style || 'Sorpresa')}` : job.audio?.mode === 'repaint' ? `${job.audio.name.replace(/\.[^.]+$/, '')} (arreglada)` : songTitle(job.style)
+  const { file, seconds, style, lyrics } = await makeLocalSong({ ...job, name: title }, (pct, stage) =>
     onStep(`Haciendo la música… ${pct} %${/decod/i.test(stage) ? ' · terminando' : ''}`),
   )
   onStep('Guardando en la biblioteca…')
   const [asset] = await importFiles([file], 'audio')
   if (!asset) return
-  addSong({ mediaId: asset.id, title, style: job.style.trim(), lyrics: job.lyrics.trim(), duration: asset.duration ?? job.seconds, model: MUSIC_MODEL, generationTimeSeconds: seconds })
+  // Con el dado, el estilo y la letra los inventó el modelo: se guardan los suyos.
+  const made = job.surprise ? { style: style ?? job.style, lyrics: lyrics === '[Instrumental]' ? '' : (lyrics ?? '') } : { style: job.style, lyrics: job.lyrics }
+  addSong({ mediaId: asset.id, title, style: made.style.trim(), lyrics: made.lyrics.trim(), duration: asset.duration ?? job.seconds, model: MUSIC_MODEL, generationTimeSeconds: seconds })
   return seconds
 }
