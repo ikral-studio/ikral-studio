@@ -32,3 +32,10 @@ describe('video gratis en la Mac (LTX-Video)', () => {
     expect(scenePrompt({ title: 'T', script: { generationPrompt: '', action: 'A' } })).toBe('T. A')
   })
 })
+
+describe('todos los videos de noche', () => {
+  it('estima minutos: carga + 1.5 por video', async () => {
+    const { estimateMinutes } = await import('../features/video-local/generate')
+    expect(estimateMinutes(30)).toBe(57)
+  })
+})

@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -10,13 +10,14 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ClipboardPaste, Copy, FileInput, GripVertical, ImageIcon, PanelLeftClose, Plus, Sparkles } from 'lucide-react'
+import { ClipboardPaste, Copy, FileInput, Film, GripVertical, ImageIcon, Loader2, PanelLeftClose, Plus, Sparkles, Square } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { openPasteScene, toast, useUI } from '../../stores/uiStore'
+import { askConfirm, openPasteScene, toast, useUI } from '../../stores/uiStore'
 import { buildAIPrompt } from '../../features/script-exchange/schema'
 import { useFileDrop } from '../../hooks/useFileDrop'
 import { isDesktop } from '../../database/db'
 import { requestImages, scenesMissingImages } from '../../features/chat/requests'
+import { estimateMinutes, generateAllLocalVideos, scenesForLocalVideo, stopLocalVideos } from '../../features/video-local/generate'
 import { copyToClipboard } from '../../utils'
 import { useMediaUrl } from '../../features/media-library/media'
 import { effectiveDuration } from '../../features/script-sync/derive'
@@ -151,6 +152,7 @@ export function Sidebar() {
             <Sparkles size={14} className="shrink-0 text-[#ddd6fe]" /> Generar imágenes faltantes
           </button>
         )}
+        {isDesktop() && <AllLocalVideosButton />}
       </div>
       <div className="flex items-center justify-between px-1 pt-2">
         <span className="eyebrow">Escenas</span>
@@ -179,5 +181,41 @@ export function Sidebar() {
         </button>
       </div>
     </aside>
+  )
+}
+
+/** Para dejarlo trabajando de noche: hace en la Mac todos los videos que faltan, uno tras otro. */
+function AllLocalVideosButton() {
+  const [step, setStep] = useState<string | null>(null)
+  const start = async () => {
+    const ids = scenesForLocalVideo()
+    if (!ids.length) return toast('No hay escenas con imagen inicial y final que esperen video 👍', 'info')
+    const ok = await askConfirm({
+      title: `Hacer ${ids.length} videos en tu Mac`,
+      body: `Gratis, uno tras otro, de la imagen inicial a la final.\n\nTarda unos ${estimateMinutes(ids.length)} minutos. Deja la app abierta; la Mac no se dormirá mientras trabaja.`,
+      confirmLabel: 'Empezar',
+    })
+    if (!ok) return
+    setStep('Preparando…')
+    const r = await generateAllLocalVideos(ids, setStep)
+    setStep(null)
+    const msg = `${r.done} videos hechos en tu Mac 🎬${r.failed.length ? ` · fallaron ${r.failed.length}: ${r.failed.join(', ')}` : ''}${r.stopped ? ' · detenido' : ''}`
+    toast(msg, r.failed.length ? 'error' : undefined)
+  }
+  if (step)
+    return (
+      <div className="flex flex-col gap-1 rounded-xl border border-[#a78bfa]/40 p-2 text-[11.5px] text-ink-2">
+        <span className="flex items-center gap-1.5">
+          <Loader2 size={13} className="shrink-0 animate-spin" /> {step}
+        </span>
+        <button className="btn btn-sm" onClick={stopLocalVideos} title="Termina el video actual y se detiene">
+          <Square size={12} /> Detener después de este
+        </button>
+      </div>
+    )
+  return (
+    <button className="btn !h-9" onClick={start} title="Hace gratis en tu Mac los videos de todas las escenas que tienen imagen inicial y final">
+      <Film size={14} className="shrink-0 text-[#ddd6fe]" /> Hacer todos los videos (Mac)
+    </button>
   )
 }

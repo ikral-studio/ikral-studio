@@ -47,3 +47,40 @@ export async function generateLocalVideo(sceneId: string, onStep: (text: string)
   addVideoVersion(sceneId, { mediaId: asset.id, duration: asset.duration ?? 0, width: asset.width, height: asset.height, model: LOCAL_MODEL, credits: 0, generationTimeSeconds: seconds })
   return seconds
 }
+
+/** Escenas listas para video gratis: tienen imagen inicial y final, y todavía no tienen video. */
+export function scenesForLocalVideo(): string[] {
+  const { project, scenes } = useProject.getState()
+  if (!project) return []
+  return project.sceneIds.filter((id) => {
+    const s = scenes[id]
+    return s && s.startImageId && s.endImageId && s.videoVersions.length === 0
+  })
+}
+
+/** Minutos aproximados: cargar modelos (~12) + ~1.5 por video. */
+export const estimateMinutes = (n: number) => Math.round(12 + n * 1.5)
+
+let stopAll = false
+export const stopLocalVideos = () => {
+  stopAll = true
+}
+
+/** Hace uno tras otro los videos de las escenas; si una falla, sigue con la siguiente. */
+export async function generateAllLocalVideos(sceneIds: string[], onStep: (text: string) => void) {
+  stopAll = false
+  let done = 0
+  const failed: string[] = []
+  for (const [i, id] of sceneIds.entries()) {
+    if (stopAll) break
+    const title = useProject.getState().scenes[id]?.title ?? ''
+    try {
+      await generateLocalVideo(id, (t) => onStep(`Video ${i + 1} de ${sceneIds.length} · ${title} · ${t}`))
+      done++
+    } catch (e) {
+      console.error('video local', id, e)
+      failed.push(title)
+    }
+  }
+  return { done, failed, stopped: stopAll }
+}
