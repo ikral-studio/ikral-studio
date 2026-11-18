@@ -245,7 +245,7 @@ export function MusicScreen() {
               </div>
             ) : (
               <label className="btn btn-sm self-start cursor-pointer">
-                <FileAudio size={14} /> Escoger un audio…
+                <FileAudio size={14} /> Escoger un audio (tuyo o con permiso)…
                 <input type="file" accept="audio/*,.mp3,.m4a,.wav" className="hidden" onChange={(e) => pickAudio(e.target.files?.[0])} disabled={busy} />
               </label>
             )}

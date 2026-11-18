@@ -299,6 +299,15 @@ function AboutModal() {
         IKRAL Studio, de David González (Kyo). Para hacer guiones, storyboard, videos y música. Lo que hace en tu Mac es gratis gracias a estos proyectos libres.
         ¡Gracias a sus autores! 💙
       </p>
+      <section className="mt-5 rounded-[10px] border border-line p-3">
+        <h3 className="mb-1.5 font-semibold">Uso responsable</h3>
+        <ul className="flex list-disc flex-col gap-1 pl-5 text-[12.5px] leading-snug text-ink-2">
+          <li>Al publicar videos o música hechos aquí, di que están hechos con IA (lo pide la licencia de LTX-Video).</li>
+          <li>Usa solo audios e imágenes tuyos o con permiso. «Otra versión» de una canción ajena necesita permiso de su autor.</li>
+          <li>No imites a personas reales (voz o cara) sin su permiso.</li>
+          <li>LTX-Video es gratis para personas y empresas que ganan menos de 10 millones de dólares al año.</li>
+        </ul>
+      </section>
       {CREDITS.map(({ group, items }) => (
         <section key={group} className="mt-5">
           <h3 className="mb-2 font-semibold">{group}</h3>
