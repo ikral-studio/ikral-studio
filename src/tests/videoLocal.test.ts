@@ -14,6 +14,8 @@ describe('video gratis en la Mac (LTX-Video)', () => {
   it('medidas múltiplos de 32 según la orientación', () => {
     expect(videoSize('16:9')).toEqual({ width: 640, height: 352 })
     expect(videoSize('9:16')).toEqual({ width: 352, height: 640 })
+    expect(videoSize('16:9', 'alta')).toEqual({ width: 960, height: 544 })
+    for (const q of ['rapida', 'normal', 'alta'] as const) for (const n of Object.values(videoSize('16:9', q))) expect(n % 32).toBe(0)
   })
 
   it('la imagen inicial va al cuadro 0 y la final al último', () => {
@@ -37,5 +39,13 @@ describe('todos los videos de noche', () => {
   it('estima minutos: carga + 1.5 por video', async () => {
     const { estimateMinutes } = await import('../features/video-local/generate')
     expect(estimateMinutes(30)).toBe(57)
+    expect(estimateMinutes(30, 'alta')).toBe(132)
+  })
+})
+
+describe('nombre del archivo en la carpeta escogida', () => {
+  it('quita caracteres que Finder no acepta', async () => {
+    const { fileSafe } = await import('../features/video-local/generate')
+    expect(fileSafe('02 - ¡Sin cebolla!: a/b')).toBe('02 - ¡Sin cebolla!- a-b')
   })
 })

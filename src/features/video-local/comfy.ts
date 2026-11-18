@@ -6,9 +6,18 @@ export const COMFY_URL = 'http://127.0.0.1:8188'
 export const LOCAL_MODEL = 'LTX-Video 2B (Mac)'
 const FPS = 24
 
+/** Calidades como al exportar en Final Cut: más grande = más lento. Minutos por video, aproximados. */
+export const QUALITIES = {
+  rapida: { label: 'Rápida', long: 640, short: 352, minutes: 1.5 },
+  normal: { label: 'Normal', long: 768, short: 448, minutes: 2.5 },
+  alta: { label: 'Alta', long: 960, short: 544, minutes: 4 },
+} as const
+export type Quality = keyof typeof QUALITIES
+
 /** LTX pide medidas múltiplos de 32 y cuadros 8n+1. */
-export function videoSize(aspect: AspectRatio) {
-  return aspect === '9:16' ? { width: 352, height: 640 } : { width: 640, height: 352 }
+export function videoSize(aspect: AspectRatio, quality: Quality = 'rapida') {
+  const { long, short } = QUALITIES[quality]
+  return aspect === '9:16' ? { width: short, height: long } : { width: long, height: short }
 }
 
 /** Segundos planeados → cuadros válidos para LTX (de 2 a 8 s). */
@@ -22,6 +31,7 @@ export interface LocalVideoJob {
   endImage: string
   prompt: string
   aspect: AspectRatio
+  quality?: Quality
   seconds: number
   seed: number
   prefix: string
@@ -29,7 +39,7 @@ export interface LocalVideoJob {
 
 /** Flujo de ComfyUI (formato API): texto + imagen inicial (cuadro 0) + imagen final (último cuadro). */
 export function buildWorkflow(job: LocalVideoJob) {
-  const { width, height } = videoSize(job.aspect)
+  const { width, height } = videoSize(job.aspect, job.quality)
   const length = frameCount(job.seconds)
   const scale = (image: string) => ({ class_type: 'ImageScale', inputs: { image: [image, 0], upscale_method: 'lanczos', width, height, crop: 'center' } })
   return {
@@ -76,7 +86,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** Manda las dos imágenes, espera el video y lo devuelve como archivo MP4. */
 export async function makeLocalVideo(
-  opts: { start: Blob; end: Blob; prompt: string; aspect: AspectRatio; seconds: number; name: string },
+  opts: { start: Blob; end: Blob; prompt: string; aspect: AspectRatio; quality?: Quality; seconds: number; name: string },
   base = COMFY_URL,
 ): Promise<{ file: File; seconds: number }> {
   const t0 = Date.now()
@@ -86,6 +96,7 @@ export async function makeLocalVideo(
     endImage: await upload(base, opts.end, `${tag}_final.png`),
     prompt: opts.prompt,
     aspect: opts.aspect,
+    quality: opts.quality,
     seconds: opts.seconds,
     seed: Math.floor(Math.random() * 1e9),
     prefix: tag,

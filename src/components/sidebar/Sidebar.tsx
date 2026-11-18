@@ -12,12 +12,13 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities'
 import { ClipboardPaste, Copy, FileInput, Film, GripVertical, ImageIcon, Loader2, PanelLeftClose, Plus, Sparkles, Square } from 'lucide-react'
 import { useProject } from '../../stores/projectStore'
-import { askConfirm, openPasteScene, toast, useUI } from '../../stores/uiStore'
+import { openPasteScene, toast, useUI } from '../../stores/uiStore'
 import { buildAIPrompt } from '../../features/script-exchange/schema'
 import { useFileDrop } from '../../hooks/useFileDrop'
 import { isDesktop } from '../../database/db'
 import { requestImages, scenesMissingImages } from '../../features/chat/requests'
-import { estimateMinutes, generateAllLocalVideos, scenesForLocalVideo, stopLocalVideos } from '../../features/video-local/generate'
+import { QUALITIES, type Quality } from '../../features/video-local/comfy'
+import { estimateMinutes, generateAllLocalVideos, pickVideoFolder, scenesForLocalVideo, stopLocalVideos } from '../../features/video-local/generate'
 import { copyToClipboard } from '../../utils'
 import { useMediaUrl } from '../../features/media-library/media'
 import { effectiveDuration } from '../../features/script-sync/derive'
@@ -187,19 +188,22 @@ export function Sidebar() {
 /** Para dejarlo trabajando de noche: hace en la Mac todos los videos que faltan, uno tras otro. */
 function AllLocalVideosButton() {
   const [step, setStep] = useState<string | null>(null)
+  const [ids, setIds] = useState<string[] | null>(null)
+  const [quality, setQuality] = useState<Quality>('rapida')
+  const ask = () => {
+    const found = scenesForLocalVideo()
+    if (!found.length) return toast('No hay escenas con imagen inicial y final que esperen video 👍', 'info')
+    setIds(found)
+  }
   const start = async () => {
-    const ids = scenesForLocalVideo()
-    if (!ids.length) return toast('No hay escenas con imagen inicial y final que esperen video 👍', 'info')
-    const ok = await askConfirm({
-      title: `Hacer ${ids.length} videos en tu Mac`,
-      body: `Gratis, uno tras otro, de la imagen inicial a la final.\n\nTarda unos ${estimateMinutes(ids.length)} minutos. Deja la app abierta; la Mac no se dormirá mientras trabaja.`,
-      confirmLabel: 'Empezar',
-    })
-    if (!ok) return
+    if (!ids) return
+    const dir = await pickVideoFolder()
+    if (!dir) return
+    setIds(null)
     setStep('Preparando…')
-    const r = await generateAllLocalVideos(ids, setStep)
+    const r = await generateAllLocalVideos(ids, setStep, dir, quality)
     setStep(null)
-    const msg = `${r.done} videos hechos en tu Mac 🎬${r.failed.length ? ` · fallaron ${r.failed.length}: ${r.failed.join(', ')}` : ''}${r.stopped ? ' · detenido' : ''}`
+    const msg = `${r.done} videos hechos en tu Mac 🎬 · copia en ${dir}${r.failed.length ? ` · fallaron ${r.failed.length}: ${r.failed.join(', ')}` : ''}${r.stopped ? ' · detenido' : ''}`
     toast(msg, r.failed.length ? 'error' : undefined)
   }
   if (step)
@@ -213,8 +217,31 @@ function AllLocalVideosButton() {
         </button>
       </div>
     )
+  if (ids)
+    return (
+      <div className="flex flex-col gap-1.5 rounded-xl border border-[#a78bfa]/40 p-2 text-[12px]" role="group" aria-label="Hacer todos los videos">
+        <span className="font-semibold">{ids.length} videos · ¿con qué calidad?</span>
+        {(Object.keys(QUALITIES) as Quality[]).map((q) => (
+          <label key={q} className="flex items-center gap-2">
+            <input type="radio" name="calidad-video" checked={quality === q} onChange={() => setQuality(q)} />
+            <span>
+              {QUALITIES[q].label} · {QUALITIES[q].long}×{QUALITIES[q].short} · ~{estimateMinutes(ids.length, q)} min
+            </span>
+          </label>
+        ))}
+        <span className="text-[11px] text-ink-3">Deja la app abierta; la Mac no se dormirá mientras trabaja.</span>
+        <div className="flex gap-1.5">
+          <button className="btn btn-sm btn-primary flex-1" onClick={start}>
+            <Film size={12} /> Escoger carpeta y empezar
+          </button>
+          <button className="btn btn-sm" onClick={() => setIds(null)}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    )
   return (
-    <button className="btn !h-9" onClick={start} title="Hace gratis en tu Mac los videos de todas las escenas que tienen imagen inicial y final">
+    <button className="btn !h-9" onClick={ask} title="Hace gratis en tu Mac los videos de todas las escenas que tienen imagen inicial y final">
       <Film size={14} className="shrink-0 text-[#ddd6fe]" /> Hacer todos los videos (Mac)
     </button>
   )
