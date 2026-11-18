@@ -253,6 +253,24 @@ export async function mediaDiskPath(id: string): Promise<{ file: string; icon: s
   return { file, icon }
 }
 
+/** Papelera de archivos dentro de la biblioteca (como Final Cut): los archivos que nadie usa
+ *  no se borran, se mueven a `Papelera/` con su nombre original y se anotan en `Papelera/papelera.json`. */
+async function toFileTrash(dir: string, asset: MediaAsset): Promise<boolean> {
+  const from = mediaPath(dir, asset)
+  if (!(await exists(from, BASE).catch(() => false))) return true
+  await mkdir(`${dir}/Papelera`, { ...BASE, recursive: true }).catch(() => {})
+  const ext = extFromMime(asset.mimeType)
+  const base = (asset.name || asset.id).replace(/\.[^.]+$/, '').replace(/[/\\:*?"<>|]+/g, '-').slice(0, 80)
+  const file = `${base} (${asset.id}).${ext}`
+  // Si no se puede mover, el archivo se queda donde está (nunca se borra).
+  if (!(await rename(from, `${dir}/Papelera/${file}`).then(() => true, () => false))) return false
+  const listPath = `${dir}/Papelera/papelera.json`
+  const list: unknown[] = await readTextFile(listPath, BASE).then((t) => JSON.parse(t) as unknown[]).catch(() => [])
+  list.push({ ...asset, file, deletedAt: new Date().toISOString() })
+  await writeJson(listPath, list)
+  return true
+}
+
 export async function collectGarbage(projectId: string, scenes: Scene[], extraUsed?: string[]) {
   const dir = folders.get(projectId)
   if (!dir) return 0
@@ -264,7 +282,7 @@ export async function collectGarbage(projectId: string, scenes: Scene[], extraUs
   const recent = Date.now() - 60 * 60 * 1000
   for (const [id, asset] of Object.entries(list)) {
     if (used.has(id) || Date.parse(asset.createdAt) > recent) continue
-    await remove(mediaPath(dir, asset), BASE).catch(() => {})
+    if (!(await toFileTrash(dir, asset))) continue
     await remove(thumbPath(dir, id), BASE).catch(() => {})
     delete list[id]
     mediaIndex.delete(id)
